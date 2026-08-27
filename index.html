@@ -299,12 +299,30 @@
             overflow-y: auto;
         }
         .historial-item {
-            padding: 8px 0;
+            padding: 10px 0;
             border-bottom: 1px solid #e9ecef;
             font-size: 13px;
         }
         .historial-item:last-child { border-bottom: none; }
-        .historial-item .fecha { color: #888; font-size: 11px; }
+        .historial-item .fecha { color: #888; font-size: 11px; margin-top: 2px; }
+        .historial-item .nota {
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+            padding: 6px 10px;
+            margin-top: 6px;
+            border-radius: 0 6px 6px 0;
+            font-size: 13px;
+            color: #333;
+        }
+        .historial-item .depto {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+            color: #555;
+        }
         .badge-estatus {
             display: inline-block;
             padding: 4px 12px;
@@ -1109,8 +1127,13 @@
         if (u.historial && u.historial.length > 0) {
             histBox.innerHTML = u.historial.slice().reverse().map(h => `
                 <div class="historial-item">
-                    <div><strong>${h.estatus}</strong> — ${h.area || ''}${h.persona ? ' ('+h.persona+')' : ''}</div>
-                    <div class="fecha">${h.fecha || ''} ${h.comentario ? '· ' + h.comentario : ''}</div>
+                    <div>
+                        <strong>${h.estatus || '—'}</strong>
+                        ${h.area ? `<span class="depto">${h.area}</span>` : ''}
+                        ${h.persona ? `<span style="color:#555;"> · ${h.persona}</span>` : ''}
+                    </div>
+                    <div class="fecha">${h.fecha || ''}</div>
+                    ${h.comentario ? `<div class="nota">📝 ${h.comentario}</div>` : ''}
                 </div>
             `).join('');
         } else {
