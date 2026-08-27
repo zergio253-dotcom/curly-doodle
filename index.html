@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>ThermoControl - Taller Thermoking</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f0f2f5; padding: 12px; }
+        
+        .header {
+            background: #1a3a5c;
+            color: white;
+            padding: 14px 20px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .header h1 { font-size: 22px; }
+        .header h1 small { font-size: 14px; opacity: 0.7; }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .header-actions input {
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: none;
+            font-size: 14px;
+            width: 220px;
+        }
+        .btn-header {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .btn-header:hover { background: rgba(255,255,255,0.3); }
+        .btn-header.active { background: #28a745; }
+        .btn-header.danger { background: #dc3545; }
+        .btn-header.danger:hover { background: #c82333; }
+
+        .stats {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .stat-item {
+            background: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .stat-item .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+        .kanban-container {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .kanban-col {
+            background: #e9ecef;
+            border-radius: 10px;
+            padding: 10px;
+            min-height: 400px;
+            max-height: 75vh;
+            overflow-y: auto;
+        }
+        .kanban-col::-webkit-scrollbar { width: 4px; }
+        .kanban-col::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+        .kanban-col h4 {
+            text-align: center;
+            color: white;
+            padding: 6px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 10px;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .kanban-col .count {
+            background: rgba(0,0,0,0.2);
+            padding: 0 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .card-compact {
+            background: white;
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            border-left: 4px solid #ccc;
+            font-size: 12px;
+            transition: 0.2s;
+            cursor: default;
+        }
+        .card-compact:hover { transform: scale(1.02); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .card-compact .unidad-id { font-weight: bold; font-size: 14px; color: #1a3a5c; }
+        .card-compact .cliente { color: #555; font-size: 12px; }
+        .card-compact .fechas { font-size: 10px; color: #888; margin-top: 2px; }
+        .card-compact .meta {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+            font-size: 11px;
+            color: #777;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+        .card-compact .badge-area {
+            background: #e9ecef;
+            padding: 0 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .card-compact .tiempo { font-size: 10px; color: #888; }
+        .card-compact .tiempo.warning { color: #dc3545; font-weight: bold; }
+        .card-compact .btn-accion {
+            background: transparent;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .card-compact .btn-accion:hover { background: #1a3a5c; color: white; border-color: #1a3a5c; }
+
+        .lista-container {
+            display: none;
+            background: white;
+            border-radius: 10px;
+            overflow: auto;
+            margin-top: 12px;
+            max-height: 75vh;
+        }
+        .lista-container table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .lista-container th {
+            background: #1a3a5c;
+            color: white;
+            padding: 8px 10px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .lista-container td { padding: 6px 10px; border-bottom: 1px solid #eee; }
+        .lista-container tr:hover { background: #f8f9fa; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 999;
+            padding: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-content h3 { margin-bottom: 12px; }
+        .modal-content .form-group { margin-bottom: 12px; }
+        .modal-content .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        .modal-content .form-group input,
+        .modal-content .form-group select,
+        .modal-content .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #dde1e6;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .modal-content .form-group textarea { resize: vertical; min-height: 50px; }
+        .btn-modal {
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 4px;
+        }
+        .btn-modal.success { background: #28a745; color: white; }
+        .btn-modal.danger { background: #dc3545; color: white; }
+        .btn-modal.primary { background: #1a3a5c; color: white; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .persona-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .persona-item:hover { background: #e9ecef; }
+        .persona-item input[type="radio"] { width: 16px; height: 16px; margin: 0; flex-shrink: 0; }
+        .persona-item label { font-size: 13px; cursor: pointer; flex: 1; }
+        .personas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+            font-size: 18px;
+        }
+        .loading .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1a3a5c;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .status-ok { background: #28a745; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .status-error { background: #dc3545; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+
+        @media (max-width: 1200px) { .kanban-container { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 768px) {
+            .kanban-container { grid-template-columns: repeat(2, 1fr); }
+            .header h1 { font-size: 18px; }
+            .header-actions input { width: 140px; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .personas-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 480px) {
+            .kanban-container { grid-template-columns: 1fr 1fr; gap: 6px; }
+            .kanban-col { padding: 6px; min-height: 200px; }
+            .card-compact { font-size: 10px; padding: 5px 8px; }
+            .card-compact .unidad-id { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+    <h1>❄️ ThermoControl <small>Base de Datos en la Nube</small></h1>
+    <div class="header-actions">
+        <input type="text" id="searchGlobal" placeholder="🔍 Buscar unidad..." oninput="renderizarTablero()">
+        <button class="btn-header" id="btnVistaKanban" onclick="cambiarVista('kanban')">📊 Kanban</button>
+        <button class="btn-header" id="btnVistaLista" onclick="cambiarVista('lista')">📋 Lista</button>
+        <button class="btn-header" onclick="abrirModalNueva()">➕ Nueva</button>
+        <button class="btn-header" onclick="alternarModoCliente()">👁️ Cliente</button>
+        <button class="btn-header danger" onclick="cargarDatos()">🔄 Recargar</button>
+        <span id="statusConexion" style="color:white; font-size:12px; padding:4px 10px; background:rgba(255,255,255,0.15); border-radius:12px;">⏳ Conectando...</span>
+    </div>
+</div>
+
+<!-- ===== ESTADÍSTICAS ===== -->
+<div class="stats" id="statsContainer"></div>
+
+<!-- ===== LOADING ===== -->
+<div id="loadingContainer" class="loading" style="display:none;">
+    <div class="spinner"></div>
+    <p>Cargando datos desde la nube...</p>
+</div>
+
+<!-- ===== CONTENEDOR KANBAN ===== -->
+<div id="kanbanContainer" class="kanban-container"></div>
+
+<!-- ===== CONTENEDOR LISTA ===== -->
+<div id="listaContainer" class="lista-container"></div>
+
+<!-- ===== MODAL NUEVA ===== -->
+<div class="modal" id="modalNueva">
+    <div class="modal-content">
+        <h3>➕ Nueva Unidad</h3>
+        <form id="formNueva">
+            <div class="form-group">
+                <label>Número de Unidad *</label>
+                <input type="text" id="noUnidadNueva" placeholder="Ej: TK-2026-001" required>
+            </div>
+            <div class="form-group">
+                <label>Cliente *</label>
+                <input type="text" id="clienteNueva" placeholder="Nombre del cliente" required>
+            </div>
+            <div class="form-group">
+                <label>Modelo</label>
+                <input type="text" id="modeloNueva" placeholder="Ej: ThermoKing T-800">
+            </div>
+            <div class="form-group">
+                <label>Problema</label>
+                <textarea id="problemaNueva" rows="2" placeholder="Describe el problema..."></textarea>
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>🔧 Diagnosticador</label>
+                    <input type="text" id="diagnosticadorNueva" placeholder="Nombre">
+                </div>
+                <div class="form-group">
+                    <label>🛠️ Reparador</label>
+                    <input type="text" id="reparadorNueva" placeholder="Nombre">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Estatus inicial</label>
+                <select id="estatusNueva">
+                    <option value="Recibida">📥 Recibida</option>
+                    <option value="Diagnosticando">🔍 Diagnosticando</option>
+                    <option value="Cotizando">💰 Cotizando</option>
+                    <option value="Espera de refacciones">⏳ Espera de refacciones</option>
+                    <option value="Reparando">🔧 Reparando</option>
+                    <option value="Finalizada">✅ Finalizada</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-modal success">✅ Agregar</button>
+            <button type="button" class="btn-modal danger" onclick="cerrarModal('modalNueva')">❌ Cancelar</button>
+        </form>
+    </div>
+</div>
+
+<!-- ===== MODAL EDITAR ===== -->
+<div class="modal" id="modalEditar">
+    <div class="modal-content">
+        <h3>✏️ Editar Unidad</h3>
+        <p id="infoEditar" style="color:#1a3a5c; font-weight:bold; margin-bottom:12px;"></p>
+        <form id="formEditar">
+            <div class="form-group">
+                <label>Número de Unidad</label>
+                <input type="text" id="noUnidadEditar">
+            </div>
+            <div class="form-group">
+                <label>Cliente</label>
+                <input type="text" id="clienteEditar">
+            </div>
+            <div class="form-group">
+                <label>Modelo</label>
+                <input type="text" id="modeloEditar">
+            </div>
+            <div class="form-group">
+                <label>Problema</label>
+                <textarea id="problemaEditar" rows="2"></textarea>
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>🔧 Diagnosticador</label>
+                    <input type="text" id="diagnosticadorEditar" placeholder="Nombre">
+                </div>
+                <div class="form-group">
+                    <label>🛠️ Reparador</label>
+                    <input type="text" id="reparadorEditar" placeholder="Nombre">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>📅 Fecha de salida (si aplica)</label>
+                <input type="date" id="fechaSalidaEditar">
+            </div>
+            <button type="submit" class="btn-modal primary">💾 Guardar cambios</button>
+            <button type="button" class="btn-modal danger" onclick="cerrarModal('modalEditar')">❌ Cancelar</button>
+        </form>
+    </div>
+</div>
+
+<!-- ===== MODAL CAMBIO ESTATUS ===== -->
+<div class="modal" id="modalCambio">
+    <div class="modal-content">
+        <h3>🔄 Cambiar estatus</h3>
+        <p id="infoUnidadCambio" style="font-weight:bold; color:#1a3a5c; margin-bottom:12px;"></p>
+        <div class="form-group">
+            <label>Nuevo estatus</label>
+            <select id="estatusCambio">
+                <option value="Recibida">📥 Recibida</option>
+                <option value="Diagnosticando">🔍 Diagnosticando</option>
+                <option value="Cotizando">💰 Cotizando</option>
+                <option value="Espera de refacciones">⏳ Espera de refacciones</option>
+                <option value="Reparando">🔧 Reparando</option>
+                <option value="Finalizada">✅ Finalizada</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>👤 Área / Persona que mueve el estatus *</label>
+            <select id="areaCambio" onchange="actualizarPersonas()">
+                <option value="">Seleccionar área...</option>
+                <option value="Gerencia">👔 Gerencia</option>
+                <option value="Mantenimiento">🔧 Mantenimiento</option>
+                <option value="Ventas">💰 Ventas</option>
+                <option value="Compras">🛒 Compras</option>
+            </select>
+        </div>
+        <div class="form-group" id="personasContainer">
+            <label>Selecciona la persona:</label>
+            <div id="personasList" class="personas-grid"></div>
+        </div>
+        <div class="form-group" id="nombrePersonalizadoContainer" style="display:none;">
+            <label>Escribe el nombre:</label>
+            <input type="text" id="nombrePersonalizado" placeholder="Ingresa el nombre">
+        </div>
+        <div class="form-group">
+            <label>Comentario (opcional)</label>
+            <input type="text" id="comentarioCambio" placeholder="Opcional">
+        </div>
+        <button class="btn-modal primary" onclick="confirmarCambio()">✅ Confirmar</button>
+        <button class="btn-modal danger" onclick="cerrarModal('modalCambio')">❌ Cancelar</button>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // ===== CONFIGURACIÓN DE SUPABASE =====
+    // ============================================================
+    const SUPABASE_URL = 'https://xklztdkpkwsfqhlzntcv.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrbHp0ZGtwa3dzZnFobHpudGN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MjY0OTksImV4cCI6MjEwMzQwMjQ5OX0.l9sQ7Icgi8jfZfn1y2L65kIcWwqbyR8lk7ODsDACGL4';
+
+    // ============================================================
+    // ===== INICIALIZAR SUPABASE (CORREGIDO) =====
+    // ============================================================
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ===== PERSONAS POR ÁREA =====
+    const personasPorArea = {
+        'Gerencia': ['Luis Solís'],
+        'Mantenimiento': ['Sergio Holguín', 'Marcos Sifuentes', 'Miguel Arredondo'],
+        'Ventas': ['Romina'],
+        'Compras': []
+    };
+
+    // ===== COLORES =====
+    const colores = {
+        'Recibida': '#007bff',
+        'Diagnosticando': '#ffc107',
+        'Cotizando': '#6f42c1',
+        'Espera de refacciones': '#dc3545',
+        'Reparando': '#fd7e14',
+        'Finalizada': '#28a745'
+    };
+
+    const nombresEstatus = {
+        'Recibida': '📥 Recibida',
+        'Diagnosticando': '🔍 Diagnosticando',
+        'Cotizando': '💰 Cotizando',
+        'Espera de refacciones': '⏳ Espera de refacciones',
+        'Reparando': '🔧 Reparando',
+        'Finalizada': '✅ Finalizada'
+    };
+
+    // ===== VARIABLES GLOBALES =====
+    let unidades = [];
+    let modoCliente = false;
+    let unidadEnEdicion = null;
+
+    // ===== FUNCIONES CRUD =====
+
+    async function cargarDatos() {
+        const loading = document.getElementById('loadingContainer');
+        loading.style.display = 'block';
+        document.getElementById('kanbanContainer').innerHTML = '';
+        
+        try {
+            const { data, error } = await supabaseClient
+                .from('unidades')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            if (error) throw error;
+            
+            unidades = data || [];
+            renderizarTablero();
+            actualizarStats();
+            document.getElementById('statusConexion').innerHTML = '✅ Conectado';
+            document.getElementById('statusConexion').style.background = 'rgba(40, 167, 69, 0.3)';
+        } catch (error) {
+            console.error('Error al cargar datos:', error);
+            document.getElementById('statusConexion').innerHTML = '❌ Error: ' + (error.message || '').substring(0, 40);
+            document.getElementById('statusConexion').style.background = 'rgba(220, 53, 69, 0.3)';
+            unidades = [];
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+
+    async function agregarUnidad(nuevaUnidad) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('unidades')
+                .insert([nuevaUnidad])
+                .select();
+            
+            if (error) throw error;
+            
+            unidades = [data[0], ...unidades];
+            renderizarTablero();
+            actualizarStats();
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('Error al agregar:', error);
+            alert('❌ Error al agregar unidad: ' + error.message);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async function actualizarUnidad(id, datos) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('unidades')
+                .update(datos)
+                .eq('id', id)
+                .select();
+            
+            if (error) throw error;
+            
+            const index = unidades.findIndex(u => u.id === id);
+            if (index !== -1) {
+                unidades[index] = { ...unidades[index], ...datos };
+            }
+            renderizarTablero();
+            actualizarStats();
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('Error al actualizar:', error);
+            alert('❌ Error al actualizar: ' + error.message);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async function eliminarUnidadBD(id) {
+        if (!confirm('¿Eliminar esta unidad permanentemente?')) return;
+        
+        try {
+            const { error } = await supabaseClient
+                .from('unidades')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            
+            unidades = unidades.filter(u => u.id !== id);
+            renderizarTablero();
+            actualizarStats();
+            alert('✅ Unidad eliminada');
+        } catch (error) {
+            console.error('Error al eliminar:', error);
+            alert('❌ Error al eliminar: ' + error.message);
+        }
+    }
+
+    // ===== FUNCIONES DE RENDERIZADO =====
+
+    function getColor(status) { return colores[status] || '#6c757d'; }
+
+    function formatearFecha(fecha) {
+        if (!fecha) return '—';
+        const d = new Date(fecha);
+        return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function diasEnEstatus(historial) {
+        if (!historial || historial.length === 0) return 0;
+        const ultimo = historial[historial.length - 1];
+        const fecha = new Date(ultimo.fecha);
+        const ahora = new Date();
+        const diff = (ahora - fecha) / (1000 * 60 * 60 * 24);
+        return Math.floor(diff);
+    }
+
+    function actualizarStats() {
+        const container = document.getElementById('statsContainer');
+        const total = unidades.length;
+        const counts = {};
+        Object.keys(colores).forEach(s => counts[s] = 0);
+        unidades.forEach(u => { if(counts[u.estatus] !== undefined) counts[u.estatus]++; });
+        let html = `<div class="stat-item">📦 Total: ${total}</div>`;
+        for(const [status, color] of Object.entries(colores)) {
+            html += `<div class="stat-item"><span class="dot" style="background:${color}"></span> ${nombresEstatus[status]}: ${counts[status]||0}</div>`;
+        }
+        container.innerHTML = html;
+    }
+
+    function renderizarTablero() {
+        const search = document.getElementById('searchGlobal').value.toLowerCase();
+        let filtered = unidades.filter(u => 
+            (u.no_unidad || '').toLowerCase().includes(search) ||
+            (u.cliente || '').toLowerCase().includes(search) ||
+            (u.modelo && u.modelo.toLowerCase().includes(search))
+        );
+
+        // Kanban
+        const container = document.getElementById('kanbanContainer');
+        container.innerHTML = '';
+        const estatusOrden = ['Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada'];
+        estatusOrden.forEach(status => {
+            const items = filtered.filter(u => u.estatus === status);
+            const col = document.createElement('div');
+            col.className = 'kanban-col';
+            col.innerHTML = `
+                <h4 style="background:${getColor(status)}">
+                    ${nombresEstatus[status]} <span class="count">${items.length}</span>
+                </h4>
+            `;
+            items.forEach((u) => {
+                const dias = diasEnEstatus(u.historial);
+                const card = document.createElement('div');
+                card.className = 'card-compact';
+                card.style.borderLeftColor = getColor(u.estatus);
+                const ultimo = u.historial && u.historial.length > 0 ? u.historial[u.historial.length-1] : null;
+                card.innerHTML = `
+                    <div class="unidad-id">${u.no_unidad || '—'}</div>
+                    <div class="cliente">${u.cliente || '—'} ${u.modelo ? '· '+u.modelo : ''}</div>
+                    <div class="fechas">
+                        📅 Llegada: ${formatearFecha(u.fecha_llegada)}
+                        ${u.fecha_salida ? ' | 🚚 Salida: '+formatearFecha(u.fecha_salida) : ''}
+                    </div>
+                    <div class="meta">
+                        <span>
+                            🔧 ${u.diagnosticador || '—'} 
+                            🛠️ ${u.reparador || '—'}
+                        </span>
+                        <span class="badge-area">${ultimo ? ultimo.area + (ultimo.persona ? ' ('+ultimo.persona+')' : '') : '—'}</span>
+                    </div>
+                    <div class="meta">
+                        <span class="tiempo ${dias >= 3 ? 'warning' : ''}">
+                            ${dias === 0 ? 'Hoy' : dias === 1 ? 'Ayer' : `⏱️ ${dias} días`}
+                            ${dias >= 3 ? ' ⚠️' : ''}
+                        </span>
+                        <span style="font-size:10px; color:#999;">${u.problema ? u.problema.substring(0,30)+'...' : ''}</span>
+                    </div>
+                    ${!modoCliente ? `
+                        <div style="margin-top:4px; display:flex; gap:4px; flex-wrap:wrap;">
+                            <button onclick="abrirModalEditar(${u.id})" class="btn-accion" style="flex:1;">✏️ Editar</button>
+                            <button onclick="abrirModalCambio(${u.id})" class="btn-accion" style="flex:1;">🔄 Estatus</button>
+                            <button onclick="eliminarUnidadBD(${u.id})" class="btn-accion" style="flex:0.5; color:#dc3545; border-color:#dc3545;">🗑️</button>
+                        </div>
+                    ` : ''}
+                `;
+                col.appendChild(card);
+            });
+            container.appendChild(col);
+        });
+
+        // Lista
+        const listaContainer = document.getElementById('listaContainer');
+        let tablaHtml = `
+            <table>
+                <thead><tr>
+                    <th>Unidad</th><th>Cliente</th><th>Modelo</th>
+                    <th>Estatus</th><th>Diagnostica</th><th>Repara</th>
+                    <th>Llegada</th><th>Salida</th>
+                    <th>Últ. cambio</th><th>Días</th>
+                </tr></thead>
+                <tbody>
+        `;
+        filtered.forEach(u => {
+            const dias = diasEnEstatus(u.historial);
+            const ultimo = u.historial && u.historial.length > 0 ? u.historial[u.historial.length-1] : null;
+            tablaHtml += `
+                <tr>
+                    <td><strong>${u.no_unidad || '—'}</strong></td>
+                    <td>${u.cliente || '—'}</td>
+                    <td>${u.modelo || '—'}</td>
+                    <td><span style="background:${getColor(u.estatus)}; color:white; padding:2px 10px; border-radius:12px; font-size:11px;">${u.estatus || '—'}</span></td>
+                    <td>${u.diagnosticador || '—'}</td>
+                    <td>${u.reparador || '—'}</td>
+                    <td>${formatearFecha(u.fecha_llegada)}</td>
+                    <td>${formatearFecha(u.fecha_salida)}</td>
+                    <td>${ultimo ? ultimo.area + (ultimo.persona ? ' ('+ultimo.persona+')' : '') : '—'}</td>
+                    <td class="${dias >= 3 ? 'warning' : ''}">${dias} días</td>
+                </tr>
+            `;
+        });
+        tablaHtml += '</tbody></table>';
+        listaContainer.innerHTML = tablaHtml;
+    }
+
+    // ===== VISTAS =====
+    function cambiarVista(vista) {
+        const kanban = document.getElementById('kanbanContainer');
+        const lista = document.getElementById('listaContainer');
+        const btnK = document.getElementById('btnVistaKanban');
+        const btnL = document.getElementById('btnVistaLista');
+        if(vista === 'kanban') {
+            kanban.style.display = 'grid';
+            lista.style.display = 'none';
+            btnK.classList.add('active');
+            btnL.classList.remove('active');
+        } else {
+            kanban.style.display = 'none';
+            lista.style.display = 'block';
+            btnL.classList.add('active');
+            btnK.classList.remove('active');
+        }
+    }
+
+    function alternarModoCliente() {
+        modoCliente = !modoCliente;
+        document.querySelector('.header h1 small').textContent = modoCliente ? '👁️ MODO CLIENTE (solo vista)' : 'Base de Datos en la Nube';
+        renderizarTablero();
+    }
+
+    // ===== MODALES =====
+
+    function cerrarModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    function abrirModalNueva() {
+        document.getElementById('modalNueva').style.display = 'flex';
+    }
+
+    document.getElementById('formNueva').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const hoy = new Date().toISOString().split('T')[0];
+        const nueva = {
+            no_unidad: document.getElementById('noUnidadNueva').value.trim(),
+            cliente: document.getElementById('clienteNueva').value.trim(),
+            modelo: document.getElementById('modeloNueva').value.trim(),
+            problema: document.getElementById('problemaNueva').value.trim(),
+            diagnosticador: document.getElementById('diagnosticadorNueva').value.trim(),
+            reparador: document.getElementById('reparadorNueva').value.trim(),
+            estatus: document.getElementById('estatusNueva').value,
+            fecha_llegada: hoy,
+            fecha_salida: null,
+            historial: [{
+                fecha: new Date().toLocaleString(),
+                estatus: document.getElementById('estatusNueva').value,
+                area: 'Sistema (creación)',
+                persona: 'Sistema',
+                comentario: 'Unidad creada'
+            }]
+        };
+        
+        const resultado = await agregarUnidad(nueva);
+        if (resultado.success) {
+            this.reset();
+            cerrarModal('modalNueva');
+            alert('✅ Unidad agregada a la base de datos');
+        }
+    });
+
+    function abrirModalEditar(id) {
+        if(modoCliente) return;
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+        unidadEnEdicion = id;
+        document.getElementById('infoEditar').textContent = `Editando: ${u.no_unidad} - ${u.cliente}`;
+        document.getElementById('noUnidadEditar').value = u.no_unidad || '';
+        document.getElementById('clienteEditar').value = u.cliente || '';
+        document.getElementById('modeloEditar').value = u.modelo || '';
+        document.getElementById('problemaEditar').value = u.problema || '';
+        document.getElementById('diagnosticadorEditar').value = u.diagnosticador || '';
+        document.getElementById('reparadorEditar').value = u.reparador || '';
+        document.getElementById('fechaSalidaEditar').value = u.fecha_salida || '';
+        document.getElementById('modalEditar').style.display = 'flex';
+    }
+
+    document.getElementById('formEditar').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const id = unidadEnEdicion;
+        if (!id) return;
+        
+        const datos = {
+            no_unidad: document.getElementById('noUnidadEditar').value.trim(),
+            cliente: document.getElementById('clienteEditar').value.trim(),
+            modelo: document.getElementById('modeloEditar').value.trim(),
+            problema: document.getElementById('problemaEditar').value.trim(),
+            diagnosticador: document.getElementById('diagnosticadorEditar').value.trim(),
+            reparador: document.getElementById('reparadorEditar').value.trim(),
+            fecha_salida: document.getElementById('fechaSalidaEditar').value || null
+        };
+        
+        const u = unidades.find(item => item.id === id);
+        if (datos.fecha_salida && u && u.estatus !== 'Finalizada') {
+            if (confirm('¿Deseas cambiar el estatus a "Finalizada"?')) {
+                datos.estatus = 'Finalizada';
+                const historial = u.historial || [];
+                historial.push({
+                    fecha: new Date().toLocaleString(),
+                    estatus: 'Finalizada',
+                    area: 'Edición manual',
+                    persona: 'Sistema',
+                    comentario: 'Fecha de salida asignada'
+                });
+                datos.historial = historial;
+            }
+        }
+        
+        const resultado = await actualizarUnidad(id, datos);
+        if (resultado.success) {
+            cerrarModal('modalEditar');
+            alert('✅ Unidad actualizada en la base de datos');
+        }
+    });
+
+    // ===== CAMBIO DE ESTATUS =====
+    function actualizarPersonas() {
+        const area = document.getElementById('areaCambio').value;
+        const container = document.getElementById('personasList');
+        const personalizadoContainer = document.getElementById('nombrePersonalizadoContainer');
+        const personas = personasPorArea[area] || [];
+        
+        if (area === 'Compras') {
+            container.innerHTML = '';
+            personalizadoContainer.style.display = 'block';
+            document.getElementById('nombrePersonalizado').value = '';
+            return;
+        }
+        
+        personalizadoContainer.style.display = 'none';
+        
+        if (personas.length === 0) {
+            container.innerHTML = '<p style="color:#888; font-size:13px;">No hay personas registradas para esta área</p>';
+            return;
+        }
+        
+        let html = '';
+        personas.forEach(persona => {
+            html += `
+                <div class="persona-item">
+                    <input type="radio" name="personaSeleccionada" value="${persona}" id="persona_${persona.replace(/\s/g,'_')}">
+                    <label for="persona_${persona.replace(/\s/g,'_')}">${persona}</label>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function getPersonaSeleccionada() {
+        const area = document.getElementById('areaCambio').value;
+        if (area === 'Compras') {
+            return document.getElementById('nombrePersonalizado').value.trim() || null;
+        }
+        const radio = document.querySelector('input[name="personaSeleccionada"]:checked');
+        return radio ? radio.value : null;
+    }
+
+    function abrirModalCambio(id) {
+        if(modoCliente) return;
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+        unidadEnEdicion = id;
+        document.getElementById('infoUnidadCambio').textContent = `${u.no_unidad} - ${u.cliente}`;
+        document.getElementById('estatusCambio').value = u.estatus;
+        document.getElementById('areaCambio').value = '';
+        document.getElementById('comentarioCambio').value = '';
+        document.getElementById('nombrePersonalizado').value = '';
+        document.getElementById('personasList').innerHTML = '';
+        document.getElementById('nombrePersonalizadoContainer').style.display = 'none';
+        document.getElementById('modalCambio').style.display = 'flex';
+    }
+
+    async function confirmarCambio() {
+        const id = unidadEnEdicion;
+        if (!id) return;
+        
+        const area = document.getElementById('areaCambio').value;
+        if (!area) { alert('⚠️ Selecciona un área'); return; }
+        
+        const persona = getPersonaSeleccionada();
+        if (!persona) {
+            alert('⚠️ Selecciona o escribe el nombre de la persona');
+            return;
+        }
+        
+        const nuevoEstatus = document.getElementById('estatusCambio').value;
+        const comentario = document.getElementById('comentarioCambio').value.trim();
+        
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+        
+        const historial = u.historial || [];
+        historial.push({
+            fecha: new Date().toLocaleString(),
+            estatus: nuevoEstatus,
+            area: area,
+            persona: persona,
+            comentario: comentario
+        });
+        
+        const datos = {
+            estatus: nuevoEstatus,
+            historial: historial
+        };
+        
+        if (nuevoEstatus === 'Finalizada' && !u.fecha_salida) {
+            datos.fecha_salida = new Date().toISOString().split('T')[0];
+        }
+        
+        const resultado = await actualizarUnidad(id, datos);
+        if (resultado.success) {
+            cerrarModal('modalCambio');
+            alert(`✅ Estatus actualizado por ${area} - ${persona}`);
+        }
+    }
+
+    // ===== INICIALIZAR =====
+    window.onclick = function(event) {
+        if(event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    };
+
+    document.getElementById('btnVistaKanban').classList.add('active');
+    
+    // Cargar datos
+    cargarDatos();
+</script>
+</body>
+</html>
