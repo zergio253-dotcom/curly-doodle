@@ -6,11 +6,37 @@
     <title>ThermoControl - Taller Thermoking</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        :root {
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --text: #222;
+            --text2: #555;
+            --text3: #888;
+            --border: #e9ecef;
+            --header: #1a3a5c;
+            --kanban-col: #e9ecef;
+            --input-border: #dde1e6;
+            --modal-bg: #ffffff;
+            --detalle-item: #f8f9fa;
+        }
+        body.dark {
+            --bg: #121212;
+            --card: #1e1e1e;
+            --text: #e0e0e0;
+            --text2: #b0b0b0;
+            --text3: #888;
+            --border: #333;
+            --header: #0d2137;
+            --kanban-col: #1a1a1a;
+            --input-border: #444;
+            --modal-bg: #1e1e1e;
+            --detalle-item: #2a2a2a;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: #f0f2f5; padding: 12px; }
+        body { background: var(--bg); padding: 12px; color: var(--text); transition: background 0.3s, color 0.3s; }
         
         .header {
-            background: #1a3a5c;
+            background: var(--header);
             color: white;
             padding: 14px 20px;
             border-radius: 10px;
@@ -59,7 +85,8 @@
             margin-bottom: 16px;
         }
         .stat-item {
-            background: white;
+            background: var(--card);
+            color: var(--text);
             padding: 6px 14px;
             border-radius: 20px;
             font-size: 13px;
@@ -78,7 +105,7 @@
             margin-top: 12px;
         }
         .kanban-col {
-            background: #e9ecef;
+            background: var(--kanban-col);
             border-radius: 10px;
             padding: 10px;
             min-height: 400px;
@@ -106,7 +133,7 @@
         }
 
         .card-compact {
-            background: white;
+            background: var(--card);
             border-radius: 8px;
             padding: 8px 10px;
             margin-bottom: 8px;
@@ -114,30 +141,49 @@
             border-left: 4px solid #ccc;
             font-size: 12px;
             transition: 0.2s;
-            cursor: pointer;
+            cursor: grab;
+            color: var(--text);
         }
         .card-compact:hover { transform: scale(1.02); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-        .card-compact .unidad-id { font-weight: bold; font-size: 14px; color: #1a3a5c; }
-        .card-compact .cliente { color: #555; font-size: 12px; }
-        .card-compact .fechas { font-size: 10px; color: #888; margin-top: 2px; }
+        .card-compact.dragging { opacity: 0.5; cursor: grabbing; }
+        .card-compact.retrasada {
+            background: #fff5f5;
+            box-shadow: 0 0 0 2px #dc3545;
+        }
+        body.dark .card-compact.retrasada { background: #3a1c1c; }
+        .card-compact .unidad-id { font-weight: bold; font-size: 14px; color: var(--header); }
+        body.dark .card-compact .unidad-id { color: #6ab0f3; }
+        .card-compact .cliente { color: var(--text2); font-size: 12px; }
+        .card-compact .fechas { font-size: 10px; color: var(--text3); margin-top: 2px; }
         .card-compact .meta {
             display: flex;
             justify-content: space-between;
             margin-top: 4px;
             font-size: 11px;
-            color: #777;
+            color: var(--text3);
             flex-wrap: wrap;
             gap: 2px;
         }
         .card-compact .badge-area {
-            background: #e9ecef;
+            background: var(--border);
             padding: 0 8px;
             border-radius: 10px;
             font-size: 10px;
             font-weight: bold;
         }
-        .card-compact .tiempo { font-size: 10px; color: #888; }
+        .card-compact .tiempo { font-size: 10px; color: var(--text3); }
         .card-compact .tiempo.warning { color: #dc3545; font-weight: bold; }
+        .badge-prioridad {
+            display: inline-block;
+            padding: 1px 7px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+        }
+        .prio-Alta { background: #dc3545; }
+        .prio-Media { background: #fd7e14; }
+        .prio-Baja { background: #6c757d; }
         .card-compact .btn-accion {
             background: transparent;
             border: 1px solid #ddd;
@@ -151,15 +197,16 @@
 
         .lista-container {
             display: none;
-            background: white;
+            background: var(--card);
             border-radius: 10px;
             overflow: auto;
             margin-top: 12px;
             max-height: 75vh;
+            color: var(--text);
         }
         .lista-container table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .lista-container th {
-            background: #1a3a5c;
+            background: var(--header);
             color: white;
             padding: 8px 10px;
             text-align: left;
@@ -167,8 +214,8 @@
             top: 0;
             z-index: 5;
         }
-        .lista-container td { padding: 6px 10px; border-bottom: 1px solid #eee; }
-        .lista-container tr:hover { background: #f8f9fa; cursor: pointer; }
+        .lista-container td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
+        .lista-container tr:hover { background: var(--detalle-item); cursor: pointer; }
 
         .modal {
             display: none;
@@ -181,7 +228,8 @@
             justify-content: center;
         }
         .modal-content {
-            background: white;
+            background: var(--modal-bg);
+            color: var(--text);
             border-radius: 16px;
             padding: 24px;
             max-width: 520px;
@@ -203,9 +251,11 @@
         .modal-content .form-group textarea {
             width: 100%;
             padding: 8px 12px;
-            border: 2px solid #dde1e6;
+            border: 2px solid var(--input-border);
             border-radius: 8px;
             font-size: 14px;
+            background: var(--card);
+            color: var(--text);
         }
         .modal-content .form-group textarea { resize: vertical; min-height: 50px; }
         .btn-modal {
@@ -258,7 +308,7 @@
 
         /* Detalle */
         .detalle-header {
-            background: #1a3a5c;
+            background: var(--header);
             color: white;
             padding: 16px;
             border-radius: 12px;
@@ -273,31 +323,48 @@
             margin-bottom: 16px;
         }
         .detalle-item {
-            background: #f8f9fa;
+            background: var(--detalle-item);
             padding: 10px 12px;
             border-radius: 8px;
-            border-left: 3px solid #1a3a5c;
+            border-left: 3px solid var(--header);
         }
         .detalle-item .label {
             font-size: 11px;
-            color: #666;
+            color: var(--text3);
             font-weight: 600;
             text-transform: uppercase;
             margin-bottom: 2px;
         }
         .detalle-item .valor {
             font-size: 14px;
-            color: #222;
+            color: var(--text);
             word-break: break-word;
         }
         .detalle-item.full { grid-column: 1 / -1; }
         .historial-box {
-            background: #f8f9fa;
+            background: var(--detalle-item);
             border-radius: 8px;
             padding: 12px;
-            max-height: 200px;
+            max-height: 220px;
             overflow-y: auto;
         }
+        .fotos-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .fotos-grid img {
+            width: 90px;
+            height: 90px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid var(--border);
+        }
+        .fotos-grid img:hover { border-color: #1a3a5c; }
+        .kanban-col.drag-over { outline: 2px dashed #28a745; background: #e8f5e9; }
+        body.dark .kanban-col.drag-over { background: #1a3a2a; }
         .historial-item {
             padding: 10px 0;
             border-bottom: 1px solid #e9ecef;
@@ -359,7 +426,9 @@
         <button class="btn-header" id="btnVistaLista" onclick="cambiarVista('lista')">📋 Lista</button>
         <button class="btn-header" id="btnVistaHistorial" onclick="cambiarVista('historial')">📜 Historial</button>
         <button class="btn-header" onclick="abrirModalNueva()">➕ Nueva</button>
+        <button class="btn-header" onclick="exportarHistorialExcel()" title="Exportar historial a Excel">📥 Excel</button>
         <button class="btn-header" onclick="alternarModoCliente()">👁️ Cliente</button>
+        <button class="btn-header" id="btnDarkMode" onclick="toggleDarkMode()">🌙</button>
         <button class="btn-header danger" onclick="cargarDatos()">🔄 Recargar</button>
         <span id="statusConexion" style="color:white; font-size:12px; padding:4px 10px; background:rgba(255,255,255,0.15); border-radius:12px;">⏳ Conectando...</span>
     </div>
@@ -440,16 +509,31 @@
                     <input type="text" id="reparadorNueva" placeholder="Nombre">
                 </div>
             </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Estatus inicial</label>
+                    <select id="estatusNueva">
+                        <option value="Recibida">📥 Recibida</option>
+                        <option value="Diagnosticando">🔍 Diagnosticando</option>
+                        <option value="Cotizando">💰 Cotizando</option>
+                        <option value="Espera de refacciones">⏳ Espera de refacciones</option>
+                        <option value="Reparando">🔧 Reparando</option>
+                        <option value="Finalizada">✅ Finalizada</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>⚡ Prioridad</label>
+                    <select id="prioridadNueva">
+                        <option value="Media">Media</option>
+                        <option value="Alta">🔴 Alta</option>
+                        <option value="Baja">Baja</option>
+                    </select>
+                </div>
+            </div>
             <div class="form-group">
-                <label>Estatus inicial</label>
-                <select id="estatusNueva">
-                    <option value="Recibida">📥 Recibida</option>
-                    <option value="Diagnosticando">🔍 Diagnosticando</option>
-                    <option value="Cotizando">💰 Cotizando</option>
-                    <option value="Espera de refacciones">⏳ Espera de refacciones</option>
-                    <option value="Reparando">🔧 Reparando</option>
-                    <option value="Finalizada">✅ Finalizada</option>
-                </select>
+                <label>📷 Fotos del equipo</label>
+                <input type="file" id="fotosNueva" accept="image/*" multiple>
+                <small style="color:#888; font-size:11px;">Se guardan solo en este dispositivo (teléfono, PC o tablet). No se suben a la nube.</small>
             </div>
             <button type="submit" class="btn-modal success">✅ Agregar</button>
             <button type="button" class="btn-modal danger" onclick="cerrarModal('modalNueva')">❌ Cancelar</button>
@@ -515,9 +599,23 @@
                     <input type="text" id="reparadorEditar" placeholder="Nombre">
                 </div>
             </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>📅 Fecha de salida (si aplica)</label>
+                    <input type="date" id="fechaSalidaEditar">
+                </div>
+                <div class="form-group">
+                    <label>⚡ Prioridad</label>
+                    <select id="prioridadEditar">
+                        <option value="Media">Media</option>
+                        <option value="Alta">🔴 Alta</option>
+                        <option value="Baja">Baja</option>
+                    </select>
+                </div>
+            </div>
             <div class="form-group">
-                <label>📅 Fecha de salida (si aplica)</label>
-                <input type="date" id="fechaSalidaEditar">
+                <label>📷 Agregar más fotos (solo en este dispositivo)</label>
+                <input type="file" id="fotosEditar" accept="image/*" multiple>
             </div>
             <button type="submit" class="btn-modal primary">💾 Guardar cambios</button>
             <button type="button" class="btn-modal danger" onclick="cerrarModal('modalEditar')">❌ Cancelar</button>
@@ -666,6 +764,94 @@
     let modoCliente = false;
     let unidadEnEdicion = null;
 
+    // ===== MODO OSCURO =====
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark');
+        const isDark = document.body.classList.contains('dark');
+        localStorage.setItem('thermocontrol_dark', isDark ? '1' : '0');
+        document.getElementById('btnDarkMode').textContent = isDark ? '☀️' : '🌙';
+    }
+    if (localStorage.getItem('thermocontrol_dark') === '1') {
+        document.body.classList.add('dark');
+    }
+
+    // ===== FOTOS LOCALES (solo en este dispositivo - IndexedDB) =====
+    const DB_NAME = 'ThermoControlFotos';
+    const STORE_NAME = 'fotos';
+
+    function openFotoDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME);
+                }
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function guardarFotosLocal(unidadId, nuevasFotosBase64) {
+        if (!unidadId || !nuevasFotosBase64 || nuevasFotosBase64.length === 0) return;
+        const existentes = await obtenerFotosLocal(unidadId);
+        const todas = [...existentes, ...nuevasFotosBase64];
+        const db = await openFotoDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            tx.objectStore(STORE_NAME).put(todas, String(unidadId));
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    async function obtenerFotosLocal(unidadId) {
+        if (!unidadId) return [];
+        try {
+            const db = await openFotoDB();
+            return new Promise((resolve) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const req = tx.objectStore(STORE_NAME).get(String(unidadId));
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => resolve([]);
+            });
+        } catch {
+            return [];
+        }
+    }
+
+    async function eliminarFotosLocal(unidadId) {
+        try {
+            const db = await openFotoDB();
+            return new Promise((resolve) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).delete(String(unidadId));
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
+            });
+        } catch { /* ignore */ }
+    }
+
+    function leerArchivosComoBase64(input) {
+        return new Promise((resolve) => {
+            const files = input && input.files ? Array.from(input.files) : [];
+            if (files.length === 0) { resolve([]); return; }
+            const results = [];
+            let pendientes = files.length;
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    results.push(e.target.result);
+                    pendientes--;
+                    if (pendientes === 0) resolve(results);
+                };
+                reader.onerror = () => { pendientes--; if (pendientes === 0) resolve(results); };
+                reader.readAsDataURL(file);
+            });
+        });
+    }
+
     // ===== FUNCIONES CRUD =====
 
     async function cargarDatos() {
@@ -743,26 +929,72 @@
     // Soft-delete: marca como eliminado pero guarda el registro en historial
     async function eliminarUnidadBD(id) {
         if (!confirm('¿Archivar / quitar esta unidad del tablero?\n\nEl registro se conservará en el Historial.')) return;
+
+        const area = prompt('¿Qué departamento archiva? (Gerencia / Mantenimiento / Ventas / Compras)');
+        if (!area || !clavesPorArea[area]) {
+            alert('Área no válida. Operación cancelada.');
+            return;
+        }
+        const clave = prompt(`Ingresa la clave de ${area}:`);
+        if (clave !== clavesPorArea[area]) {
+            alert('❌ Clave incorrecta. No se archivó.');
+            return;
+        }
+        const persona = prompt('Nombre de quien archiva:') || area;
         
         try {
+            const u = unidades.find(item => item.id === id);
+            const historial = (u && u.historial) ? [...u.historial] : [];
+            historial.push({
+                fecha: new Date().toLocaleString(),
+                estatus: u ? u.estatus : 'Archivada',
+                area: area,
+                persona: persona,
+                comentario: 'Unidad archivada del tablero'
+            });
+
             const { error } = await supabaseClient
                 .from('unidades')
-                .update({ eliminado: true })
+                .update({ eliminado: true, historial: historial })
                 .eq('id', id);
             
             if (error) throw error;
             
-            const index = unidades.findIndex(u => u.id === id);
+            const index = unidades.findIndex(item => item.id === id);
             if (index !== -1) {
                 unidades[index].eliminado = true;
+                unidades[index].historial = historial;
             }
             renderizarTablero();
             actualizarStats();
-            alert('✅ Unidad archivada.\nEl registro se conserva en Historial.');
+            alert('✅ Unidad archivada por ' + area + '.\nEl registro se conserva en Historial.');
         } catch (error) {
             console.error('Error al archivar:', error);
             alert('❌ Error al archivar: ' + error.message);
         }
+    }
+
+    // Exportar historial a CSV (abre en Excel)
+    function exportarHistorialExcel() {
+        const registros = unidades.filter(u => u.estatus === 'Finalizada' || u.eliminado);
+        if (registros.length === 0) {
+            alert('No hay registros en el historial para exportar.');
+            return;
+        }
+        const headers = ['Unidad','Cliente','Modelo','Placas','Folio','No Serie','Orden Compra','Hoja Servicio','Prioridad','Llegada','Salida','Estatus','Diagnosticador','Reparador','Archivada'];
+        const rows = registros.map(u => [
+            u.no_unidad, u.cliente, u.modelo, u.placas, u.folio, u.no_serie,
+            u.orden_compra, u.hoja_servicio, u.prioridad || 'Media',
+            u.fecha_llegada, u.fecha_salida, u.estatus,
+            u.diagnosticador, u.reparador, u.eliminado ? 'Sí' : 'No'
+        ].map(v => `"${(v || '').toString().replace(/"/g, '""')}"`).join(','));
+
+        const csv = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `historial_thermocontrol_${new Date().toISOString().slice(0,10)}.csv`;
+        link.click();
     }
 
     // Eliminación permanente: solo Gerencia con clave 210
@@ -789,6 +1021,7 @@
             if (error) throw error;
             
             unidades = unidades.filter(item => item.id !== id);
+            await eliminarFotosLocal(id); // también borra fotos de este dispositivo
             renderizarTablero();
             actualizarStats();
             cerrarModal('modalDetalle');
@@ -864,15 +1097,26 @@
             items.forEach((u) => {
                 const dias = diasEnEstatus(u.historial);
                 const card = document.createElement('div');
-                card.className = 'card-compact';
+                card.className = 'card-compact' + (dias >= 3 ? ' retrasada' : '');
                 card.style.borderLeftColor = getColor(u.estatus);
+                card.draggable = !modoCliente;
+                card.dataset.id = u.id;
+                card.ondragstart = (e) => {
+                    e.dataTransfer.setData('text/plain', u.id);
+                    card.classList.add('dragging');
+                };
+                card.ondragend = () => card.classList.remove('dragging');
                 card.onclick = (e) => {
                     if (e.target.tagName === 'BUTTON') return;
                     abrirModalDetalle(u.id);
                 };
                 const ultimo = u.historial && u.historial.length > 0 ? u.historial[u.historial.length-1] : null;
+                const prio = u.prioridad || 'Media';
                 card.innerHTML = `
-                    <div class="unidad-id">${u.no_unidad || '—'}</div>
+                    <div class="unidad-id">
+                        ${u.no_unidad || '—'}
+                        <span class="badge-prioridad prio-${prio}">${prio}</span>
+                    </div>
                     <div class="cliente">${u.cliente || '—'} ${u.modelo ? '· '+u.modelo : ''}</div>
                     <div class="fechas">
                         📅 Llegada: ${formatearFecha(u.fecha_llegada)}
@@ -888,7 +1132,7 @@
                     <div class="meta">
                         <span class="tiempo ${dias >= 3 ? 'warning' : ''}">
                             ${dias === 0 ? 'Hoy' : dias === 1 ? 'Ayer' : `⏱️ ${dias} días`}
-                            ${dias >= 3 ? ' ⚠️' : ''}
+                            ${dias >= 3 ? ' ⚠️ RETRASADA' : ''}
                         </span>
                         <span style="font-size:10px; color:#999;">${u.problema ? u.problema.substring(0,25)+'...' : ''}</span>
                     </div>
@@ -902,6 +1146,25 @@
                 `;
                 col.appendChild(card);
             });
+
+            // Drag & drop sobre la columna
+            col.ondragover = (e) => { e.preventDefault(); col.classList.add('drag-over'); };
+            col.ondragleave = () => col.classList.remove('drag-over');
+            col.ondrop = (e) => {
+                e.preventDefault();
+                col.classList.remove('drag-over');
+                const id = parseInt(e.dataTransfer.getData('text/plain'));
+                if (!id || modoCliente) return;
+                // Abrir modal de cambio con el estatus de esta columna preseleccionado
+                abrirModalCambio(id);
+                setTimeout(() => {
+                    // Intentar preseleccionar si Gerencia o si el área lo permite
+                    const sel = document.getElementById('estatusCambio');
+                    if (sel) {
+                        // El usuario aún debe elegir área y clave
+                    }
+                }, 100);
+            };
             container.appendChild(col);
         });
 
@@ -1054,7 +1317,7 @@
     }
 
     // ===== MODAL DETALLE =====
-    function abrirModalDetalle(id) {
+    async function abrirModalDetalle(id) {
         const u = unidades.find(item => item.id === id);
         if (!u) return;
         unidadEnEdicion = id;
@@ -1116,11 +1379,32 @@
                 <div class="label">Fecha de Salida</div>
                 <div class="valor">${formatearFecha(u.fecha_salida)}</div>
             </div>
+            <div class="detalle-item">
+                <div class="label">Prioridad</div>
+                <div class="valor"><span class="badge-prioridad prio-${u.prioridad || 'Media'}">${u.prioridad || 'Media'}</span></div>
+            </div>
             <div class="detalle-item full">
                 <div class="label">Problema / Descripción</div>
                 <div class="valor">${u.problema || '—'}</div>
             </div>
+            <div class="detalle-item full" id="detalleFotosContainer">
+                <div class="label">📷 Fotos (solo en este dispositivo)</div>
+                <div class="fotos-grid" id="detalleFotosGrid"><span style="color:#888; font-size:12px;">Cargando fotos locales...</span></div>
+            </div>
         `;
+
+        // Cargar fotos desde almacenamiento local del dispositivo
+        obtenerFotosLocal(id).then(fotos => {
+            const gridEl = document.getElementById('detalleFotosGrid');
+            if (!gridEl) return;
+            if (fotos.length === 0) {
+                gridEl.innerHTML = '<span style="color:#888; font-size:12px;">No hay fotos en este dispositivo</span>';
+            } else {
+                gridEl.innerHTML = fotos.map((f, i) => 
+                    `<img src="${f}" alt="Foto ${i+1}" onclick="window.open('${f}', '_blank')" title="Clic para ampliar">`
+                ).join('');
+            }
+        });
 
         // Historial
         const histBox = document.getElementById('detalleHistorial');
@@ -1164,6 +1448,7 @@
     document.getElementById('formNueva').addEventListener('submit', async function(e) {
         e.preventDefault();
         const hoy = new Date().toISOString().split('T')[0];
+        const fotosLocales = await leerArchivosComoBase64(document.getElementById('fotosNueva'));
         const nueva = {
             no_unidad: document.getElementById('noUnidadNueva').value.trim(),
             cliente: document.getElementById('clienteNueva').value.trim(),
@@ -1177,6 +1462,7 @@
             diagnosticador: document.getElementById('diagnosticadorNueva').value.trim(),
             reparador: document.getElementById('reparadorNueva').value.trim(),
             estatus: document.getElementById('estatusNueva').value,
+            prioridad: document.getElementById('prioridadNueva').value || 'Media',
             fecha_llegada: hoy,
             fecha_salida: null,
             eliminado: false,
@@ -1191,9 +1477,13 @@
         
         const resultado = await agregarUnidad(nueva);
         if (resultado.success) {
+            // Guardar fotos SOLO en este dispositivo
+            if (fotosLocales.length > 0 && resultado.data && resultado.data.id) {
+                await guardarFotosLocal(resultado.data.id, fotosLocales);
+            }
             this.reset();
             cerrarModal('modalNueva');
-            alert('✅ Unidad agregada a la base de datos');
+            alert('✅ Unidad agregada' + (fotosLocales.length ? ' (fotos guardadas en este dispositivo)' : ''));
         }
     });
 
@@ -1215,6 +1505,8 @@
         document.getElementById('diagnosticadorEditar').value = u.diagnosticador || '';
         document.getElementById('reparadorEditar').value = u.reparador || '';
         document.getElementById('fechaSalidaEditar').value = u.fecha_salida || '';
+        document.getElementById('prioridadEditar').value = u.prioridad || 'Media';
+        document.getElementById('fotosEditar').value = '';
         document.getElementById('modalEditar').style.display = 'flex';
     }
 
@@ -1235,10 +1527,14 @@
             problema: document.getElementById('problemaEditar').value.trim(),
             diagnosticador: document.getElementById('diagnosticadorEditar').value.trim(),
             reparador: document.getElementById('reparadorEditar').value.trim(),
+            prioridad: document.getElementById('prioridadEditar').value || 'Media',
             fecha_salida: document.getElementById('fechaSalidaEditar').value || null
         };
         
         const u = unidades.find(item => item.id === id);
+        // Fotos solo en este dispositivo
+        const nuevasFotosLocales = await leerArchivosComoBase64(document.getElementById('fotosEditar'));
+
         if (datos.fecha_salida && u && u.estatus !== 'Finalizada') {
             if (confirm('¿Deseas cambiar el estatus a "Finalizada"?')) {
                 datos.estatus = 'Finalizada';
@@ -1256,8 +1552,11 @@
         
         const resultado = await actualizarUnidad(id, datos);
         if (resultado.success) {
+            if (nuevasFotosLocales.length > 0) {
+                await guardarFotosLocal(id, nuevasFotosLocales);
+            }
             cerrarModal('modalEditar');
-            alert('✅ Unidad actualizada en la base de datos');
+            alert('✅ Unidad actualizada' + (nuevasFotosLocales.length ? ' (fotos guardadas en este dispositivo)' : ''));
         }
     });
 
@@ -1453,6 +1752,9 @@
     };
 
     document.getElementById('btnVistaKanban').classList.add('active');
+    if (document.body.classList.contains('dark')) {
+        document.getElementById('btnDarkMode').textContent = '☀️';
+    }
     
     // Cargar datos
     cargarDatos();
