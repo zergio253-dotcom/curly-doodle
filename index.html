@@ -5,7 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>ThermoControl - Taller Thermoking</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
+        #firmaCanvas {
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            background: #fff;
+            touch-action: none;
+            width: 100%;
+            max-width: 400px;
+            height: 150px;
+            cursor: crosshair;
+        }
         :root {
             --bg: #f0f2f5;
             --card: #ffffff;
@@ -463,8 +474,8 @@
                     <input type="text" id="noUnidadNueva" placeholder="Ej: TK-2026-001" required>
                 </div>
                 <div class="form-group">
-                    <label>Folio</label>
-                    <input type="text" id="folioNueva" placeholder="Folio interno">
+                    <label>Orden de trabajo</label>
+                    <input type="text" id="folioNueva" placeholder="Número de orden de trabajo">
                 </div>
             </div>
             <div class="form-group">
@@ -553,7 +564,7 @@
                     <input type="text" id="noUnidadEditar">
                 </div>
                 <div class="form-group">
-                    <label>Folio</label>
+                    <label>Orden de trabajo</label>
                     <input type="text" id="folioEditar">
                 </div>
             </div>
@@ -697,6 +708,39 @@
     </div>
 </div>
 
+<!-- ===== MODAL DIAGNÓSTICO DETALLADO ===== -->
+<div class="modal" id="modalDiagnostico">
+    <div class="modal-content">
+        <h3>🔍 Diagnóstico detallado</h3>
+        <p id="infoDiagnostico" style="font-weight:bold; color:#1a3a5c; margin-bottom:12px;"></p>
+        <div class="form-group">
+            <label>Descripción del diagnóstico *</label>
+            <textarea id="diagnosticoDetalle" rows="8" placeholder="Describe el diagnóstico técnico: fallas encontradas, causas, recomendaciones..."></textarea>
+        </div>
+        <button class="btn-modal primary" onclick="guardarDiagnostico()">💾 Guardar diagnóstico</button>
+        <button class="btn-modal danger" onclick="cerrarModal('modalDiagnostico')">❌ Cancelar</button>
+    </div>
+</div>
+
+<!-- ===== MODAL PDF + FIRMA ===== -->
+<div class="modal" id="modalPDF">
+    <div class="modal-content">
+        <h3>📄 PDF de entrega al cliente</h3>
+        <p id="infoPDF" style="font-weight:bold; color:#1a3a5c; margin-bottom:12px;"></p>
+        <div class="form-group">
+            <label>Nombre de quien recibe</label>
+            <input type="text" id="nombreRecibe" placeholder="Nombre del cliente o representante">
+        </div>
+        <div class="form-group">
+            <label>Firma de recibido</label>
+            <canvas id="firmaCanvas" width="400" height="150"></canvas>
+            <button type="button" class="btn-accion" style="margin-top:6px;" onclick="limpiarFirma()">🗑️ Borrar firma</button>
+        </div>
+        <button class="btn-modal success" onclick="generarPDFEntrega()">📥 Generar y descargar PDF</button>
+        <button class="btn-modal danger" onclick="cerrarModal('modalPDF')">❌ Cancelar</button>
+    </div>
+</div>
+
 <script>
     // ============================================================
     // ===== CONFIGURACIÓN DE SUPABASE =====
@@ -733,7 +777,7 @@
             'Reparando': ['Finalizada']
         },
         'Ventas': {
-            'Cotizando': ['Espera de refacciones']
+            'Cotizando': ['Espera de refacciones', 'Reparando']
         },
         'Compras': {
             'Espera de refacciones': ['Reparando']
@@ -981,7 +1025,7 @@
             alert('No hay registros en el historial para exportar.');
             return;
         }
-        const headers = ['Unidad','Cliente','Modelo','Placas','Folio','No Serie','Orden Compra','Hoja Servicio','Prioridad','Llegada','Salida','Estatus','Diagnosticador','Reparador','Archivada'];
+        const headers = ['Unidad','Cliente','Modelo','Placas','Orden de trabajo','No Serie','Orden Compra','Hoja de servicio','Prioridad','Llegada','Salida','Estatus','Diagnosticador','Reparador','Archivada'];
         const rows = registros.map(u => [
             u.no_unidad, u.cliente, u.modelo, u.placas, u.folio, u.no_serie,
             u.orden_compra, u.hoja_servicio, u.prioridad || 'Media',
@@ -1174,7 +1218,7 @@
             <table>
                 <thead><tr>
                     <th>Unidad</th><th>Cliente</th><th>Modelo</th><th>Placas</th>
-                    <th>Estatus</th><th>Folio</th><th>Serie</th>
+                    <th>Estatus</th><th>Orden trabajo</th><th>Serie</th>
                     <th>Llegada</th><th>Días</th>
                 </tr></thead>
                 <tbody>
@@ -1230,7 +1274,7 @@
                     <th>Cliente</th>
                     <th>Modelo</th>
                     <th>Placas</th>
-                    <th>Folio</th>
+                    <th>Orden de trabajo</th>
                     <th>No. Serie</th>
                     <th>Orden Compra</th>
                     <th>Hoja Servicio</th>
@@ -1336,7 +1380,7 @@
                 <div class="valor">${u.no_unidad || '—'}</div>
             </div>
             <div class="detalle-item">
-                <div class="label">Folio</div>
+                <div class="label">Orden de trabajo</div>
                 <div class="valor">${u.folio || '—'}</div>
             </div>
             <div class="detalle-item">
@@ -1387,6 +1431,10 @@
                 <div class="label">Problema / Descripción</div>
                 <div class="valor">${u.problema || '—'}</div>
             </div>
+            <div class="detalle-item full">
+                <div class="label">🔍 Diagnóstico detallado</div>
+                <div class="valor" style="white-space:pre-wrap;">${u.diagnostico_detalle || 'Sin diagnóstico registrado'}</div>
+            </div>
             <div class="detalle-item full" id="detalleFotosContainer">
                 <div class="label">📷 Fotos (solo en este dispositivo)</div>
                 <div class="fotos-grid" id="detalleFotosGrid"><span style="color:#888; font-size:12px;">Cargando fotos locales...</span></div>
@@ -1424,20 +1472,27 @@
             histBox.innerHTML = '<div style="color:#888; font-size:13px;">Sin historial registrado</div>';
         }
 
-        // Botones según modo cliente y si está archivada
+        // Botones según modo cliente, estatus y si está archivada
         const botones = document.getElementById('detalleBotones');
         if (modoCliente) {
             botones.innerHTML = `<button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>`;
         } else if (u.eliminado) {
-            // Unidad ya archivada: solo ver y opción de borrar permanente (Gerencia)
             botones.innerHTML = `
                 <button class="btn-modal danger" style="flex:1;" onclick="eliminarPermanente(${id})">🗑️ Borrar permanentemente (solo Gerencia)</button>
                 <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>
             `;
         } else {
+            let extraBtns = '';
+            if (u.estatus === 'Diagnosticando' || u.estatus === 'Cotizando' || u.diagnostico_detalle) {
+                extraBtns += `<button class="btn-modal secondary" style="flex:1;" onclick="abrirModalDiagnostico(${id})">🔍 Diagnóstico</button>`;
+            }
+            if (u.estatus === 'Finalizada') {
+                extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirModalPDF(${id})">📄 PDF entrega</button>`;
+            }
             botones.innerHTML = `
                 <button class="btn-modal primary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalEditar(${id})">✏️ Editar</button>
                 <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalCambio(${id})">🔄 Cambiar estatus</button>
+                ${extraBtns}
                 <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>
             `;
         }
@@ -1742,6 +1797,237 @@
             cerrarModal('modalCambio');
             alert(`✅ Estatus actualizado por ${area} - ${persona}`);
         }
+    }
+
+    // ===== DIAGNÓSTICO DETALLADO =====
+    function abrirModalDiagnostico(id) {
+        if (modoCliente) return;
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+        unidadEnEdicion = id;
+        document.getElementById('infoDiagnostico').textContent = `${u.no_unidad} - ${u.cliente}`;
+        document.getElementById('diagnosticoDetalle').value = u.diagnostico_detalle || '';
+        document.getElementById('modalDiagnostico').style.display = 'flex';
+    }
+
+    async function guardarDiagnostico() {
+        const id = unidadEnEdicion;
+        if (!id) return;
+        const texto = document.getElementById('diagnosticoDetalle').value.trim();
+        if (!texto) {
+            alert('⚠️ Escribe el diagnóstico detallado');
+            return;
+        }
+        const u = unidades.find(item => item.id === id);
+        const historial = (u && u.historial) ? [...u.historial] : [];
+        historial.push({
+            fecha: new Date().toLocaleString(),
+            estatus: u ? u.estatus : 'Diagnosticando',
+            area: 'Mantenimiento',
+            persona: 'Diagnóstico',
+            comentario: 'Diagnóstico detallado actualizado'
+        });
+        const resultado = await actualizarUnidad(id, {
+            diagnostico_detalle: texto,
+            historial: historial
+        });
+        if (resultado.success) {
+            cerrarModal('modalDiagnostico');
+            alert('✅ Diagnóstico guardado');
+            abrirModalDetalle(id);
+        }
+    }
+
+    // ===== PDF + FIRMA =====
+    let firmaDrawing = false;
+    let firmaCtx = null;
+
+    function initFirmaCanvas() {
+        const canvas = document.getElementById('firmaCanvas');
+        if (!canvas) return;
+        firmaCtx = canvas.getContext('2d');
+        firmaCtx.strokeStyle = '#000';
+        firmaCtx.lineWidth = 2;
+        firmaCtx.lineCap = 'round';
+
+        const getPos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        };
+
+        const start = (e) => {
+            e.preventDefault();
+            firmaDrawing = true;
+            const p = getPos(e);
+            firmaCtx.beginPath();
+            firmaCtx.moveTo(p.x, p.y);
+        };
+        const move = (e) => {
+            if (!firmaDrawing) return;
+            e.preventDefault();
+            const p = getPos(e);
+            firmaCtx.lineTo(p.x, p.y);
+            firmaCtx.stroke();
+        };
+        const end = () => { firmaDrawing = false; };
+
+        canvas.onmousedown = start;
+        canvas.onmousemove = move;
+        canvas.onmouseup = end;
+        canvas.onmouseleave = end;
+        canvas.ontouchstart = start;
+        canvas.ontouchmove = move;
+        canvas.ontouchend = end;
+    }
+
+    function limpiarFirma() {
+        const canvas = document.getElementById('firmaCanvas');
+        if (!canvas || !firmaCtx) return;
+        firmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function abrirModalPDF(id) {
+        if (modoCliente) return;
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+        unidadEnEdicion = id;
+        document.getElementById('infoPDF').textContent = `${u.no_unidad} - ${u.cliente}`;
+        document.getElementById('nombreRecibe').value = '';
+        document.getElementById('modalPDF').style.display = 'flex';
+        setTimeout(() => {
+            initFirmaCanvas();
+            limpiarFirma();
+        }, 100);
+    }
+
+    function generarPDFEntrega() {
+        const id = unidadEnEdicion;
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+
+        const nombreRecibe = document.getElementById('nombreRecibe').value.trim();
+        const canvas = document.getElementById('firmaCanvas');
+        const firmaVacia = !firmaCtx || isCanvasBlank(canvas);
+        if (firmaVacia) {
+            if (!confirm('No hay firma dibujada. ¿Generar PDF sin firma?')) return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const margin = 15;
+        let y = 20;
+
+        doc.setFontSize(18);
+        doc.setTextColor(26, 58, 92);
+        doc.text('ThermoControl - Taller Thermoking', margin, y);
+        y += 8;
+        doc.setFontSize(14);
+        doc.text('Constancia de entrega de unidad', margin, y);
+        y += 12;
+
+        doc.setDrawColor(26, 58, 92);
+        doc.line(margin, y, 195, y);
+        y += 10;
+
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+
+        const campos = [
+            ['Número de unidad', u.no_unidad],
+            ['Cliente', u.cliente],
+            ['Modelo', u.modelo],
+            ['Placas', u.placas],
+            ['No. de serie', u.no_serie],
+            ['Orden de trabajo', u.folio],
+            ['Orden de compra', u.orden_compra],
+            ['Hoja de servicio', u.hoja_servicio],
+            ['Fecha llegada', u.fecha_llegada],
+            ['Fecha salida', u.fecha_salida],
+            ['Diagnosticador', u.diagnosticador],
+            ['Reparador', u.reparador],
+            ['Problema reportado', u.problema],
+        ];
+
+        campos.forEach(([label, val]) => {
+            if (y > 270) { doc.addPage(); y = 20; }
+            doc.setFont(undefined, 'bold');
+            doc.text(`${label}:`, margin, y);
+            doc.setFont(undefined, 'normal');
+            const texto = doc.splitTextToSize(String(val || '—'), 120);
+            doc.text(texto, margin + 55, y);
+            y += Math.max(7, texto.length * 6);
+        });
+
+        if (u.diagnostico_detalle) {
+            y += 4;
+            if (y > 250) { doc.addPage(); y = 20; }
+            doc.setFont(undefined, 'bold');
+            doc.text('Diagnóstico detallado:', margin, y);
+            y += 6;
+            doc.setFont(undefined, 'normal');
+            const diag = doc.splitTextToSize(u.diagnostico_detalle, 180);
+            diag.forEach(line => {
+                if (y > 280) { doc.addPage(); y = 20; }
+                doc.text(line, margin, y);
+                y += 5;
+            });
+        }
+
+        y += 15;
+        if (y > 230) { doc.addPage(); y = 20; }
+
+        doc.setFont(undefined, 'bold');
+        doc.text('Entrega al cliente', margin, y);
+        y += 8;
+        doc.setFont(undefined, 'normal');
+        doc.text(`Recibido por: ${nombreRecibe || '________________________'}`, margin, y);
+        y += 7;
+        doc.text(`Fecha de entrega: ${new Date().toLocaleDateString('es-MX')}`, margin, y);
+        y += 12;
+
+        doc.text('Firma de recibido:', margin, y);
+        y += 5;
+
+        if (!firmaVacia) {
+            try {
+                const imgData = canvas.toDataURL('image/png');
+                doc.addImage(imgData, 'PNG', margin, y, 80, 30);
+                y += 35;
+            } catch (e) {
+                doc.text('(Firma no disponible)', margin, y);
+                y += 10;
+            }
+        } else {
+            doc.line(margin, y + 20, margin + 80, y + 20);
+            y += 25;
+        }
+
+        y += 10;
+        doc.setFontSize(9);
+        doc.setTextColor(100);
+        doc.text('Documento generado por ThermoControl', margin, y);
+
+        const nombreArchivo = `Entrega_${(u.no_unidad || 'unidad').replace(/\s/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+        doc.save(nombreArchivo);
+        alert('✅ PDF descargado: ' + nombreArchivo);
+        cerrarModal('modalPDF');
+    }
+
+    function isCanvasBlank(canvas) {
+        if (!canvas) return true;
+        const ctx = canvas.getContext('2d');
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        for (let i = 3; i < data.length; i += 4) {
+            if (data[i] !== 0) return false;
+        }
+        return true;
     }
 
     // ===== INICIALIZAR =====
