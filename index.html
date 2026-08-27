@@ -727,14 +727,16 @@
     <div class="modal-content">
         <h3>📄 PDF de entrega al cliente</h3>
         <p id="infoPDF" style="font-weight:bold; color:#1a3a5c; margin-bottom:12px;"></p>
-        <div class="form-group">
-            <label>Nombre de quien recibe</label>
-            <input type="text" id="nombreRecibe" placeholder="Nombre del cliente o representante">
-        </div>
-        <div class="form-group">
-            <label>Firma de recibido</label>
-            <canvas id="firmaCanvas" width="400" height="150"></canvas>
-            <button type="button" class="btn-accion" style="margin-top:6px;" onclick="limpiarFirma()">🗑️ Borrar firma</button>
+        <div id="bloqueFirmaPDF">
+            <div class="form-group">
+                <label>Nombre de quien recibe</label>
+                <input type="text" id="nombreRecibe" placeholder="Nombre del cliente o representante">
+            </div>
+            <div class="form-group">
+                <label>Firma de recibido</label>
+                <canvas id="firmaCanvas" width="400" height="150"></canvas>
+                <button type="button" class="btn-accion" style="margin-top:6px;" onclick="limpiarFirma()">🗑️ Borrar firma</button>
+            </div>
         </div>
         <button class="btn-modal success" onclick="generarPDFEntrega()">📥 Generar y descargar PDF</button>
         <button class="btn-modal danger" onclick="cerrarModal('modalPDF')">❌ Cancelar</button>
@@ -1486,8 +1488,9 @@
             if (u.estatus === 'Diagnosticando' || u.estatus === 'Cotizando' || u.diagnostico_detalle) {
                 extraBtns += `<button class="btn-modal secondary" style="flex:1;" onclick="abrirModalDiagnostico(${id})">🔍 Diagnóstico</button>`;
             }
-            if (u.estatus === 'Finalizada') {
-                extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirModalPDF(${id})">📄 PDF entrega</button>`;
+            if (u.estatus === 'Finalizada' || u.estatus === 'Espera de refacciones') {
+                const labelPdf = u.estatus === 'Finalizada' ? '📄 PDF entrega' : '📄 PDF cotización / espera';
+                extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirModalPDF(${id})">${labelPdf}</button>`;
             }
             botones.innerHTML = `
                 <button class="btn-modal primary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalEditar(${id})">✏️ Editar</button>
@@ -1592,6 +1595,12 @@
 
         if (datos.fecha_salida && u && u.estatus !== 'Finalizada') {
             if (confirm('¿Deseas cambiar el estatus a "Finalizada"?')) {
+                const unidadValidar = { ...u, ...datos };
+                const faltantes = validarCamposParaFinalizar(unidadValidar);
+                if (faltantes.length > 0) {
+                    alert('⚠️ No se puede finalizar. Faltan estos datos:\n\n• ' + faltantes.join('\n• ') + '\n\nComplétalos antes de finalizar.');
+                    return;
+                }
                 datos.estatus = 'Finalizada';
                 const historial = u.historial || [];
                 historial.push({
@@ -1783,6 +1792,15 @@
             comentario: comentario || `Cambio autorizado con clave de ${area}`
         });
         
+        // No permitir Finalizada si faltan datos obligatorios
+        if (nuevoEstatus === 'Finalizada') {
+            const faltantes = validarCamposParaFinalizar(u);
+            if (faltantes.length > 0) {
+                alert('⚠️ No se puede finalizar. Faltan estos datos:\n\n• ' + faltantes.join('\n• ') + '\n\nComplétalos en Editar antes de finalizar.');
+                return;
+            }
+        }
+
         const datos = {
             estatus: nuevoEstatus,
             historial: historial
@@ -1797,6 +1815,27 @@
             cerrarModal('modalCambio');
             alert(`✅ Estatus actualizado por ${area} - ${persona}`);
         }
+    }
+
+    function validarCamposParaFinalizar(u) {
+        const requeridos = [
+            { campo: 'no_unidad', nombre: 'Número de unidad' },
+            { campo: 'folio', nombre: 'Orden de trabajo' },
+            { campo: 'cliente', nombre: 'Cliente' },
+            { campo: 'modelo', nombre: 'Modelo' },
+            { campo: 'placas', nombre: 'No. de placas' },
+            { campo: 'no_serie', nombre: 'No. de serie del equipo' },
+            { campo: 'hoja_servicio', nombre: 'Hoja de servicio' },
+            { campo: 'diagnosticador', nombre: 'Diagnosticador' },
+            { campo: 'reparador', nombre: 'Reparador' },
+            { campo: 'problema', nombre: 'Problema / descripción' }
+        ];
+        const faltantes = [];
+        requeridos.forEach(r => {
+            const val = (u[r.campo] || '').toString().trim();
+            if (!val) faltantes.push(r.nombre);
+        });
+        return faltantes;
     }
 
     // ===== DIAGNÓSTICO DETALLADO =====
@@ -1898,13 +1937,22 @@
         const u = unidades.find(item => item.id === id);
         if (!u) return;
         unidadEnEdicion = id;
+        const esEspera = u.estatus === 'Espera de refacciones';
+        const tituloModal = esEspera
+            ? '📄 PDF cotización / espera de refacciones'
+            : '📄 PDF de entrega al cliente';
+        document.querySelector('#modalPDF h3').textContent = tituloModal;
         document.getElementById('infoPDF').textContent = `${u.no_unidad} - ${u.cliente}`;
         document.getElementById('nombreRecibe').value = '';
+        // En espera de refacciones no se pide firma
+        document.getElementById('bloqueFirmaPDF').style.display = esEspera ? 'none' : 'block';
         document.getElementById('modalPDF').style.display = 'flex';
-        setTimeout(() => {
-            initFirmaCanvas();
-            limpiarFirma();
-        }, 100);
+        if (!esEspera) {
+            setTimeout(() => {
+                initFirmaCanvas();
+                limpiarFirma();
+            }, 100);
+        }
     }
 
     function generarPDFEntrega() {
@@ -1912,10 +1960,11 @@
         const u = unidades.find(item => item.id === id);
         if (!u) return;
 
+        const esEspera = u.estatus === 'Espera de refacciones';
         const nombreRecibe = document.getElementById('nombreRecibe').value.trim();
         const canvas = document.getElementById('firmaCanvas');
-        const firmaVacia = !firmaCtx || isCanvasBlank(canvas);
-        if (firmaVacia) {
+        const firmaVacia = esEspera ? true : (!firmaCtx || isCanvasBlank(canvas));
+        if (!esEspera && firmaVacia) {
             if (!confirm('No hay firma dibujada. ¿Generar PDF sin firma?')) return;
         }
 
@@ -1929,7 +1978,10 @@
         doc.text('ThermoControl - Taller Thermoking', margin, y);
         y += 8;
         doc.setFontSize(14);
-        doc.text('Constancia de entrega de unidad', margin, y);
+        const tituloPdf = u.estatus === 'Espera de refacciones'
+            ? 'Documento de cotización / espera de refacciones'
+            : 'Constancia de entrega de unidad';
+        doc.text(tituloPdf, margin, y);
         y += 12;
 
         doc.setDrawColor(26, 58, 92);
@@ -1983,30 +2035,40 @@
         y += 15;
         if (y > 230) { doc.addPage(); y = 20; }
 
-        doc.setFont(undefined, 'bold');
-        doc.text('Entrega al cliente', margin, y);
-        y += 8;
-        doc.setFont(undefined, 'normal');
-        doc.text(`Recibido por: ${nombreRecibe || '________________________'}`, margin, y);
-        y += 7;
-        doc.text(`Fecha de entrega: ${new Date().toLocaleDateString('es-MX')}`, margin, y);
-        y += 12;
+        // Firma solo en entrega (Finalizada), no en espera de refacciones
+        if (!esEspera) {
+            doc.setFont(undefined, 'bold');
+            doc.text('Entrega al cliente', margin, y);
+            y += 8;
+            doc.setFont(undefined, 'normal');
+            doc.text(`Recibido por: ${nombreRecibe || '________________________'}`, margin, y);
+            y += 7;
+            doc.text(`Fecha de entrega: ${new Date().toLocaleDateString('es-MX')}`, margin, y);
+            y += 12;
 
-        doc.text('Firma de recibido:', margin, y);
-        y += 5;
+            doc.text('Firma de recibido:', margin, y);
+            y += 5;
 
-        if (!firmaVacia) {
-            try {
-                const imgData = canvas.toDataURL('image/png');
-                doc.addImage(imgData, 'PNG', margin, y, 80, 30);
-                y += 35;
-            } catch (e) {
-                doc.text('(Firma no disponible)', margin, y);
-                y += 10;
+            if (!firmaVacia) {
+                try {
+                    const imgData = canvas.toDataURL('image/png');
+                    doc.addImage(imgData, 'PNG', margin, y, 80, 30);
+                    y += 35;
+                } catch (e) {
+                    doc.text('(Firma no disponible)', margin, y);
+                    y += 10;
+                }
+            } else {
+                doc.line(margin, y + 20, margin + 80, y + 20);
+                y += 25;
             }
         } else {
-            doc.line(margin, y + 20, margin + 80, y + 20);
-            y += 25;
+            doc.setFont(undefined, 'bold');
+            doc.text('Estatus: Espera de refacciones', margin, y);
+            y += 7;
+            doc.setFont(undefined, 'normal');
+            doc.text(`Fecha del documento: ${new Date().toLocaleDateString('es-MX')}`, margin, y);
+            y += 10;
         }
 
         y += 10;
@@ -2014,7 +2076,8 @@
         doc.setTextColor(100);
         doc.text('Documento generado por ThermoControl', margin, y);
 
-        const nombreArchivo = `Entrega_${(u.no_unidad || 'unidad').replace(/\s/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+        const prefijo = esEspera ? 'EsperaRefacciones' : 'Entrega';
+        const nombreArchivo = `${prefijo}_${(u.no_unidad || 'unidad').replace(/\s/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
         doc.save(nombreArchivo);
         alert('✅ PDF descargado: ' + nombreArchivo);
         cerrarModal('modalPDF');
