@@ -729,6 +729,22 @@
     </div>
 </div>
 
+<!-- ===== MODAL PDF ORDEN DE TRABAJO ===== -->
+<div class="modal" id="modalOrdenTrabajoPdf">
+    <div class="modal-content">
+        <h3>📋 PDF de orden de trabajo</h3>
+        <p id="infoOrdenTrabajoPdf" style="font-weight:bold; color:#1a3a5c; margin-bottom:12px;"></p>
+        <div class="form-group">
+            <label>Seleccionar PDF de orden de trabajo</label>
+            <input type="file" id="ordenTrabajoPdfFile" accept="application/pdf,.pdf">
+            <small style="color:#888; font-size:11px;">Se guarda en el almacenamiento central. Todos podrán verlo en la app.</small>
+            <div id="ordenTrabajoPdfActual" style="margin-top:6px; font-size:13px;"></div>
+        </div>
+        <button class="btn-modal secondary" onclick="subirOrdenTrabajoPdf()">☁️ Subir PDF</button>
+        <button class="btn-modal danger" onclick="cerrarModal('modalOrdenTrabajoPdf')">❌ Cerrar</button>
+    </div>
+</div>
+
 <!-- ===== MODAL PDF + FIRMA ===== -->
 <div class="modal" id="modalPDF">
     <div class="modal-content">
@@ -1487,6 +1503,15 @@
                         : 'Sin PDF subido'}
                 </div>
             </div>
+            <div class="detalle-item full">
+                <div class="label">📋 PDF de orden de trabajo</div>
+                <div class="valor">
+                    ${u.orden_trabajo_pdf_url
+                        ? `<a href="${u.orden_trabajo_pdf_url}" target="_blank" rel="noopener">📄 ${u.orden_trabajo_pdf_nombre || 'Abrir PDF'}</a>`
+                        : 'Sin PDF subido'}
+                    ${!modoCliente && !u.eliminado ? ` · <a href="#" onclick="event.preventDefault(); abrirModalOrdenTrabajoPdf(${id})" style="font-size:12px;">☁️ Subir / cambiar</a>` : ''}
+                </div>
+            </div>
             <div class="detalle-item full" id="detalleFotosContainer">
                 <div class="label">📷 Fotos (solo en este dispositivo)</div>
                 <div class="fotos-grid" id="detalleFotosGrid"><span style="color:#888; font-size:12px;">Cargando fotos locales...</span></div>
@@ -2006,6 +2031,85 @@
         } catch (err) {
             console.error(err);
             alert('❌ Error al subir PDF: ' + (err.message || err) + '\n\nRevisa que exista el bucket "diagnosticos" en Supabase Storage y sea público.');
+        }
+    }
+
+    // ===== PDF ORDEN DE TRABAJO =====
+    function abrirModalOrdenTrabajoPdf(id) {
+        if (modoCliente) return;
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+        unidadEnEdicion = id;
+        document.getElementById('infoOrdenTrabajoPdf').textContent = `${u.no_unidad} - ${u.cliente}`;
+        document.getElementById('ordenTrabajoPdfFile').value = '';
+        const actual = document.getElementById('ordenTrabajoPdfActual');
+        if (u.orden_trabajo_pdf_url) {
+            actual.innerHTML = `✅ PDF: <a href="${u.orden_trabajo_pdf_url}" target="_blank" rel="noopener">${u.orden_trabajo_pdf_nombre || 'Ver PDF'}</a>`;
+        } else {
+            actual.innerHTML = '<span style="color:#888;">Ningún PDF de orden de trabajo todavía</span>';
+        }
+        document.getElementById('modalOrdenTrabajoPdf').style.display = 'flex';
+    }
+
+    async function subirOrdenTrabajoPdf() {
+        const id = unidadEnEdicion;
+        if (!id) return;
+        const input = document.getElementById('ordenTrabajoPdfFile');
+        const file = input.files && input.files[0];
+        if (!file) {
+            alert('⚠️ Selecciona un archivo PDF primero');
+            return;
+        }
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+            alert('⚠️ Solo se permiten archivos PDF');
+            return;
+        }
+
+        try {
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const path = `ordenes/unidad_${id}/${Date.now()}_${safeName}`;
+
+            const { error } = await supabaseClient.storage
+                .from(BUCKET_DIAGNOSTICOS)
+                .upload(path, file, {
+                    contentType: 'application/pdf',
+                    upsert: false
+                });
+
+            if (error) throw error;
+
+            const { data: urlData } = supabaseClient.storage
+                .from(BUCKET_DIAGNOSTICOS)
+                .getPublicUrl(path);
+
+            const link = urlData.publicUrl;
+            const u = unidades.find(item => item.id === id);
+            const historial = (u && u.historial) ? [...u.historial] : [];
+            historial.push({
+                fecha: new Date().toLocaleString(),
+                estatus: u ? u.estatus : '',
+                area: 'Sistema',
+                persona: 'Orden de trabajo',
+                comentario: 'PDF de orden de trabajo subido: ' + file.name
+            });
+
+            const resultado = await actualizarUnidad(id, {
+                orden_trabajo_pdf_url: link,
+                orden_trabajo_pdf_nombre: file.name,
+                historial: historial
+            });
+
+            if (resultado.success) {
+                document.getElementById('ordenTrabajoPdfActual').innerHTML =
+                    `✅ PDF: <a href="${link}" target="_blank" rel="noopener">${file.name}</a>`;
+                input.value = '';
+                alert('✅ PDF de orden de trabajo subido. Todos pueden verlo en la app.');
+                cerrarModal('modalOrdenTrabajoPdf');
+                abrirModalDetalle(id);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('❌ Error al subir PDF: ' + (err.message || err) + '\n\nRevisa las políticas del bucket "diagnosticos".');
         }
     }
 
