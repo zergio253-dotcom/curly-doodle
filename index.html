@@ -106,8 +106,24 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 2px solid transparent;
         }
+        .stat-item:hover { transform: scale(1.04); }
+        .stat-item.activo {
+            border-color: #1a3a5c;
+            box-shadow: 0 0 0 2px rgba(26,58,92,0.25);
+            background: #e7f1ff;
+        }
+        body.dark .stat-item.activo { background: #1a2a3c; border-color: #6ab0f3; }
         .stat-item .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+        .kanban-col h4 { cursor: pointer; }
+        .kanban-col.filtro-activo {
+            outline: 3px solid #1a3a5c;
+            box-shadow: 0 0 12px rgba(26,58,92,0.3);
+        }
+        body.dark .kanban-col.filtro-activo { outline-color: #6ab0f3; }
 
         .kanban-container {
             display: grid;
@@ -783,8 +799,8 @@
     const personasPorArea = {
         'Gerencia': ['Luis Solís'],
         'Mantenimiento': ['Sergio Holguín', 'Marcos Sifuentes', 'Miguel Arredondo'],
-        'Ventas': ['Romina'],
-        'Compras': []
+        'Ventas': ['Romina', 'Jesús'],
+        'Compras': ['Alfredo']
     };
 
     // ===== CLAVES POR DEPARTAMENTO =====
@@ -836,6 +852,18 @@
     let unidades = [];
     let modoCliente = false;
     let unidadEnEdicion = null;
+    let filtroEstatus = null; // null = mostrar todos
+
+    function filtrarPorEstatus(estatus) {
+        // Si vuelves a tocar el mismo, quita el filtro
+        if (filtroEstatus === estatus) {
+            filtroEstatus = null;
+        } else {
+            filtroEstatus = estatus;
+        }
+        renderizarTablero();
+        actualizarStats();
+    }
 
     // ===== MODO OSCURO =====
     function toggleDarkMode() {
@@ -1162,9 +1190,13 @@
         const counts = {};
         Object.keys(colores).forEach(s => counts[s] = 0);
         activas.forEach(u => { if(counts[u.estatus] !== undefined) counts[u.estatus]++; });
-        let html = `<div class="stat-item">📦 Total: ${total}</div>`;
+        let html = `<div class="stat-item ${filtroEstatus === null ? 'activo' : ''}" onclick="filtrarPorEstatus(null)">📦 Total: ${total}</div>`;
         for(const [status, color] of Object.entries(colores)) {
-            html += `<div class="stat-item"><span class="dot" style="background:${color}"></span> ${nombresEstatus[status]}: ${counts[status]||0}</div>`;
+            const activo = filtroEstatus === status ? 'activo' : '';
+            html += `<div class="stat-item ${activo}" onclick="filtrarPorEstatus('${status}')"><span class="dot" style="background:${color}"></span> ${nombresEstatus[status]}: ${counts[status]||0}</div>`;
+        }
+        if (filtroEstatus) {
+            html += `<div class="stat-item" style="background:#fff3cd; color:#856404;" onclick="filtrarPorEstatus(null)">✖ Quitar filtro</div>`;
         }
         container.innerHTML = html;
     }
@@ -1185,16 +1217,24 @@
             )
         );
 
+        // Filtro por estatus (al tocar etiqueta)
+        if (filtroEstatus) {
+            filtered = filtered.filter(u => u.estatus === filtroEstatus);
+        }
+
         // Kanban (solo activas)
         const container = document.getElementById('kanbanContainer');
         container.innerHTML = '';
+        container.style.gridTemplateColumns = filtroEstatus ? '1fr' : '';
         const estatusOrden = ['Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada'];
-        estatusOrden.forEach(status => {
+        // Si hay filtro, solo mostrar esa columna; si no, todas
+        const columnas = filtroEstatus ? [filtroEstatus] : estatusOrden;
+        columnas.forEach(status => {
             const items = filtered.filter(u => u.estatus === status);
             const col = document.createElement('div');
-            col.className = 'kanban-col';
+            col.className = 'kanban-col' + (filtroEstatus === status ? ' filtro-activo' : '');
             col.innerHTML = `
-                <h4 style="background:${getColor(status)}">
+                <h4 style="background:${getColor(status)}" onclick="filtrarPorEstatus('${status}')" title="Clic para filtrar / quitar filtro">
                     ${nombresEstatus[status]} <span class="count">${items.length}</span>
                 </h4>
             `;
@@ -1719,13 +1759,6 @@
         const personalizadoContainer = document.getElementById('nombrePersonalizadoContainer');
         const personas = personasPorArea[area] || [];
         
-        if (area === 'Compras') {
-            container.innerHTML = '';
-            personalizadoContainer.style.display = 'block';
-            document.getElementById('nombrePersonalizado').value = '';
-            return;
-        }
-        
         personalizadoContainer.style.display = 'none';
         
         if (!area) {
@@ -1751,10 +1784,6 @@
     }
 
     function getPersonaSeleccionada() {
-        const area = document.getElementById('areaCambio').value;
-        if (area === 'Compras') {
-            return document.getElementById('nombrePersonalizado').value.trim() || null;
-        }
         const radio = document.querySelector('input[name="personaSeleccionada"]:checked');
         return radio ? radio.value : null;
     }
