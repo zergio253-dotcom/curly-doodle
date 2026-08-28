@@ -715,9 +715,16 @@
         <p id="infoDiagnostico" style="font-weight:bold; color:#1a3a5c; margin-bottom:12px;"></p>
         <div class="form-group">
             <label>Descripción del diagnóstico *</label>
-            <textarea id="diagnosticoDetalle" rows="8" placeholder="Describe el diagnóstico técnico: fallas encontradas, causas, recomendaciones..."></textarea>
+            <textarea id="diagnosticoDetalle" rows="6" placeholder="Describe el diagnóstico técnico: fallas encontradas, causas, recomendaciones..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>📎 PDF de diagnóstico</label>
+            <input type="file" id="diagnosticoPdfFile" accept="application/pdf,.pdf">
+            <small style="color:#888; font-size:11px;">Se guarda en el almacenamiento central. Todos los usuarios de la app podrán verlo.</small>
+            <div id="diagnosticoPdfActual" style="margin-top:6px; font-size:13px;"></div>
         </div>
         <button class="btn-modal primary" onclick="guardarDiagnostico()">💾 Guardar diagnóstico</button>
+        <button class="btn-modal secondary" onclick="subirDiagnosticoPdf()">☁️ Subir PDF</button>
         <button class="btn-modal danger" onclick="cerrarModal('modalDiagnostico')">❌ Cancelar</button>
     </div>
 </div>
@@ -751,6 +758,10 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrbHp0ZGtwa3dzZnFobHpudGN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MjY0OTksImV4cCI6MjEwMzQwMjQ5OX0.l9sQ7Icgi8jfZfn1y2L65kIcWwqbyR8lk7ODsDACGL4';
 
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ===== ALMACENAMIENTO CENTRAL DE PDFs (Supabase Storage) =====
+    // Bucket: "diagnosticos" (crearlo en Supabase → Storage, público)
+    const BUCKET_DIAGNOSTICOS = 'diagnosticos';
 
     // ===== PERSONAS POR ÁREA =====
     const personasPorArea = {
@@ -1097,6 +1108,37 @@
         return Math.floor(diff);
     }
 
+    // Formatea milisegundos a texto legible (ej: "2d 5h 30m")
+    function formatearDuracion(ms) {
+        if (ms < 0 || isNaN(ms)) return '—';
+        const totalMin = Math.floor(ms / 60000);
+        const dias = Math.floor(totalMin / (60 * 24));
+        const horas = Math.floor((totalMin % (60 * 24)) / 60);
+        const mins = totalMin % 60;
+        const partes = [];
+        if (dias > 0) partes.push(dias + 'd');
+        if (horas > 0) partes.push(horas + 'h');
+        if (mins > 0 || partes.length === 0) partes.push(mins + 'm');
+        return partes.join(' ');
+    }
+
+    // Calcula tiempo muerto / duración de cada entrada del historial
+    function calcularTiemposHistorial(historial) {
+        if (!historial || historial.length === 0) return [];
+        const ahora = new Date();
+        return historial.map((h, i) => {
+            const inicio = new Date(h.fecha);
+            const fin = (i < historial.length - 1) ? new Date(historial[i + 1].fecha) : ahora;
+            const ms = fin - inicio;
+            return {
+                ...h,
+                duracionMs: ms,
+                duracionTexto: formatearDuracion(ms),
+                enCurso: i === historial.length - 1
+            };
+        });
+    }
+
     function actualizarStats() {
         const container = document.getElementById('statsContainer');
         const activas = unidades.filter(u => !u.eliminado);
@@ -1437,6 +1479,14 @@
                 <div class="label">🔍 Diagnóstico detallado</div>
                 <div class="valor" style="white-space:pre-wrap;">${u.diagnostico_detalle || 'Sin diagnóstico registrado'}</div>
             </div>
+            <div class="detalle-item full">
+                <div class="label">📎 PDF de diagnóstico</div>
+                <div class="valor">
+                    ${u.diagnostico_pdf_url
+                        ? `<a href="${u.diagnostico_pdf_url}" target="_blank" rel="noopener">📄 ${u.diagnostico_pdf_nombre || 'Abrir PDF'}</a>`
+                        : 'Sin PDF subido'}
+                </div>
+            </div>
             <div class="detalle-item full" id="detalleFotosContainer">
                 <div class="label">📷 Fotos (solo en este dispositivo)</div>
                 <div class="fotos-grid" id="detalleFotosGrid"><span style="color:#888; font-size:12px;">Cargando fotos locales...</span></div>
@@ -1456,20 +1506,33 @@
             }
         });
 
-        // Historial
+        // Historial con tiempos muertos / duración por operación
         const histBox = document.getElementById('detalleHistorial');
         if (u.historial && u.historial.length > 0) {
-            histBox.innerHTML = u.historial.slice().reverse().map(h => `
+            const conTiempos = calcularTiemposHistorial(u.historial);
+            const totalMs = conTiempos.reduce((acc, h) => acc + (h.duracionMs || 0), 0);
+            const filas = conTiempos.slice().reverse().map(h => {
+                const alerta = h.duracionMs >= 3 * 24 * 60 * 60 * 1000; // 3+ días
+                return `
                 <div class="historial-item">
                     <div>
                         <strong>${h.estatus || '—'}</strong>
                         ${h.area ? `<span class="depto">${h.area}</span>` : ''}
                         ${h.persona ? `<span style="color:#555;"> · ${h.persona}</span>` : ''}
+                        <span class="depto" style="background:${alerta ? '#f8d7da' : '#d4edda'}; color:${alerta ? '#721c24' : '#155724'}; margin-left:6px;">
+                            ⏱️ ${h.duracionTexto}${h.enCurso ? ' (en curso)' : ''}
+                        </span>
                     </div>
                     <div class="fecha">${h.fecha || ''}</div>
                     ${h.comentario ? `<div class="nota">📝 ${h.comentario}</div>` : ''}
+                </div>`;
+            }).join('');
+            histBox.innerHTML = `
+                <div style="margin-bottom:10px; padding:8px 10px; background:#e7f1ff; border-radius:8px; font-size:13px;">
+                    <strong>⏳ Tiempo total en taller:</strong> ${formatearDuracion(totalMs)}
                 </div>
-            `).join('');
+                ${filas}
+            `;
         } else {
             histBox.innerHTML = '<div style="color:#888; font-size:13px;">Sin historial registrado</div>';
         }
@@ -1846,6 +1909,13 @@
         unidadEnEdicion = id;
         document.getElementById('infoDiagnostico').textContent = `${u.no_unidad} - ${u.cliente}`;
         document.getElementById('diagnosticoDetalle').value = u.diagnostico_detalle || '';
+        document.getElementById('diagnosticoPdfFile').value = '';
+        const pdfActual = document.getElementById('diagnosticoPdfActual');
+        if (u.diagnostico_pdf_url) {
+            pdfActual.innerHTML = `✅ PDF: <a href="${u.diagnostico_pdf_url}" target="_blank" rel="noopener">${u.diagnostico_pdf_nombre || 'Ver PDF'}</a>`;
+        } else {
+            pdfActual.innerHTML = '<span style="color:#888;">Ningún PDF subido todavía</span>';
+        }
         document.getElementById('modalDiagnostico').style.display = 'flex';
     }
 
@@ -1874,6 +1944,68 @@
             cerrarModal('modalDiagnostico');
             alert('✅ Diagnóstico guardado');
             abrirModalDetalle(id);
+        }
+    }
+
+    // ===== SUBIR PDF DE DIAGNÓSTICO (almacenamiento central) =====
+    async function subirDiagnosticoPdf() {
+        const id = unidadEnEdicion;
+        if (!id) return;
+        const input = document.getElementById('diagnosticoPdfFile');
+        const file = input.files && input.files[0];
+        if (!file) {
+            alert('⚠️ Selecciona un archivo PDF primero');
+            return;
+        }
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+            alert('⚠️ Solo se permiten archivos PDF');
+            return;
+        }
+
+        try {
+            // Nombre único por unidad + fecha
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const path = `unidad_${id}/${Date.now()}_${safeName}`;
+
+            const { data, error } = await supabaseClient.storage
+                .from(BUCKET_DIAGNOSTICOS)
+                .upload(path, file, {
+                    contentType: 'application/pdf',
+                    upsert: false
+                });
+
+            if (error) throw error;
+
+            const { data: urlData } = supabaseClient.storage
+                .from(BUCKET_DIAGNOSTICOS)
+                .getPublicUrl(path);
+
+            const link = urlData.publicUrl;
+            const u = unidades.find(item => item.id === id);
+            const historial = (u && u.historial) ? [...u.historial] : [];
+            historial.push({
+                fecha: new Date().toLocaleString(),
+                estatus: u ? u.estatus : 'Diagnosticando',
+                area: 'Mantenimiento',
+                persona: 'Diagnóstico PDF',
+                comentario: 'PDF de diagnóstico subido: ' + file.name
+            });
+
+            const resultado = await actualizarUnidad(id, {
+                diagnostico_pdf_url: link,
+                diagnostico_pdf_nombre: file.name,
+                historial: historial
+            });
+
+            if (resultado.success) {
+                document.getElementById('diagnosticoPdfActual').innerHTML =
+                    `✅ PDF: <a href="${link}" target="_blank" rel="noopener">${file.name}</a>`;
+                input.value = '';
+                alert('✅ PDF subido. Todos los usuarios pueden verlo en la app.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('❌ Error al subir PDF: ' + (err.message || err) + '\n\nRevisa que exista el bucket "diagnosticos" en Supabase Storage y sea público.');
         }
     }
 
