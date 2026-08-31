@@ -454,6 +454,7 @@
         <button class="btn-header" id="btnVistaHistorial" onclick="cambiarVista('historial')">📜 Historial</button>
         <button class="btn-header" onclick="abrirModalNueva()">➕ Nueva</button>
         <button class="btn-header" onclick="exportarHistorialExcel()" title="Exportar historial a Excel">📥 Excel</button>
+        <button class="btn-header" onclick="window.open('https://notebooklm.google.com/notebook/db993a47-4421-47de-ae85-16e5298a301c?utm_source=nlmm_share', '_blank')" title="IA para oficina">🤖 IA para oficina</button>
         <button class="btn-header" onclick="alternarModoCliente()">👁️ Cliente</button>
         <button class="btn-header" id="btnDarkMode" onclick="toggleDarkMode()">🌙</button>
         <button class="btn-header danger" onclick="cargarDatos()">🔄 Recargar</button>
@@ -817,15 +818,14 @@
     const permisosCambio = {
         'Gerencia': null, // null = puede todo
         'Mantenimiento': {
-            'Recibida': ['Diagnosticando'],
-            'Diagnosticando': ['Cotizando'],
+            'Diagnosticando': ['Cotizando', 'Reparando'],
             'Reparando': ['Finalizada']
         },
         'Ventas': {
-            'Cotizando': ['Espera de refacciones', 'Reparando']
+            'Cotizando': ['Reparando', 'Finalizada']
         },
         'Compras': {
-            'Espera de refacciones': ['Reparando']
+            'Espera de refacciones': ['Reparando', 'Cotizando']
         }
     };
 
