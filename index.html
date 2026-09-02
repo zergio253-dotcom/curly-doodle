@@ -88,6 +88,55 @@
         .btn-header.active { background: #28a745; }
         .btn-header.danger { background: #dc3545; }
         .btn-header.danger:hover { background: #c82333; }
+        .btn-header .badge-notif {
+            background: #ff3b30;
+            color: white;
+            font-size: 11px;
+            padding: 1px 6px;
+            border-radius: 10px;
+            margin-left: 4px;
+            font-weight: bold;
+        }
+        .panel-notif {
+            display: none;
+            position: fixed;
+            top: 0; right: 0;
+            width: 360px;
+            max-width: 95vw;
+            height: 100%;
+            background: var(--modal-bg, #fff);
+            color: var(--text, #222);
+            box-shadow: -4px 0 24px rgba(0,0,0,0.25);
+            z-index: 2000;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        .panel-notif.abierto { display: block; }
+        .panel-notif h3 { margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .notif-item {
+            border-left: 4px solid #ccc;
+            background: var(--detalle-item, #f8f9fa);
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .notif-item:hover { opacity: 0.9; }
+        .notif-item.urgente { border-left-color: #dc3545; }
+        .notif-item.aviso { border-left-color: #fd7e14; }
+        .notif-item.info { border-left-color: #007bff; }
+        .notif-item .titulo { font-weight: bold; margin-bottom: 2px; }
+        .notif-item .detalle { color: var(--text2, #555); font-size: 12px; }
+        .notif-vacio { color: #888; text-align: center; padding: 24px 12px; }
+        .overlay-notif {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 1999;
+        }
+        .overlay-notif.abierto { display: block; }
 
         .stats {
             display: flex;
@@ -173,11 +222,19 @@
         }
         .card-compact:hover { transform: scale(1.02); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
         .card-compact.dragging { opacity: 0.5; cursor: grabbing; }
-        .card-compact.retrasada {
+        .card-compact.dias-verde {
+            box-shadow: 0 0 0 2px #28a745;
+        }
+        .card-compact.dias-amarillo {
+            background: #fffbeb;
+            box-shadow: 0 0 0 2px #ffc107;
+        }
+        body.dark .card-compact.dias-amarillo { background: #3a3510; }
+        .card-compact.dias-rojo {
             background: #fff5f5;
             box-shadow: 0 0 0 2px #dc3545;
         }
-        body.dark .card-compact.retrasada { background: #3a1c1c; }
+        body.dark .card-compact.dias-rojo { background: #3a1c1c; }
         .card-compact .unidad-id { font-weight: bold; font-size: 14px; color: var(--header); }
         body.dark .card-compact .unidad-id { color: #6ab0f3; }
         .card-compact .cliente { color: var(--text2); font-size: 12px; }
@@ -198,8 +255,13 @@
             font-size: 10px;
             font-weight: bold;
         }
-        .card-compact .tiempo { font-size: 10px; color: var(--text3); }
-        .card-compact .tiempo.warning { color: #dc3545; font-weight: bold; }
+        .card-compact .tiempo { font-size: 10px; font-weight: bold; }
+        .card-compact .tiempo.dias-verde { color: #28a745; }
+        .card-compact .tiempo.dias-amarillo { color: #d39e00; }
+        .card-compact .tiempo.dias-rojo { color: #dc3545; }
+        .lista-container td.dias-verde { color: #28a745; font-weight: bold; }
+        .lista-container td.dias-amarillo { color: #d39e00; font-weight: bold; }
+        .lista-container td.dias-rojo { color: #dc3545; font-weight: bold; }
         .badge-prioridad {
             display: inline-block;
             padding: 1px 7px;
@@ -440,9 +502,97 @@
             .card-compact { font-size: 10px; padding: 5px 8px; }
             .card-compact .unidad-id { font-size: 12px; }
         }
+        .login-overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(145deg, #1a3a5c 0%, #0d2137 50%, #1a3a5c 100%);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-overlay.oculto { display: none; }
+        .login-box {
+            background: #fff;
+            color: #222;
+            border-radius: 16px;
+            padding: 28px 24px;
+            max-width: 380px;
+            width: 100%;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+        }
+        .login-box h2 { color: #1a3a5c; margin-bottom: 6px; font-size: 22px; }
+        .login-box .sub { color: #666; font-size: 13px; margin-bottom: 18px; }
+        .login-box .form-group { margin-bottom: 14px; }
+        .login-box label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+        .login-box select, .login-box input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #dde1e6;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+        .login-box .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: #1a3a5c;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .login-box .btn-login:hover { background: #254a6e; }
+        .login-error { color: #dc3545; font-size: 13px; margin-top: 8px; display: none; }
+        #sesionInfo {
+            color: white;
+            font-size: 12px;
+            padding: 4px 10px;
+            background: rgba(40,167,69,0.35);
+            border-radius: 12px;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
+
+<!-- ===== LOGIN DEPARTAMENTO ===== -->
+<div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+        <h2>❄️ ThermoControl</h2>
+        <p class="sub">Ingresa tu departamento y clave para continuar</p>
+        <div class="form-group">
+            <label>Departamento</label>
+            <select id="loginArea" onchange="actualizarPersonasLogin()">
+                <option value="">Selecciona...</option>
+                <option value="Gerencia">👔 Gerencia</option>
+                <option value="Mantenimiento">🔧 Mantenimiento</option>
+                <option value="Ventas">💰 Ventas</option>
+                <option value="Compras">🛒 Compras</option>
+                <option value="Cliente">👁️ Cliente (solo ver)</option>
+            </select>
+        </div>
+        <div class="form-group" id="loginPersonasGroup">
+            <label>Tu nombre</label>
+            <div id="loginPersonasList" style="max-height:140px; overflow-y:auto;"></div>
+        </div>
+        <div class="form-group" id="loginClaveGroup">
+            <label>Clave (3 dígitos)</label>
+            <input type="password" id="loginClave" maxlength="3" inputmode="numeric" placeholder="•••" autocomplete="off">
+        </div>
+        <p id="loginClienteHint" style="display:none; font-size:13px; color:#666; margin-bottom:12px;">
+            Modo cliente: solo puedes ver el Kanban. No podrás editar ni cambiar estatus.
+        </p>
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:normal; cursor:pointer;" id="loginRecordarLabel">
+            <input type="checkbox" id="loginRecordar"> Recordar en este dispositivo
+        </label>
+        <button class="btn-login" onclick="iniciarSesion()">🔓 Entrar</button>
+        <div class="login-error" id="loginError"></div>
+    </div>
+</div>
 
 <!-- ===== HEADER ===== -->
 <div class="header">
@@ -454,8 +604,12 @@
         <button class="btn-header" id="btnVistaHistorial" onclick="cambiarVista('historial')">📜 Historial</button>
         <button class="btn-header" onclick="abrirModalNueva()">➕ Nueva</button>
         <button class="btn-header" onclick="exportarHistorialExcel()" title="Exportar historial a Excel">📥 Excel</button>
-        <button class="btn-header" onclick="window.open('https://notebooklm.google.com/notebook/db993a47-4421-47de-ae85-16e5298a301c?utm_source=nlmm_share', '_blank')" title="IA para oficina">🤖 IA para oficina</button>
-        <button class="btn-header" onclick="alternarModoCliente()">👁️ Cliente</button>
+        <button class="btn-header" id="btnReporteDiario" onclick="abrirReporteDiario()" title="Reporte del día (solo Gerencia)" style="display:none;">📊 Reporte diario</button>
+        <button class="btn-header" id="btnDiagnosticosExt" onclick="window.open('https://insert-code-067286.onhercules.app/', '_blank')" title="Herramienta de diagnósticos" style="display:none;">🔧 Diagnósticos</button>
+        <button class="btn-header" id="btnThermoDiagPRO" onclick="window.open('https://cosmic-zabaione-7bd9cc.netlify.app/', '_blank')" title="ThermoDiagPRO" style="display:none;">🔬 ThermoDiagPRO</button>
+        <button class="btn-header" id="btnNotif" onclick="togglePanelNotif()" title="Notificaciones">🔔 <span id="badgeNotif" class="badge-notif" style="display:none;">0</span></button>
+        <span id="sesionInfo" style="display:none;"></span>
+        <button class="btn-header" id="btnCerrarSesion" onclick="cerrarSesion()" style="display:none;" title="Cerrar sesión">🚪 Salir</button>
         <button class="btn-header" id="btnDarkMode" onclick="toggleDarkMode()">🌙</button>
         <button class="btn-header danger" onclick="cargarDatos()">🔄 Recargar</button>
         <span id="statusConexion" style="color:white; font-size:12px; padding:4px 10px; background:rgba(255,255,255,0.15); border-radius:12px;">⏳ Conectando...</span>
@@ -464,6 +618,58 @@
 
 <!-- ===== ESTADÍSTICAS ===== -->
 <div class="stats" id="statsContainer"></div>
+
+<!-- ===== PANEL NOTIFICACIONES ===== -->
+<div class="overlay-notif" id="overlayNotif" onclick="cerrarPanelNotif()"></div>
+<div class="panel-notif" id="panelNotif">
+    <h3>
+        <span>🔔 Notificaciones</span>
+        <button class="btn-accion" onclick="cerrarPanelNotif()">✕</button>
+    </h3>
+    <div style="background:var(--detalle-item,#f8f9fa); border-radius:10px; padding:12px; margin-bottom:14px; font-size:13px;">
+        <strong style="display:block; margin-bottom:8px;">⚙️ Configuración automática</strong>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
+            <input type="checkbox" id="cfgNotifRetraso" onchange="guardarConfigNotif()"> Alertas por días en taller
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            Días para avisar:
+            <select id="cfgDiasAviso" onchange="guardarConfigNotif()" style="padding:4px 8px; border-radius:6px;">
+                <option value="2">2 días</option>
+                <option value="3" selected>3 días</option>
+                <option value="4">4 días</option>
+                <option value="5">5 días</option>
+            </select>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
+            <input type="checkbox" id="cfgNotifPrioridad" onchange="guardarConfigNotif()" checked> Prioridad alta
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
+            <input type="checkbox" id="cfgNotifDiagnostico" onchange="guardarConfigNotif()" checked> Sin diagnóstico en Cotizando
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
+            <input type="checkbox" id="cfgNotifCambios" onchange="guardarConfigNotif()" checked> Cambios de estatus / notas
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px; cursor:pointer;">
+            <input type="checkbox" id="cfgNotifNavegador" onchange="toggleNotifNavegador()"> Avisos del sistema (navegador)
+        </label>
+        <button class="btn-accion" style="width:100%;" onclick="probarNotifNavegador()">🔔 Probar aviso del navegador</button>
+    </div>
+    <p style="font-size:12px; color:#888; margin-bottom:8px;">Alertas activas</p>
+    <div id="listaNotificaciones"></div>
+</div>
+
+<!-- ===== MODAL REPORTE DIARIO ===== -->
+<div class="modal" id="modalReporteDiario">
+    <div class="modal-content wide">
+        <h3>📊 Reporte diario</h3>
+        <p id="reporteDiarioFecha" style="color:#666; margin-bottom:12px;"></p>
+        <div id="reporteDiarioContenido" style="font-size:14px;"></div>
+        <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+            <button class="btn-modal success" style="flex:1;" onclick="exportarReporteDiarioExcel()">📥 Exportar Excel</button>
+            <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalReporteDiario')">Cerrar</button>
+        </div>
+    </div>
+</div>
 
 <!-- ===== LOADING ===== -->
 <div id="loadingContainer" class="loading" style="display:none;">
@@ -746,6 +952,39 @@
     </div>
 </div>
 
+<!-- ===== MODAL NOTA LIBRE ===== -->
+<div class="modal" id="modalNota">
+    <div class="modal-content">
+        <h3>📝 Agregar nota</h3>
+        <p id="infoNota" style="font-weight:bold; color:#1a3a5c; margin-bottom:12px;"></p>
+        <p style="font-size:12px; color:#666; margin-bottom:10px;">No cambia el estatus. Solo deja un comentario en el historial.</p>
+        <div class="form-group">
+            <label>Área *</label>
+            <select id="areaNota" onchange="actualizarPersonasNota()">
+                <option value="">Selecciona...</option>
+                <option value="Gerencia">👔 Gerencia</option>
+                <option value="Mantenimiento">🔧 Mantenimiento</option>
+                <option value="Ventas">💰 Ventas</option>
+                <option value="Compras">🛒 Compras</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Persona *</label>
+            <div id="personasListNota"></div>
+        </div>
+        <div class="form-group">
+            <label>Clave del área *</label>
+            <input type="password" id="claveNota" maxlength="3" placeholder="•••" inputmode="numeric">
+        </div>
+        <div class="form-group">
+            <label>Nota *</label>
+            <textarea id="textoNota" rows="4" placeholder="Escribe el comentario..."></textarea>
+        </div>
+        <button class="btn-modal primary" onclick="guardarNotaLibre()">💾 Guardar nota</button>
+        <button class="btn-modal danger" onclick="cerrarModal('modalNota')">❌ Cancelar</button>
+    </div>
+</div>
+
 <!-- ===== MODAL PDF ORDEN DE TRABAJO ===== -->
 <div class="modal" id="modalOrdenTrabajoPdf">
     <div class="modal-content">
@@ -799,7 +1038,7 @@
     // ===== PERSONAS POR ÁREA =====
     const personasPorArea = {
         'Gerencia': ['Luis Solís'],
-        'Mantenimiento': ['Sergio Holguín', 'Marcos Sifuentes', 'Miguel Arredondo'],
+        'Mantenimiento': ['Sergio Holguín', 'Marcos Sifuentes', 'Miguel Arredondo', 'Alfredo'],
         'Ventas': ['Romina', 'Jesús'],
         'Compras': ['Alfredo']
     };
@@ -812,21 +1051,239 @@
         'Compras': '456'
     };
 
+    // ===== SESIÓN (departamento + persona) =====
+    let sesion = null; // { area, persona }
+
+    function getSesionGuardada() {
+        try {
+            const raw = localStorage.getItem('thermocontrol_sesion') || sessionStorage.getItem('thermocontrol_sesion');
+            return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+    }
+
+    function guardarSesion(data, recordar) {
+        sesion = data;
+        const raw = JSON.stringify(data);
+        sessionStorage.setItem('thermocontrol_sesion', raw);
+        if (recordar) localStorage.setItem('thermocontrol_sesion', raw);
+        else localStorage.removeItem('thermocontrol_sesion');
+    }
+
+    function actualizarPersonasLogin() {
+        const area = document.getElementById('loginArea').value;
+        const container = document.getElementById('loginPersonasList');
+        const esCliente = area === 'Cliente';
+        document.getElementById('loginPersonasGroup').style.display = esCliente ? 'none' : 'block';
+        document.getElementById('loginClaveGroup').style.display = esCliente ? 'none' : 'block';
+        document.getElementById('loginClienteHint').style.display = esCliente ? 'block' : 'none';
+
+        if (esCliente || !area) {
+            container.innerHTML = '';
+            return;
+        }
+        const personas = personasPorArea[area] || [];
+        if (personas.length === 0) {
+            container.innerHTML = '<span style="color:#888;font-size:13px;">Sin personas</span>';
+            return;
+        }
+        container.innerHTML = personas.map((p, i) => `
+            <div class="persona-item">
+                <input type="radio" name="loginPersona" value="${p}" id="login_p_${i}" ${i === 0 ? 'checked' : ''}>
+                <label for="login_p_${i}">${p}</label>
+            </div>
+        `).join('');
+    }
+
+    function aplicarModoClienteUI(activo) {
+        modoCliente = !!activo;
+        document.querySelectorAll('.header-actions .btn-header').forEach(btn => {
+            const t = btn.textContent || '';
+            const id = btn.id || '';
+            if (t.includes('Nueva') || t.includes('Excel') || t.includes('Reporte') ||
+                t.includes('Lista') || t.includes('Historial') || id === 'btnNotif') {
+                btn.style.display = activo ? 'none' : '';
+            }
+        });
+        const btnRep = document.getElementById('btnReporteDiario');
+        const btnDiag = document.getElementById('btnDiagnosticosExt');
+        const btnTDP = document.getElementById('btnThermoDiagPRO');
+        if (btnRep && activo) btnRep.style.display = 'none';
+        if (btnDiag && activo) btnDiag.style.display = 'none';
+        if (btnTDP && activo) btnTDP.style.display = 'none';
+        if (activo) {
+            cambiarVista('kanban');
+            document.querySelector('.header h1 small').textContent = '👁️ Vista cliente (solo lectura)';
+        } else if (sesion) {
+            document.querySelector('.header h1 small').textContent = 'Base de Datos en la Nube';
+            document.querySelectorAll('.header-actions .btn-header').forEach(btn => {
+                if (btn.id === 'btnReporteDiario') {
+                    btn.style.display = sesion.area === 'Gerencia' ? 'inline-block' : 'none';
+                    return;
+                }
+                if (btn.id === 'btnDiagnosticosExt') {
+                    btn.style.display = sesion.area === 'Mantenimiento' ? 'inline-block' : 'none';
+                    return;
+                }
+                if (btn.id === 'btnThermoDiagPRO') {
+                    btn.style.display = sesion.area === 'Mantenimiento' ? 'inline-block' : 'none';
+                    return;
+                }
+                if (btn.id === 'btnCerrarSesion') return;
+                btn.style.display = '';
+            });
+        }
+    }
+
+    function iniciarSesion() {
+        const area = document.getElementById('loginArea').value;
+        const clave = document.getElementById('loginClave').value.trim();
+        const err = document.getElementById('loginError');
+        err.style.display = 'none';
+
+        if (!area) {
+            err.textContent = 'Selecciona un departamento o Cliente';
+            err.style.display = 'block';
+            return;
+        }
+
+        // Cliente: sin clave, solo vista
+        if (area === 'Cliente') {
+            const recordar = document.getElementById('loginRecordar').checked;
+            guardarSesion({ area: 'Cliente', persona: 'Cliente' }, recordar);
+            document.getElementById('loginOverlay').classList.add('oculto');
+            mostrarInfoSesion();
+            aplicarModoClienteUI(true);
+            cargarDatos();
+            return;
+        }
+
+        const radio = document.querySelector('input[name="loginPersona"]:checked');
+        const persona = radio ? radio.value : null;
+        if (!persona) {
+            err.textContent = 'Selecciona tu nombre';
+            err.style.display = 'block';
+            return;
+        }
+        if (clave !== clavesPorArea[area]) {
+            err.textContent = 'Clave incorrecta';
+            err.style.display = 'block';
+            document.getElementById('loginClave').value = '';
+            document.getElementById('loginClave').focus();
+            return;
+        }
+
+        const recordar = document.getElementById('loginRecordar').checked;
+        guardarSesion({ area, persona }, recordar);
+        document.getElementById('loginOverlay').classList.add('oculto');
+        aplicarModoClienteUI(false);
+        mostrarInfoSesion();
+        cargarDatos();
+    }
+
+    function cerrarSesion() {
+        sesion = null;
+        modoCliente = false;
+        sessionStorage.removeItem('thermocontrol_sesion');
+        localStorage.removeItem('thermocontrol_sesion');
+        document.getElementById('loginOverlay').classList.remove('oculto');
+        document.getElementById('loginClave').value = '';
+        document.getElementById('sesionInfo').style.display = 'none';
+        document.getElementById('btnCerrarSesion').style.display = 'none';
+        const btnRep = document.getElementById('btnReporteDiario');
+        if (btnRep) btnRep.style.display = 'none';
+        const btnDiag = document.getElementById('btnDiagnosticosExt');
+        if (btnDiag) btnDiag.style.display = 'none';
+        const btnTDP = document.getElementById('btnThermoDiagPRO');
+        if (btnTDP) btnTDP.style.display = 'none';
+        document.getElementById('loginArea').value = '';
+        document.getElementById('loginPersonasList').innerHTML = '';
+        document.getElementById('loginPersonasGroup').style.display = 'block';
+        document.getElementById('loginClaveGroup').style.display = 'block';
+        document.getElementById('loginClienteHint').style.display = 'none';
+        document.querySelector('.header h1 small').textContent = 'Base de Datos en la Nube';
+        // Restaurar botones del header
+        document.querySelectorAll('.header-actions .btn-header').forEach(btn => {
+            if (btn.id === 'btnReporteDiario' || btn.id === 'btnCerrarSesion') return;
+            btn.style.display = '';
+        });
+    }
+
+    function mostrarInfoSesion() {
+        if (!sesion) return;
+        const el = document.getElementById('sesionInfo');
+        el.style.display = 'inline';
+        el.textContent = sesion.area === 'Cliente'
+            ? '👁️ Cliente · solo lectura'
+            : `👤 ${sesion.persona} · ${sesion.area}`;
+        document.getElementById('btnCerrarSesion').style.display = 'inline-block';
+        // Reporte diario solo Gerencia
+        const btnRep = document.getElementById('btnReporteDiario');
+        if (btnRep) btnRep.style.display = sesion.area === 'Gerencia' ? 'inline-block' : 'none';
+        // Diagnósticos externos: solo Mantenimiento
+        const btnDiag = document.getElementById('btnDiagnosticosExt');
+        if (btnDiag) btnDiag.style.display = sesion.area === 'Mantenimiento' ? 'inline-block' : 'none';
+        // ThermoDiagPRO: solo Mantenimiento
+        const btnTDP = document.getElementById('btnThermoDiagPRO');
+        if (btnTDP) btnTDP.style.display = sesion.area === 'Mantenimiento' ? 'inline-block' : 'none';
+        if (sesion.area === 'Cliente') aplicarModoClienteUI(true);
+        else aplicarModoClienteUI(false);
+    }
+
+    function requerirSesion() {
+        if (!sesion) {
+            alert('⚠️ Inicia sesión con tu departamento primero');
+            document.getElementById('loginOverlay').classList.remove('oculto');
+            return false;
+        }
+        return true;
+    }
+
     // ===== PERMISOS DE CAMBIO DE ESTATUS =====
     // Gerencia puede mover a cualquier estatus.
     // Los demás solo pueden hacer las transiciones indicadas.
     const permisosCambio = {
         'Gerencia': null, // null = puede todo
         'Mantenimiento': {
+            'Recibida': ['Diagnosticando'],
             'Diagnosticando': ['Cotizando', 'Reparando'],
-            'Reparando': ['Finalizada']
+            'Reparando': ['Finalizada', 'Cotizando', 'Espera de refacciones']
         },
         'Ventas': {
+            'Recibida': ['Diagnosticando'],
             'Cotizando': ['Reparando', 'Finalizada', 'Espera de refacciones']
         },
         'Compras': {
             'Espera de refacciones': ['Reparando', 'Cotizando']
         }
+    };
+
+    // ===== FLUJO AVANZADO: campos obligatorios al cambiar a un estatus =====
+    const camposRequeridosPorEstatus = {
+        'Diagnosticando': [
+            { campo: 'problema', nombre: 'Problema / descripción' }
+        ],
+        'Cotizando': [
+            { campo: 'problema', nombre: 'Problema / descripción' },
+            { campo: 'diagnostico_detalle', nombre: 'Diagnóstico detallado' }
+        ],
+        'Espera de refacciones': [
+            { campo: 'problema', nombre: 'Problema / descripción' }
+        ],
+        'Reparando': [
+            { campo: 'problema', nombre: 'Problema / descripción' },
+            { campo: 'diagnosticador', nombre: 'Diagnosticador' }
+        ],
+        'Finalizada': null // se usa validarCamposParaFinalizar (más completa)
+    };
+
+    // Responsable sugerido por estatus (para notificaciones)
+    const areaResponsableEstatus = {
+        'Recibida': 'Mantenimiento',
+        'Diagnosticando': 'Mantenimiento',
+        'Cotizando': 'Ventas',
+        'Espera de refacciones': 'Compras',
+        'Reparando': 'Mantenimiento',
+        'Finalizada': 'Ventas'
     };
 
     // ===== COLORES =====
@@ -971,6 +1428,8 @@
             unidades = data || [];
             renderizarTablero();
             actualizarStats();
+            actualizarNotificaciones();
+            notificarUrgentesAlCargar();
             document.getElementById('statusConexion').innerHTML = '✅ Conectado';
             document.getElementById('statusConexion').style.background = 'rgba(40, 167, 69, 0.3)';
         } catch (error) {
@@ -1029,19 +1488,11 @@
 
     // Soft-delete: marca como eliminado pero guarda el registro en historial
     async function eliminarUnidadBD(id) {
-        if (!confirm('¿Archivar / quitar esta unidad del tablero?\n\nEl registro se conservará en el Historial.')) return;
+        if (!requerirSesion()) return;
+        if (!confirm('¿Archivar / quitar esta unidad del tablero?\n\nEl registro se conservará en el Historial.\n\nArchiva: ' + sesion.area + ' (' + sesion.persona + ')')) return;
 
-        const area = prompt('¿Qué departamento archiva? (Gerencia / Mantenimiento / Ventas / Compras)');
-        if (!area || !clavesPorArea[area]) {
-            alert('Área no válida. Operación cancelada.');
-            return;
-        }
-        const clave = prompt(`Ingresa la clave de ${area}:`);
-        if (clave !== clavesPorArea[area]) {
-            alert('❌ Clave incorrecta. No se archivó.');
-            return;
-        }
-        const persona = prompt('Nombre de quien archiva:') || area;
+        const area = sesion.area;
+        const persona = sesion.persona;
         
         try {
             const u = unidades.find(item => item.id === id);
@@ -1098,16 +1549,293 @@
         link.click();
     }
 
+    // ===== REPORTE DIARIO =====
+    function fechaHoyISO() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    function esFechaHoy(fechaStr) {
+        if (!fechaStr) return false;
+        const s = String(fechaStr);
+        const hoy = fechaHoyISO();
+        // fecha_llegada tipo YYYY-MM-DD o historial con toLocaleString
+        if (s.startsWith(hoy)) return true;
+        // formato local dd/mm/yyyy o similar
+        try {
+            const d = new Date(s);
+            if (!isNaN(d.getTime())) {
+                return d.toISOString().slice(0, 10) === hoy;
+            }
+        } catch (e) {}
+        // toLocaleString a veces: "1/9/2026" o "01/09/2026"
+        const partes = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+        if (partes) {
+            const day = partes[1].padStart(2, '0');
+            const month = partes[2].padStart(2, '0');
+            // puede ser d/m/y o m/d/y — comparar con hoy local
+            const ahora = new Date();
+            const dLocal = String(ahora.getDate()).padStart(2, '0');
+            const mLocal = String(ahora.getMonth() + 1).padStart(2, '0');
+            const yLocal = String(ahora.getFullYear());
+            if (partes[3] === yLocal && ((day === dLocal && month === mLocal) || (day === mLocal && month === dLocal))) {
+                return true;
+            }
+        }
+        return s.includes(hoy) || s.includes(new Date().toLocaleDateString('es-MX'));
+    }
+
+    function generarDatosReporteDiario() {
+        const hoy = fechaHoyISO();
+        const activas = unidades.filter(u => !u.eliminado);
+        const enTaller = activas.filter(u => u.estatus !== 'Finalizada');
+        const entradasHoy = activas.filter(u => u.fecha_llegada && String(u.fecha_llegada).startsWith(hoy));
+        const finalizadasHoy = unidades.filter(u => {
+            if (u.estatus !== 'Finalizada') return false;
+            if (u.fecha_salida && String(u.fecha_salida).startsWith(hoy)) return true;
+            const hist = u.historial || [];
+            return hist.some(h => h.estatus === 'Finalizada' && esFechaHoy(h.fecha));
+        });
+
+        const counts = {};
+        Object.keys(nombresEstatus).forEach(s => counts[s] = 0);
+        activas.forEach(u => {
+            if (counts[u.estatus] !== undefined) counts[u.estatus]++;
+        });
+
+        const retrasadas3 = enTaller.filter(u => {
+            const d = diasEnTaller(u);
+            return d >= 3 && d < 5;
+        });
+        const retrasadas5 = enTaller.filter(u => diasEnTaller(u) >= 5);
+        const retrasadas = enTaller.filter(u => diasEnTaller(u) >= 3);
+        const prioridadAlta = enTaller.filter(u => (u.prioridad || 'Media') === 'Alta');
+
+        const movimientos = [];
+        const movPorArea = { Gerencia: 0, Mantenimiento: 0, Ventas: 0, Compras: 0 };
+        const idsConMovHoy = new Set();
+
+        unidades.forEach(u => {
+            (u.historial || []).forEach(h => {
+                if (esFechaHoy(h.fecha)) {
+                    idsConMovHoy.add(u.id);
+                    if (h.estatus) {
+                        movimientos.push({
+                            unidad: u.no_unidad || '—',
+                            cliente: u.cliente || '—',
+                            estatus: h.estatus,
+                            area: h.area || '—',
+                            persona: h.persona || '—',
+                            comentario: h.comentario || '',
+                            fecha: h.fecha
+                        });
+                    }
+                    const ar = h.area;
+                    if (ar && movPorArea[ar] !== undefined) movPorArea[ar]++;
+                }
+            });
+        });
+        movimientos.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+
+        // Sin movimiento hoy (activas en taller)
+        const sinMovimiento = enTaller.filter(u => !idsConMovHoy.has(u.id));
+
+        // Balance del día
+        const balance = entradasHoy.length - finalizadasHoy.length;
+
+        // Tiempo promedio en taller de finalizadas hoy (días desde llegada)
+        let promedioDias = null;
+        if (finalizadasHoy.length > 0) {
+            const suma = finalizadasHoy.reduce((acc, u) => acc + diasEnTaller(u), 0);
+            promedioDias = Math.round((suma / finalizadasHoy.length) * 10) / 10;
+        }
+
+        return {
+            hoy, entradasHoy, finalizadasHoy, counts,
+            retrasadas, retrasadas3, retrasadas5,
+            prioridadAlta, movimientos, activas, enTaller,
+            sinMovimiento, movPorArea, balance, promedioDias
+        };
+    }
+
+    function abrirReporteDiario() {
+        if (!requerirSesion()) return;
+        if (sesion.area !== 'Gerencia') {
+            alert('🔒 El reporte diario solo está disponible para Gerencia.');
+            return;
+        }
+        const data = generarDatosReporteDiario();
+        const fechaTxt = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('reporteDiarioFecha').textContent = fechaTxt;
+
+        const conteoEstatus = Object.keys(nombresEstatus).map(s =>
+            `${nombresEstatus[s]}: <strong>${data.counts[s] || 0}</strong>`
+        ).join(' &nbsp;|&nbsp; ');
+
+        const listaEntradas = data.entradasHoy.length
+            ? data.entradasHoy.map(u => `• ${u.no_unidad || '—'} — ${u.cliente || '—'}`).join('<br>')
+            : '<span style="color:#888;">Ninguna</span>';
+
+        const listaFin = data.finalizadasHoy.length
+            ? data.finalizadasHoy.map(u => `• ${u.no_unidad || '—'} — ${u.cliente || '—'}`).join('<br>')
+            : '<span style="color:#888;">Ninguna</span>';
+
+        const listaRet3 = data.retrasadas3.length
+            ? data.retrasadas3.map(u => {
+                const d = diasEnTaller(u);
+                return `• ${u.no_unidad || '—'} — ${u.cliente || '—'} · ${u.estatus} · <span class="dias-amarillo">${textoDiasTaller(d)}</span>`;
+            }).join('<br>')
+            : '<span style="color:#888;">Ninguna</span>';
+
+        const listaRet5 = data.retrasadas5.length
+            ? data.retrasadas5.map(u => {
+                const d = diasEnTaller(u);
+                return `• ${u.no_unidad || '—'} — ${u.cliente || '—'} · ${u.estatus} · <span class="dias-rojo">${textoDiasTaller(d)}</span>`;
+            }).join('<br>')
+            : '<span style="color:#888;">Ninguna</span>';
+
+        const listaPrio = data.prioridadAlta.length
+            ? data.prioridadAlta.map(u => `• ${u.no_unidad || '—'} — ${u.cliente || '—'} · ${u.estatus}`).join('<br>')
+            : '<span style="color:#888;">Ninguna</span>';
+
+        const listaSinMov = data.sinMovimiento.length
+            ? data.sinMovimiento.map(u => `• ${u.no_unidad || '—'} — ${u.cliente || '—'} · ${u.estatus}`).join('<br>')
+            : '<span style="color:#888;">Todas tuvieron movimiento hoy ✅</span>';
+
+        const listaMov = data.movimientos.length
+            ? data.movimientos.slice(0, 40).map(m =>
+                `• <strong>${m.unidad}</strong> → ${m.estatus} · ${m.area}${m.persona && m.persona !== '—' ? ' (' + m.persona + ')' : ''}`
+            ).join('<br>')
+            : '<span style="color:#888;">Sin movimientos registrados hoy</span>';
+
+        const movAreaTxt = Object.keys(data.movPorArea)
+            .map(a => `${a}: <strong>${data.movPorArea[a]}</strong>`)
+            .join(' &nbsp;|&nbsp; ');
+
+        const balanceColor = data.balance > 0 ? '#fd7e14' : (data.balance < 0 ? '#28a745' : '#333');
+        const balanceTxt = data.balance > 0 ? `+${data.balance} (más entradas)` : (data.balance < 0 ? `${data.balance} (más salidas)` : '0 (equilibrado)');
+
+        document.getElementById('reporteDiarioContenido').innerHTML = `
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; margin-bottom:16px;">
+                <div class="detalle-item" style="text-align:center;"><div class="label">Entraron hoy</div><div class="valor" style="font-size:22px;">${data.entradasHoy.length}</div></div>
+                <div class="detalle-item" style="text-align:center;"><div class="label">Finalizaron hoy</div><div class="valor" style="font-size:22px; color:#28a745;">${data.finalizadasHoy.length}</div></div>
+                <div class="detalle-item" style="text-align:center;"><div class="label">Balance del día</div><div class="valor" style="font-size:18px; color:${balanceColor};">${balanceTxt}</div></div>
+                <div class="detalle-item" style="text-align:center;"><div class="label">En taller</div><div class="valor" style="font-size:22px;">${data.enTaller.length}</div></div>
+                <div class="detalle-item" style="text-align:center;"><div class="label">Prom. días (salidas)</div><div class="valor" style="font-size:22px;">${data.promedioDias !== null ? data.promedioDias : '—'}</div></div>
+                <div class="detalle-item" style="text-align:center;"><div class="label">Retraso 3–4 d</div><div class="valor" style="font-size:22px; color:#d39e00;">${data.retrasadas3.length}</div></div>
+                <div class="detalle-item" style="text-align:center;"><div class="label">Retraso 5+ d</div><div class="valor" style="font-size:22px; color:#dc3545;">${data.retrasadas5.length}</div></div>
+                <div class="detalle-item" style="text-align:center;"><div class="label">Sin movimiento hoy</div><div class="valor" style="font-size:22px;">${data.sinMovimiento.length}</div></div>
+                <div class="detalle-item" style="text-align:center;"><div class="label">Prioridad alta</div><div class="valor" style="font-size:22px; color:#fd7e14;">${data.prioridadAlta.length}</div></div>
+            </div>
+            <div class="detalle-item full" style="margin-bottom:12px;">
+                <div class="label">Por estatus (activas)</div>
+                <div class="valor" style="font-size:13px;">${conteoEstatus}</div>
+            </div>
+            <div class="detalle-item full" style="margin-bottom:12px;">
+                <div class="label">👥 Movimientos por área (hoy)</div>
+                <div class="valor" style="font-size:13px;">${movAreaTxt}</div>
+            </div>
+            <div class="detalle-item full" style="margin-bottom:12px;">
+                <div class="label">📥 Entradas de hoy</div>
+                <div class="valor">${listaEntradas}</div>
+            </div>
+            <div class="detalle-item full" style="margin-bottom:12px;">
+                <div class="label">✅ Finalizadas hoy</div>
+                <div class="valor">${listaFin}</div>
+            </div>
+            <div class="detalle-item full" style="margin-bottom:12px;">
+                <div class="label">🟡 Retrasadas 3–4 días</div>
+                <div class="valor">${listaRet3}</div>
+            </div>
+            <div class="detalle-item full" style="margin-bottom:12px;">
+                <div class="label">🔴 Retrasadas 5+ días</div>
+                <div class="valor">${listaRet5}</div>
+            </div>
+            <div class="detalle-item full" style="margin-bottom:12px;">
+                <div class="label">⏸️ Sin movimiento hoy</div>
+                <div class="valor" style="max-height:140px; overflow-y:auto;">${listaSinMov}</div>
+            </div>
+            <div class="detalle-item full" style="margin-bottom:12px;">
+                <div class="label">🔴 Prioridad alta</div>
+                <div class="valor">${listaPrio}</div>
+            </div>
+            <div class="detalle-item full">
+                <div class="label">🔄 Movimientos de hoy</div>
+                <div class="valor" style="max-height:180px; overflow-y:auto;">${listaMov}</div>
+            </div>
+        `;
+        document.getElementById('modalReporteDiario').style.display = 'flex';
+    }
+
+    function exportarReporteDiarioExcel() {
+        if (!sesion || sesion.area !== 'Gerencia') {
+            alert('🔒 Solo Gerencia puede exportar el reporte diario.');
+            return;
+        }
+        const data = generarDatosReporteDiario();
+        const lineas = [];
+        lineas.push('Reporte diario ThermoControl');
+        lineas.push('Fecha,' + data.hoy);
+        lineas.push('');
+        lineas.push('Metrica,Valor');
+        lineas.push('Entraron hoy,' + data.entradasHoy.length);
+        lineas.push('Finalizaron hoy,' + data.finalizadasHoy.length);
+        lineas.push('Balance del dia,' + data.balance);
+        lineas.push('En taller,' + data.enTaller.length);
+        lineas.push('Promedio dias finalizadas hoy,' + (data.promedioDias !== null ? data.promedioDias : ''));
+        lineas.push('Retrasadas 3-4 dias,' + data.retrasadas3.length);
+        lineas.push('Retrasadas 5+ dias,' + data.retrasadas5.length);
+        lineas.push('Sin movimiento hoy,' + data.sinMovimiento.length);
+        lineas.push('Prioridad alta,' + data.prioridadAlta.length);
+        lineas.push('');
+        lineas.push('Movimientos por area');
+        Object.keys(data.movPorArea).forEach(a => lineas.push(a + ',' + data.movPorArea[a]));
+        lineas.push('');
+        lineas.push('Estatus,Cantidad');
+        Object.keys(nombresEstatus).forEach(s => lineas.push(`"${s}",${data.counts[s] || 0}`));
+        lineas.push('');
+        lineas.push('Entradas hoy');
+        lineas.push('Unidad,Cliente,Modelo,Estatus');
+        data.entradasHoy.forEach(u => lineas.push([u.no_unidad, u.cliente, u.modelo, u.estatus].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')));
+        lineas.push('');
+        lineas.push('Finalizadas hoy');
+        lineas.push('Unidad,Cliente,Modelo,Dias en taller');
+        data.finalizadasHoy.forEach(u => lineas.push([u.no_unidad, u.cliente, u.modelo, diasEnTaller(u)].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')));
+        lineas.push('');
+        lineas.push('Retrasadas 3-4 dias');
+        lineas.push('Unidad,Cliente,Estatus,Dias');
+        data.retrasadas3.forEach(u => lineas.push([u.no_unidad, u.cliente, u.estatus, diasEnTaller(u)].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')));
+        lineas.push('');
+        lineas.push('Retrasadas 5+ dias');
+        lineas.push('Unidad,Cliente,Estatus,Dias');
+        data.retrasadas5.forEach(u => lineas.push([u.no_unidad, u.cliente, u.estatus, diasEnTaller(u)].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')));
+        lineas.push('');
+        lineas.push('Sin movimiento hoy');
+        lineas.push('Unidad,Cliente,Estatus');
+        data.sinMovimiento.forEach(u => lineas.push([u.no_unidad, u.cliente, u.estatus].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')));
+        lineas.push('');
+        lineas.push('Movimientos hoy');
+        lineas.push('Unidad,Cliente,Estatus,Area,Persona,Fecha');
+        data.movimientos.forEach(m => lineas.push([m.unidad, m.cliente, m.estatus, m.area, m.persona, m.fecha].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')));
+
+        const blob = new Blob(['\ufeff' + lineas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `reporte_diario_${data.hoy}.csv`;
+        link.click();
+    }
+
     // Eliminación permanente: solo Gerencia con clave 210
     async function eliminarPermanente(id) {
         const u = unidades.find(item => item.id === id);
         if (!u) return;
+        if (!requerirSesion()) return;
 
-        const clave = prompt('🔑 Solo Gerencia puede borrar permanentemente.\n\nIngresa la clave de Gerencia:');
-        if (clave === null) return; // canceló
-
-        if (clave.trim() !== clavesPorArea['Gerencia']) {
-            alert('❌ Clave incorrecta. No se eliminó el registro.');
+        if (sesion.area !== 'Gerencia') {
+            alert('❌ Solo Gerencia puede borrar permanentemente. Cierra sesión y entra como Gerencia.');
             return;
         }
 
@@ -1150,6 +1878,30 @@
         const ahora = new Date();
         const diff = (ahora - fecha) / (1000 * 60 * 60 * 24);
         return Math.floor(diff);
+    }
+
+    // Días en taller desde fecha de llegada (o historial)
+    function diasEnTaller(u) {
+        if (u.fecha_llegada) {
+            const llegada = new Date(u.fecha_llegada);
+            const ahora = new Date();
+            const diff = (ahora - llegada) / (1000 * 60 * 60 * 24);
+            return Math.max(0, Math.floor(diff));
+        }
+        return diasEnEstatus(u.historial);
+    }
+
+    // 0-2 verde | 3-4 amarillo | 5+ rojo
+    function claseColorDias(dias) {
+        if (dias >= 5) return 'dias-rojo';
+        if (dias >= 3) return 'dias-amarillo';
+        return 'dias-verde';
+    }
+
+    function textoDiasTaller(dias) {
+        if (dias === 0) return 'Hoy';
+        if (dias === 1) return '1 día';
+        return dias + ' días';
     }
 
     // Formatea milisegundos a texto legible (ej: "2d 5h 30m")
@@ -1239,9 +1991,11 @@
                 </h4>
             `;
             items.forEach((u) => {
-                const dias = diasEnEstatus(u.historial);
+                const dias = diasEnTaller(u);
+                const esFinalizada = u.estatus === 'Finalizada';
+                const colorDias = esFinalizada ? '' : claseColorDias(dias);
                 const card = document.createElement('div');
-                card.className = 'card-compact' + (dias >= 3 ? ' retrasada' : '');
+                card.className = 'card-compact' + (colorDias ? ' ' + colorDias : '');
                 card.style.borderLeftColor = getColor(u.estatus);
                 card.draggable = !modoCliente;
                 card.dataset.id = u.id;
@@ -1274,10 +2028,12 @@
                         <span class="badge-area">${ultimo ? ultimo.area + (ultimo.persona ? ' ('+ultimo.persona+')' : '') : '—'}</span>
                     </div>
                     <div class="meta">
-                        <span class="tiempo ${dias >= 3 ? 'warning' : ''}">
-                            ${dias === 0 ? 'Hoy' : dias === 1 ? 'Ayer' : `⏱️ ${dias} días`}
-                            ${dias >= 3 ? ' ⚠️ RETRASADA' : ''}
-                        </span>
+                        ${esFinalizada
+                            ? `<span class="tiempo" style="color:#28a745;">✅ Finalizada</span>`
+                            : `<span class="tiempo ${colorDias}">
+                                ⏱️ ${textoDiasTaller(dias)} en taller
+                                ${dias >= 5 ? ' ⚠️' : ''}
+                               </span>`}
                         <span style="font-size:10px; color:#999;">${u.problema ? u.problema.substring(0,25)+'...' : ''}</span>
                     </div>
                     ${!modoCliente ? `
@@ -1324,7 +2080,9 @@
                 <tbody>
         `;
         filtered.forEach(u => {
-            const dias = diasEnEstatus(u.historial);
+            const dias = diasEnTaller(u);
+            const esFinalizada = u.estatus === 'Finalizada';
+            const colorDias = esFinalizada ? '' : claseColorDias(dias);
             tablaHtml += `
                 <tr onclick="abrirModalDetalle(${u.id})">
                     <td><strong>${u.no_unidad || '—'}</strong></td>
@@ -1335,7 +2093,7 @@
                     <td>${u.folio || '—'}</td>
                     <td>${u.no_serie || '—'}</td>
                     <td>${formatearFecha(u.fecha_llegada)}</td>
-                    <td class="${dias >= 3 ? 'warning' : ''}">${dias} días</td>
+                    <td class="${colorDias}">${esFinalizada ? '—' : textoDiasTaller(dias)}</td>
                 </tr>
             `;
         });
@@ -1457,6 +2215,7 @@
     }
 
     function abrirModalNueva() {
+        if (!requerirSesion()) return;
         document.getElementById('modalNueva').style.display = 'flex';
     }
 
@@ -1623,6 +2382,7 @@
             botones.innerHTML = `
                 <button class="btn-modal primary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalEditar(${id})">✏️ Editar</button>
                 <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalCambio(${id})">🔄 Cambiar estatus</button>
+                <button class="btn-modal secondary" style="flex:1;" onclick="abrirModalNota(${id})">📝 Nota</button>
                 ${extraBtns}
                 <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>
             `;
@@ -1674,7 +2434,8 @@
     });
 
     function abrirModalEditar(id) {
-        if(modoCliente) return;
+        if (modoCliente) return;
+        if (!requerirSesion()) return;
         const u = unidades.find(item => item.id === id);
         if (!u) return;
         unidadEnEdicion = id;
@@ -1753,6 +2514,9 @@
     });
 
     // ===== CAMBIO DE ESTATUS =====
+    const ULTIMA_AREA_KEY = 'thermocontrol_ultima_area';
+    const ULTIMA_PERSONA_KEY = 'thermocontrol_ultima_persona';
+
     function actualizarPersonas() {
         const area = document.getElementById('areaCambio').value;
         const container = document.getElementById('personasList');
@@ -1770,17 +2534,23 @@
             container.innerHTML = '<p style="color:#888; font-size:13px;">No hay personas registradas para esta área</p>';
             return;
         }
+
+        const ultimaPersona = localStorage.getItem(ULTIMA_PERSONA_KEY) || '';
+        let preselect = personas.includes(ultimaPersona) ? ultimaPersona : personas[0];
         
         let html = '';
         personas.forEach(persona => {
+            const checked = persona === preselect ? 'checked' : '';
             html += `
                 <div class="persona-item">
-                    <input type="radio" name="personaSeleccionada" value="${persona}" id="persona_${persona.replace(/\s/g,'_')}">
+                    <input type="radio" name="personaSeleccionada" value="${persona}" id="persona_${persona.replace(/\s/g,'_')}" ${checked}>
                     <label for="persona_${persona.replace(/\s/g,'_')}">${persona}</label>
                 </div>
             `;
         });
         container.innerHTML = html;
+        // Foco en clave para ir más rápido
+        setTimeout(() => document.getElementById('claveCambio').focus(), 50);
     }
 
     function getPersonaSeleccionada() {
@@ -1827,61 +2597,65 @@
             opt.textContent = nombresEstatus[est] || est;
             select.appendChild(opt);
         });
+
+        // Aviso de campos obligatorios del flujo avanzado
+        if (u && opcionesPermitidas.length > 0) {
+            const dest = opcionesPermitidas[0];
+            const falt = dest === 'Finalizada' ? validarCamposParaFinalizar(u) : validarCamposParaEstatus(u, dest);
+            if (falt.length > 0) {
+                ayuda.textContent += ` · ⚠️ Para "${dest}" faltan: ${falt.join(', ')}`;
+            } else {
+                ayuda.textContent += ` · Responsable sugerido: ${areaResponsableEstatus[dest] || '—'}`;
+            }
+        }
     }
 
     function abrirModalCambio(id) {
-        if(modoCliente) return;
+        if (modoCliente) return;
+        if (!requerirSesion()) return;
         const u = unidades.find(item => item.id === id);
         if (!u) return;
         unidadEnEdicion = id;
         document.getElementById('infoUnidadCambio').textContent = `${u.no_unidad} - ${u.cliente}`;
-        document.getElementById('estatusActualInfo').textContent = `Estatus actual: ${nombresEstatus[u.estatus] || u.estatus}`;
-        document.getElementById('areaCambio').value = '';
-        document.getElementById('estatusCambio').innerHTML = '<option value="">Primero selecciona un área...</option>';
-        document.getElementById('ayudaPermisos').textContent = '';
+        document.getElementById('estatusActualInfo').textContent = `Estatus actual: ${nombresEstatus[u.estatus] || u.estatus} · Sesión: ${sesion.area} (${sesion.persona})`;
         document.getElementById('claveCambio').value = '';
         document.getElementById('comentarioCambio').value = '';
         document.getElementById('nombrePersonalizado').value = '';
-        document.getElementById('personasList').innerHTML = '';
         document.getElementById('nombrePersonalizadoContainer').style.display = 'none';
+
+        // Área fija de la sesión (ya no pide clave cada vez)
+        const selArea = document.getElementById('areaCambio');
+        selArea.value = sesion.area;
+        selArea.disabled = true;
+        actualizarPersonas();
+        // Forzar persona de sesión
+        const radios = document.querySelectorAll('input[name="personaSeleccionada"]');
+        radios.forEach(r => {
+            r.checked = (r.value === sesion.persona);
+            r.disabled = true;
+        });
+        actualizarEstatusPermitidos();
+
+        // Ocultar campo de clave (sesión ya validada)
+        const claveGroup = document.getElementById('claveCambio').closest('.form-group');
+        if (claveGroup) claveGroup.style.display = 'none';
+
         document.getElementById('modalCambio').style.display = 'flex';
+        setTimeout(() => document.getElementById('estatusCambio').focus(), 100);
     }
 
     async function confirmarCambio() {
         const id = unidadEnEdicion;
         if (!id) return;
-        
-        const area = document.getElementById('areaCambio').value;
-        if (!area) { 
-            alert('⚠️ Selecciona un área'); 
-            return; 
-        }
-        
-        const persona = getPersonaSeleccionada();
-        if (!persona) {
-            alert('⚠️ Selecciona o escribe el nombre de la persona');
-            return;
-        }
+        if (!requerirSesion()) return;
+
+        // Usar sesión activa (clave ya validada al entrar)
+        const area = sesion.area;
+        const persona = sesion.persona;
         
         const nuevoEstatus = document.getElementById('estatusCambio').value;
         if (!nuevoEstatus) {
             alert('⚠️ Selecciona el nuevo estatus');
-            return;
-        }
-
-        // Validar clave del departamento
-        const claveIngresada = document.getElementById('claveCambio').value.trim();
-        const claveCorrecta = clavesPorArea[area];
-        
-        if (!claveIngresada) {
-            alert('⚠️ Ingresa la clave del departamento');
-            return;
-        }
-        
-        if (claveIngresada !== claveCorrecta) {
-            alert('❌ Clave incorrecta. No se realizó el cambio.');
-            document.getElementById('claveCambio').value = '';
-            document.getElementById('claveCambio').focus();
             return;
         }
 
@@ -1909,11 +2683,17 @@
             comentario: comentario || `Cambio autorizado con clave de ${area}`
         });
         
-        // No permitir Finalizada si faltan datos obligatorios
+        // Flujo avanzado: campos obligatorios según estatus destino
         if (nuevoEstatus === 'Finalizada') {
             const faltantes = validarCamposParaFinalizar(u);
             if (faltantes.length > 0) {
                 alert('⚠️ No se puede finalizar. Faltan estos datos:\n\n• ' + faltantes.join('\n• ') + '\n\nComplétalos en Editar antes de finalizar.');
+                return;
+            }
+        } else {
+            const faltantes = validarCamposParaEstatus(u, nuevoEstatus);
+            if (faltantes.length > 0) {
+                alert('⚠️ Flujo de trabajo: no se puede pasar a "' + nuevoEstatus + '".\n\nFaltan:\n• ' + faltantes.join('\n• ') + '\n\nComplétalos en Editar o en Diagnóstico.');
                 return;
             }
         }
@@ -1929,8 +2709,22 @@
         
         const resultado = await actualizarUnidad(id, datos);
         if (resultado.success) {
+            localStorage.setItem(ULTIMA_AREA_KEY, area);
+            localStorage.setItem(ULTIMA_PERSONA_KEY, persona);
+            registrarNotificacionEvento({
+                tipo: 'info',
+                titulo: `${u.no_unidad || 'Unidad'} → ${nuevoEstatus}`,
+                detalle: `${area} (${persona}). Responsable sugerido: ${areaResponsableEstatus[nuevoEstatus] || '—'}`,
+                unidadId: id
+            });
             cerrarModal('modalCambio');
-            alert(`✅ Estatus actualizado por ${area} - ${persona}`);
+            actualizarNotificaciones();
+            // Aviso corto sin bloquear tanto el flujo
+            const toast = document.createElement('div');
+            toast.textContent = `✅ ${u.no_unidad || 'Unidad'} → ${nuevoEstatus}`;
+            toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#28a745;color:#fff;padding:12px 20px;border-radius:10px;z-index:9999;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.2);';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2200);
         }
     }
 
@@ -1953,6 +2747,349 @@
             if (!val) faltantes.push(r.nombre);
         });
         return faltantes;
+    }
+
+    function validarCamposParaEstatus(u, estatus) {
+        const req = camposRequeridosPorEstatus[estatus];
+        if (!req) return [];
+        const faltantes = [];
+        req.forEach(r => {
+            const val = (u[r.campo] || '').toString().trim();
+            if (!val) faltantes.push(r.nombre);
+        });
+        return faltantes;
+    }
+
+    // ===== NOTIFICACIONES AUTOMÁTICAS =====
+    const CFG_NOTIF_KEY = 'thermocontrol_notif_cfg';
+
+    function getConfigNotif() {
+        const def = {
+            retraso: true,
+            diasAviso: 3,
+            prioridad: true,
+            diagnostico: true,
+            cambios: true,
+            navegador: false
+        };
+        try {
+            return { ...def, ...JSON.parse(localStorage.getItem(CFG_NOTIF_KEY) || '{}') };
+        } catch {
+            return def;
+        }
+    }
+
+    function guardarConfigNotif() {
+        const cfg = {
+            retraso: document.getElementById('cfgNotifRetraso').checked,
+            diasAviso: parseInt(document.getElementById('cfgDiasAviso').value, 10) || 3,
+            prioridad: document.getElementById('cfgNotifPrioridad').checked,
+            diagnostico: document.getElementById('cfgNotifDiagnostico').checked,
+            cambios: document.getElementById('cfgNotifCambios').checked,
+            navegador: document.getElementById('cfgNotifNavegador').checked
+        };
+        localStorage.setItem(CFG_NOTIF_KEY, JSON.stringify(cfg));
+        actualizarNotificaciones();
+    }
+
+    function cargarConfigNotifUI() {
+        const cfg = getConfigNotif();
+        const el = (id) => document.getElementById(id);
+        if (!el('cfgNotifRetraso')) return;
+        el('cfgNotifRetraso').checked = cfg.retraso !== false;
+        el('cfgDiasAviso').value = String(cfg.diasAviso || 3);
+        el('cfgNotifPrioridad').checked = cfg.prioridad !== false;
+        el('cfgNotifDiagnostico').checked = cfg.diagnostico !== false;
+        el('cfgNotifCambios').checked = cfg.cambios !== false;
+        el('cfgNotifNavegador').checked = !!cfg.navegador;
+    }
+
+    async function toggleNotifNavegador() {
+        const activar = document.getElementById('cfgNotifNavegador').checked;
+        if (activar) {
+            if (!('Notification' in window)) {
+                alert('Este navegador no soporta avisos del sistema.');
+                document.getElementById('cfgNotifNavegador').checked = false;
+                return;
+            }
+            const perm = await Notification.requestPermission();
+            if (perm !== 'granted') {
+                alert('No se concedió permiso para avisos del navegador.');
+                document.getElementById('cfgNotifNavegador').checked = false;
+            }
+        }
+        guardarConfigNotif();
+    }
+
+    function mostrarNotifNavegador(titulo, cuerpo) {
+        const cfg = getConfigNotif();
+        if (!cfg.navegador || !('Notification' in window) || Notification.permission !== 'granted') return;
+        try {
+            new Notification(titulo, {
+                body: cuerpo,
+                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔧</text></svg>',
+                tag: 'thermocontrol-' + Date.now()
+            });
+        } catch (e) {
+            console.warn('Notificación navegador:', e);
+        }
+    }
+
+    function probarNotifNavegador() {
+        if (!('Notification' in window)) {
+            alert('Este navegador no soporta notificaciones.');
+            return;
+        }
+        Notification.requestPermission().then(perm => {
+            if (perm !== 'granted') {
+                alert('Activa el permiso de notificaciones en el navegador.');
+                return;
+            }
+            document.getElementById('cfgNotifNavegador').checked = true;
+            guardarConfigNotif();
+            mostrarNotifNavegador('ThermoControl', 'Avisos del sistema activados correctamente ✅');
+        });
+    }
+
+    function togglePanelNotif() {
+        const panel = document.getElementById('panelNotif');
+        const overlay = document.getElementById('overlayNotif');
+        const abierto = panel.classList.contains('abierto');
+        if (abierto) {
+            cerrarPanelNotif();
+        } else {
+            cargarConfigNotifUI();
+            actualizarNotificaciones();
+            panel.classList.add('abierto');
+            overlay.classList.add('abierto');
+        }
+    }
+
+    function cerrarPanelNotif() {
+        document.getElementById('panelNotif').classList.remove('abierto');
+        document.getElementById('overlayNotif').classList.remove('abierto');
+    }
+
+    function obtenerEventosNotif() {
+        try {
+            return JSON.parse(localStorage.getItem('thermocontrol_notif_eventos') || '[]');
+        } catch {
+            return [];
+        }
+    }
+
+    function registrarNotificacionEvento(ev) {
+        const cfg = getConfigNotif();
+        if (cfg.cambios === false) return;
+        const lista = obtenerEventosNotif();
+        lista.unshift({
+            ...ev,
+            areaSesion: sesion ? sesion.area : null,
+            fecha: new Date().toLocaleString(),
+            id: Date.now()
+        });
+        localStorage.setItem('thermocontrol_notif_eventos', JSON.stringify(lista.slice(0, 30)));
+        // Aviso del navegador solo si el evento es de esta sesión o Gerencia
+        if (ev.titulo && sesion) {
+            mostrarNotifNavegador('ThermoControl · ' + sesion.area, ev.titulo + (ev.detalle ? ' — ' + ev.detalle : ''));
+        }
+    }
+
+    function notifRelevanteParaArea(responsable, areaSesion) {
+        if (!areaSesion || areaSesion === 'Gerencia') return true;
+        return responsable === areaSesion;
+    }
+
+    function generarNotificaciones() {
+        const cfg = getConfigNotif();
+        const notifs = [];
+        const areaSesion = sesion ? sesion.area : null;
+        const activas = unidades.filter(u => !u.eliminado && u.estatus !== 'Finalizada');
+        const umbral = cfg.diasAviso || 3;
+
+        activas.forEach(u => {
+            const dias = diasEnTaller(u);
+            const prio = u.prioridad || 'Media';
+            const responsable = areaResponsableEstatus[u.estatus] || '—';
+            // Cada área solo ve unidades de las que es responsable (Gerencia ve todo)
+            if (!notifRelevanteParaArea(responsable, areaSesion)) return;
+
+            if (cfg.retraso !== false && dias >= umbral) {
+                notifs.push({
+                    tipo: dias >= 5 ? 'urgente' : 'aviso',
+                    titulo: `⏱️ ${u.no_unidad || 'Sin número'} — ${dias} días en taller (${u.estatus})`,
+                    detalle: `${u.cliente || '—'} · Tu área: ${responsable}${prio === 'Alta' ? ' · Prioridad ALTA' : ''}`,
+                    unidadId: u.id
+                });
+            }
+
+            if (cfg.prioridad !== false && prio === 'Alta' && dias < umbral) {
+                notifs.push({
+                    tipo: 'aviso',
+                    titulo: `🔴 Prioridad alta: ${u.no_unidad || 'Sin número'}`,
+                    detalle: `${u.cliente || '—'} · Estatus: ${u.estatus}`,
+                    unidadId: u.id
+                });
+            }
+
+            // Diagnóstico pendiente: relevante para Mantenimiento y Ventas (y Gerencia)
+            if (cfg.diagnostico !== false && u.estatus === 'Cotizando' && !(u.diagnostico_detalle || '').toString().trim()) {
+                if (!areaSesion || areaSesion === 'Gerencia' || areaSesion === 'Mantenimiento' || areaSesion === 'Ventas') {
+                    notifs.push({
+                        tipo: 'aviso',
+                        titulo: `🔍 Sin diagnóstico: ${u.no_unidad || 'Sin número'}`,
+                        detalle: 'Está en Cotizando sin diagnóstico detallado',
+                        unidadId: u.id
+                    });
+                }
+            }
+        });
+
+        if (cfg.cambios !== false) {
+            obtenerEventosNotif().forEach(ev => {
+                // Gerencia ve todos los eventos; cada área solo los de su sesión
+                if (areaSesion && areaSesion !== 'Gerencia') {
+                    if (ev.areaSesion && ev.areaSesion !== areaSesion) return;
+                }
+                notifs.push({
+                    tipo: ev.tipo || 'info',
+                    titulo: ev.titulo,
+                    detalle: (ev.detalle || '') + (ev.fecha ? ' · ' + ev.fecha : ''),
+                    unidadId: ev.unidadId
+                });
+            });
+        }
+
+        return notifs;
+    }
+
+    function actualizarNotificaciones() {
+        const notifs = generarNotificaciones();
+        const badge = document.getElementById('badgeNotif');
+        const lista = document.getElementById('listaNotificaciones');
+        if (!badge || !lista) return;
+
+        const count = notifs.length;
+        if (count > 0) {
+            badge.style.display = 'inline';
+            badge.textContent = count > 99 ? '99+' : String(count);
+        } else {
+            badge.style.display = 'none';
+        }
+
+        if (notifs.length === 0) {
+            lista.innerHTML = '<div class="notif-vacio">No hay alertas por ahora ✅</div>';
+            return;
+        }
+
+        lista.innerHTML = notifs.map(n => `
+            <div class="notif-item ${n.tipo}" onclick="abrirDesdeNotif(${n.unidadId || 'null'})">
+                <div class="titulo">${n.titulo}</div>
+                <div class="detalle">${n.detalle || ''}</div>
+            </div>
+        `).join('');
+    }
+
+    function abrirDesdeNotif(id) {
+        cerrarPanelNotif();
+        if (id) abrirModalDetalle(id);
+    }
+
+    // Aviso del sistema al cargar si hay urgentes (máx. 1 resumen)
+    function notificarUrgentesAlCargar() {
+        const cfg = getConfigNotif();
+        if (!cfg.navegador) return;
+        const urgentes = generarNotificaciones().filter(n => n.tipo === 'urgente' || n.tipo === 'aviso');
+        if (urgentes.length === 0) return;
+        const ya = sessionStorage.getItem('thermocontrol_notif_resumen');
+        if (ya) return;
+        sessionStorage.setItem('thermocontrol_notif_resumen', '1');
+        mostrarNotifNavegador(
+            'ThermoControl — ' + urgentes.length + ' alerta(s)',
+            urgentes.slice(0, 3).map(n => n.titulo).join(' · ')
+        );
+    }
+
+    // ===== NOTA LIBRE (sin cambiar estatus) =====
+    function abrirModalNota(id) {
+        if (modoCliente) return;
+        if (!requerirSesion()) return;
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+        unidadEnEdicion = id;
+        document.getElementById('infoNota').textContent = `${u.no_unidad} - ${u.cliente} · Estatus: ${u.estatus} · ${sesion.area} (${sesion.persona})`;
+        document.getElementById('areaNota').value = sesion.area;
+        document.getElementById('areaNota').disabled = true;
+        actualizarPersonasNota();
+        document.querySelectorAll('input[name="personaNota"]').forEach(r => {
+            r.checked = r.value === sesion.persona;
+            r.disabled = true;
+        });
+        document.getElementById('claveNota').value = '';
+        const claveG = document.getElementById('claveNota').closest('.form-group');
+        if (claveG) claveG.style.display = 'none';
+        document.getElementById('textoNota').value = '';
+        document.getElementById('modalNota').style.display = 'flex';
+        setTimeout(() => document.getElementById('textoNota').focus(), 100);
+    }
+
+    function actualizarPersonasNota() {
+        const area = document.getElementById('areaNota').value;
+        const container = document.getElementById('personasListNota');
+        const personas = personasPorArea[area] || [];
+        if (!area) {
+            container.innerHTML = '';
+            return;
+        }
+        if (personas.length === 0) {
+            container.innerHTML = '<p style="color:#888; font-size:13px;">No hay personas en esta área</p>';
+            return;
+        }
+        container.innerHTML = personas.map(p => `
+            <div class="persona-item">
+                <input type="radio" name="personaNota" value="${p}" id="nota_${p.replace(/\s/g,'_')}">
+                <label for="nota_${p.replace(/\s/g,'_')}">${p}</label>
+            </div>
+        `).join('');
+    }
+
+    async function guardarNotaLibre() {
+        const id = unidadEnEdicion;
+        if (!id) return;
+        if (!requerirSesion()) return;
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+
+        const area = sesion.area;
+        const persona = sesion.persona;
+        const texto = document.getElementById('textoNota').value.trim();
+        if (!texto) {
+            alert('⚠️ Escribe la nota');
+            return;
+        }
+
+        const historial = (u.historial || []).slice();
+        historial.push({
+            fecha: new Date().toLocaleString(),
+            estatus: u.estatus,
+            area: area,
+            persona: persona,
+            comentario: texto
+        });
+
+        const resultado = await actualizarUnidad(id, { historial: historial });
+        if (resultado.success) {
+            registrarNotificacionEvento({
+                tipo: 'info',
+                titulo: `📝 Nota en ${u.no_unidad || 'unidad'}`,
+                detalle: `${area} (${persona}): ${texto.substring(0, 60)}${texto.length > 60 ? '…' : ''}`,
+                unidadId: id
+            });
+            cerrarModal('modalNota');
+            actualizarNotificaciones();
+            alert('✅ Nota guardada (el estatus no cambió)');
+            abrirModalDetalle(id);
+        }
     }
 
     // ===== DIAGNÓSTICO DETALLADO =====
@@ -2369,9 +3506,34 @@
     if (document.body.classList.contains('dark')) {
         document.getElementById('btnDarkMode').textContent = '☀️';
     }
+
+    // Enter en clave de cambio (por si se muestra)
+    document.getElementById('claveCambio').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            confirmarCambio();
+        }
+    });
+
+    document.getElementById('loginClave').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            iniciarSesion();
+        }
+    });
     
-    // Cargar datos
-    cargarDatos();
+    // Sesión: si ya hay login, entrar; si no, esperar al login
+    sesion = getSesionGuardada();
+    const sesionValida = sesion && sesion.area && sesion.persona &&
+        (sesion.area === 'Cliente' || clavesPorArea[sesion.area]);
+    if (sesionValida) {
+        document.getElementById('loginOverlay').classList.add('oculto');
+        mostrarInfoSesion();
+        cargarDatos();
+    } else {
+        sesion = null;
+        // No cargar datos hasta que inicie sesión
+    }
 </script>
 </body>
 </html>
