@@ -607,6 +607,7 @@
         <button class="btn-header" id="btnReporteDiario" onclick="abrirReporteDiario()" title="Reporte del día (solo Gerencia)" style="display:none;">📊 Reporte diario</button>
         <button class="btn-header" id="btnDiagnosticosExt" onclick="window.open('https://insert-code-067286.onhercules.app/', '_blank')" title="Herramienta de diagnósticos" style="display:none;">🔧 Diagnósticos</button>
         <button class="btn-header" id="btnThermoDiagPRO" onclick="window.open('https://cosmic-zabaione-7bd9cc.netlify.app/', '_blank')" title="ThermoDiagPRO" style="display:none;">🔬 ThermoDiagPRO</button>
+        <button class="btn-header" id="btnMensaje" onclick="abrirModalMensaje()" title="Enviar mensaje" style="display:none;">💬 Mensaje</button>
         <button class="btn-header" id="btnNotif" onclick="togglePanelNotif()" title="Notificaciones">🔔 <span id="badgeNotif" class="badge-notif" style="display:none;">0</span></button>
         <span id="sesionInfo" style="display:none;"></span>
         <button class="btn-header" id="btnCerrarSesion" onclick="cerrarSesion()" style="display:none;" title="Cerrar sesión">🚪 Salir</button>
@@ -668,6 +669,26 @@
             <button class="btn-modal success" style="flex:1;" onclick="exportarReporteDiarioExcel()">📥 Exportar Excel</button>
             <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalReporteDiario')">Cerrar</button>
         </div>
+    </div>
+</div>
+
+<!-- ===== MODAL MENSAJE ===== -->
+<div class="modal" id="modalMensaje">
+    <div class="modal-content">
+        <h3>💬 Enviar mensaje</h3>
+        <p style="font-size:12px; color:#666; margin-bottom:12px;">El destinatario lo verá en sus notificaciones 🔔</p>
+        <div class="form-group">
+            <label>Para (persona) *</label>
+            <select id="mensajeDestinatario">
+                <option value="">Selecciona...</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Mensaje *</label>
+            <textarea id="mensajeTexto" rows="4" placeholder="Escribe el mensaje..."></textarea>
+        </div>
+        <button class="btn-modal primary" onclick="enviarMensaje()">📤 Enviar</button>
+        <button class="btn-modal danger" onclick="cerrarModal('modalMensaje')">❌ Cancelar</button>
     </div>
 </div>
 
@@ -1100,16 +1121,18 @@
             const t = btn.textContent || '';
             const id = btn.id || '';
             if (t.includes('Nueva') || t.includes('Excel') || t.includes('Reporte') ||
-                t.includes('Lista') || t.includes('Historial') || id === 'btnNotif') {
+                t.includes('Lista') || t.includes('Historial') || id === 'btnNotif' || id === 'btnMensaje') {
                 btn.style.display = activo ? 'none' : '';
             }
         });
         const btnRep = document.getElementById('btnReporteDiario');
         const btnDiag = document.getElementById('btnDiagnosticosExt');
         const btnTDP = document.getElementById('btnThermoDiagPRO');
+        const btnMsg = document.getElementById('btnMensaje');
         if (btnRep && activo) btnRep.style.display = 'none';
         if (btnDiag && activo) btnDiag.style.display = 'none';
         if (btnTDP && activo) btnTDP.style.display = 'none';
+        if (btnMsg && activo) btnMsg.style.display = 'none';
         if (activo) {
             cambiarVista('kanban');
             document.querySelector('.header h1 small').textContent = '👁️ Vista cliente (solo lectura)';
@@ -1126,6 +1149,10 @@
                 }
                 if (btn.id === 'btnThermoDiagPRO') {
                     btn.style.display = sesion.area === 'Mantenimiento' ? 'inline-block' : 'none';
+                    return;
+                }
+                if (btn.id === 'btnMensaje') {
+                    btn.style.display = sesion.area === 'Cliente' ? 'none' : 'inline-block';
                     return;
                 }
                 if (btn.id === 'btnCerrarSesion') return;
@@ -1195,6 +1222,8 @@
         if (btnDiag) btnDiag.style.display = 'none';
         const btnTDP = document.getElementById('btnThermoDiagPRO');
         if (btnTDP) btnTDP.style.display = 'none';
+        const btnMsg = document.getElementById('btnMensaje');
+        if (btnMsg) btnMsg.style.display = 'none';
         document.getElementById('loginArea').value = '';
         document.getElementById('loginPersonasList').innerHTML = '';
         document.getElementById('loginPersonasGroup').style.display = 'block';
@@ -1225,6 +1254,9 @@
         // ThermoDiagPRO: solo Mantenimiento
         const btnTDP = document.getElementById('btnThermoDiagPRO');
         if (btnTDP) btnTDP.style.display = sesion.area === 'Mantenimiento' ? 'inline-block' : 'none';
+        // Mensajes: todos excepto Cliente
+        const btnMsg = document.getElementById('btnMensaje');
+        if (btnMsg) btnMsg.style.display = sesion.area === 'Cliente' ? 'none' : 'inline-block';
         if (sesion.area === 'Cliente') aplicarModoClienteUI(true);
         else aplicarModoClienteUI(false);
     }
@@ -1307,6 +1339,7 @@
 
     // ===== VARIABLES GLOBALES =====
     let unidades = [];
+    let mensajes = [];
     let modoCliente = false;
     let unidadEnEdicion = null;
     let filtroEstatus = null; // null = mostrar todos
@@ -1426,6 +1459,7 @@
             if (error) throw error;
             
             unidades = data || [];
+            await cargarMensajes();
             renderizarTablero();
             actualizarStats();
             actualizarNotificaciones();
@@ -2895,6 +2929,103 @@
         }
     }
 
+    // ===== MENSAJES ENTRE USUARIOS =====
+    async function cargarMensajes() {
+        if (!sesion || sesion.area === 'Cliente') {
+            mensajes = [];
+            return;
+        }
+        try {
+            const { data, error } = await supabaseClient
+                .from('mensajes')
+                .select('*')
+                .eq('para_persona', sesion.persona)
+                .order('created_at', { ascending: false })
+                .limit(50);
+            if (error) throw error;
+            mensajes = data || [];
+        } catch (e) {
+            console.warn('Mensajes:', e);
+            mensajes = [];
+        }
+    }
+
+    function listaTodasLasPersonas() {
+        const lista = [];
+        Object.keys(personasPorArea).forEach(area => {
+            (personasPorArea[area] || []).forEach(p => {
+                lista.push({ area, persona: p });
+            });
+        });
+        return lista;
+    }
+
+    function abrirModalMensaje() {
+        if (!requerirSesion()) return;
+        if (sesion.area === 'Cliente') return;
+        const sel = document.getElementById('mensajeDestinatario');
+        const personas = listaTodasLasPersonas().filter(p => p.persona !== sesion.persona);
+        sel.innerHTML = '<option value="">Selecciona...</option>' +
+            personas.map(p => `<option value="${p.persona}|${p.area}">${p.persona} (${p.area})</option>`).join('');
+        document.getElementById('mensajeTexto').value = '';
+        document.getElementById('modalMensaje').style.display = 'flex';
+        setTimeout(() => document.getElementById('mensajeTexto').focus(), 100);
+    }
+
+    async function enviarMensaje() {
+        if (!requerirSesion()) return;
+        const dest = document.getElementById('mensajeDestinatario').value;
+        const texto = document.getElementById('mensajeTexto').value.trim();
+        if (!dest) {
+            alert('⚠️ Selecciona el destinatario');
+            return;
+        }
+        if (!texto) {
+            alert('⚠️ Escribe el mensaje');
+            return;
+        }
+        const [para_persona, para_area] = dest.split('|');
+        try {
+            const { error } = await supabaseClient.from('mensajes').insert([{
+                de_area: sesion.area,
+                de_persona: sesion.persona,
+                para_area: para_area || null,
+                para_persona: para_persona,
+                texto: texto,
+                leido: false
+            }]);
+            if (error) throw error;
+            cerrarModal('modalMensaje');
+            const toast = document.createElement('div');
+            toast.textContent = '✅ Mensaje enviado a ' + para_persona;
+            toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#28a745;color:#fff;padding:12px 20px;border-radius:10px;z-index:9999;font-weight:bold;';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2200);
+        } catch (e) {
+            console.error(e);
+            alert('❌ Error al enviar: ' + (e.message || e));
+        }
+    }
+
+    async function marcarMensajeLeido(id) {
+        try {
+            await supabaseClient.from('mensajes').update({ leido: true }).eq('id', id);
+            const m = mensajes.find(x => x.id === id);
+            if (m) m.leido = true;
+            actualizarNotificaciones();
+        } catch (e) {
+            console.warn(e);
+        }
+    }
+
+    async function abrirMensajeNotif(id) {
+        const m = mensajes.find(x => x.id === id);
+        if (!m) return;
+        if (!m.leido) await marcarMensajeLeido(id);
+        cerrarPanelNotif();
+        alert(`💬 Mensaje de ${m.de_persona} (${m.de_area})\n\n${m.texto}\n\n${m.created_at ? new Date(m.created_at).toLocaleString() : ''}`);
+    }
+
     function notifRelevanteParaArea(responsable, areaSesion) {
         if (!areaSesion || areaSesion === 'Gerencia') return true;
         return responsable === areaSesion;
@@ -2906,6 +3037,18 @@
         const areaSesion = sesion ? sesion.area : null;
         const activas = unidades.filter(u => !u.eliminado && u.estatus !== 'Finalizada');
         const umbral = cfg.diasAviso || 3;
+
+        // Mensajes recibidos (esta persona)
+        (mensajes || []).forEach(m => {
+            const fecha = m.created_at ? new Date(m.created_at).toLocaleString() : '';
+            notifs.push({
+                tipo: m.leido ? 'info' : 'urgente',
+                titulo: `💬 ${m.leido ? '' : '(nuevo) '}${m.de_persona} (${m.de_area})`,
+                detalle: (m.texto || '').substring(0, 120) + ((m.texto || '').length > 120 ? '…' : '') + (fecha ? ' · ' + fecha : ''),
+                unidadId: null,
+                mensajeId: m.id
+            });
+        });
 
         activas.forEach(u => {
             const dias = diasEnTaller(u);
@@ -2969,10 +3112,11 @@
         const lista = document.getElementById('listaNotificaciones');
         if (!badge || !lista) return;
 
+        const noLeidos = (mensajes || []).filter(m => !m.leido).length;
         const count = notifs.length;
         if (count > 0) {
             badge.style.display = 'inline';
-            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.textContent = (noLeidos > 0 ? noLeidos + '·' : '') + (count > 99 ? '99+' : String(count));
         } else {
             badge.style.display = 'none';
         }
@@ -2982,12 +3126,16 @@
             return;
         }
 
-        lista.innerHTML = notifs.map(n => `
-            <div class="notif-item ${n.tipo}" onclick="abrirDesdeNotif(${n.unidadId || 'null'})">
+        lista.innerHTML = notifs.map(n => {
+            const click = n.mensajeId
+                ? `abrirMensajeNotif(${n.mensajeId})`
+                : `abrirDesdeNotif(${n.unidadId || 'null'})`;
+            return `
+            <div class="notif-item ${n.tipo}" onclick="${click}">
                 <div class="titulo">${n.titulo}</div>
                 <div class="detalle">${n.detalle || ''}</div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     }
 
     function abrirDesdeNotif(id) {
