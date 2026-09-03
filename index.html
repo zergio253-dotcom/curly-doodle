@@ -262,17 +262,6 @@
         .lista-container td.dias-verde { color: #28a745; font-weight: bold; }
         .lista-container td.dias-amarillo { color: #d39e00; font-weight: bold; }
         .lista-container td.dias-rojo { color: #dc3545; font-weight: bold; }
-        .badge-prioridad {
-            display: inline-block;
-            padding: 1px 7px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-            color: white;
-        }
-        .prio-Alta { background: #dc3545; }
-        .prio-Media { background: #fd7e14; }
-        .prio-Baja { background: #6c757d; }
         .card-compact .btn-accion {
             background: transparent;
             border: 1px solid #ddd;
@@ -395,7 +384,6 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Detalle */
         .detalle-header {
             background: var(--header);
             color: white;
@@ -669,9 +657,6 @@
             </select>
         </label>
         <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
-            <input type="checkbox" id="cfgNotifPrioridad" onchange="guardarConfigNotif()" checked> Prioridad alta
-        </label>
-        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
             <input type="checkbox" id="cfgNotifDiagnostico" onchange="guardarConfigNotif()" checked> Sin diagnóstico en Cotizando
         </label>
         <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
@@ -814,27 +799,16 @@
                     <input type="text" id="reparadorNueva" placeholder="Nombre">
                 </div>
             </div>
-            <div class="grid-2">
-                <div class="form-group">
-                    <label>Estatus inicial</label>
-                    <select id="estatusNueva">
-                        <option value="Recibida">📥 Recibida</option>
-                        <option value="Diagnosticando">🔍 Diagnosticando</option>
-                        <option value="Cotizando">💰 Cotizando</option>
-                        <option value="Espera de refacciones">⏳ Espera de refacciones</option>
-                        <option value="Reparando">🔧 Reparando</option>
-                        <option value="Finalizada">✅ Finalizada</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>⚡ Prioridad</label>
-                    <select id="prioridadNueva">
-                        <option value="Media">Media</option>
-                        <option value="Alta">🔴 Alta</option>
-                        <option value="Baja">Baja</option>
-                    </select>
-                    <small id="cupoPrioridadNueva" style="color:#666; font-size:11px; display:block; margin-top:4px;"></small>
-                </div>
+            <div class="form-group">
+                <label>Estatus inicial</label>
+                <select id="estatusNueva">
+                    <option value="Recibida">📥 Recibida</option>
+                    <option value="Diagnosticando">🔍 Diagnosticando</option>
+                    <option value="Cotizando">💰 Cotizando</option>
+                    <option value="Espera de refacciones">⏳ Espera de refacciones</option>
+                    <option value="Reparando">🔧 Reparando</option>
+                    <option value="Finalizada">✅ Finalizada</option>
+                </select>
             </div>
             <div class="form-group">
                 <label>📷 Fotos del equipo</label>
@@ -905,20 +879,9 @@
                     <input type="text" id="reparadorEditar" placeholder="Nombre">
                 </div>
             </div>
-            <div class="grid-2">
-                <div class="form-group">
-                    <label>📅 Fecha de salida (si aplica)</label>
-                    <input type="date" id="fechaSalidaEditar">
-                </div>
-                <div class="form-group">
-                    <label>⚡ Prioridad</label>
-                    <select id="prioridadEditar">
-                        <option value="Media">Media</option>
-                        <option value="Alta">🔴 Alta</option>
-                        <option value="Baja">Baja</option>
-                    </select>
-                    <small id="cupoPrioridadEditar" style="color:#666; font-size:11px; display:block; margin-top:4px;"></small>
-                </div>
+            <div class="form-group">
+                <label>📅 Fecha de salida (si aplica)</label>
+                <input type="date" id="fechaSalidaEditar">
             </div>
             <div class="form-group">
                 <label>📷 Agregar más fotos (solo en este dispositivo)</label>
@@ -1104,11 +1067,8 @@
 
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ===== ALMACENAMIENTO CENTRAL DE PDFs (Supabase Storage) =====
-    // Bucket: "diagnosticos" (crearlo en Supabase → Storage, público)
     const BUCKET_DIAGNOSTICOS = 'diagnosticos';
 
-    // ===== PERSONAS POR ÁREA =====
     const personasPorArea = {
         'Gerencia': ['Luis Solís'],
         'Mantenimiento': ['Sergio Holguín', 'Marcos Sifuentes', 'Miguel Arredondo', 'Alfredo'],
@@ -1116,7 +1076,6 @@
         'Compras': ['Alfredo']
     };
 
-    // ===== CLAVES POR DEPARTAMENTO =====
     const clavesPorArea = {
         'Gerencia': '210',
         'Mantenimiento': '117',
@@ -1124,8 +1083,15 @@
         'Compras': '456'
     };
 
-    // ===== SESIÓN (departamento + persona) =====
-    let sesion = null; // { area, persona }
+    let sesion = null;
+    let modoCliente = false;
+    let unidades = [];
+    let mensajes = [];
+    let trabajoHoy = [];
+    let filtroEstatus = null;
+    let unidadEnEdicion = null;
+    let firmaDrawing = false;
+    let firmaCtx = null;
 
     function getSesionGuardada() {
         try {
@@ -1225,7 +1191,6 @@
             return;
         }
 
-        // Cliente: sin clave, solo vista
         if (area === 'Cliente') {
             const recordar = document.getElementById('loginRecordar').checked;
             guardarSesion({ area: 'Cliente', persona: 'Cliente' }, recordar);
@@ -1284,7 +1249,6 @@
         document.getElementById('loginClaveGroup').style.display = 'block';
         document.getElementById('loginClienteHint').style.display = 'none';
         document.querySelector('.header h1 small').textContent = 'Base de Datos en la Nube';
-        // Restaurar botones del header
         document.querySelectorAll('.header-actions .btn-header').forEach(btn => {
             if (btn.id === 'btnReporteDiario' || btn.id === 'btnCerrarSesion') return;
             btn.style.display = '';
@@ -1299,19 +1263,14 @@
             ? '👁️ Cliente · solo lectura'
             : `👤 ${sesion.persona} · ${sesion.area}`;
         document.getElementById('btnCerrarSesion').style.display = 'inline-block';
-        // Reporte diario solo Gerencia
         const btnRep = document.getElementById('btnReporteDiario');
         if (btnRep) btnRep.style.display = sesion.area === 'Gerencia' ? 'inline-block' : 'none';
-        // Diagnósticos externos: solo Mantenimiento
         const btnDiag = document.getElementById('btnDiagnosticosExt');
         if (btnDiag) btnDiag.style.display = sesion.area === 'Mantenimiento' ? 'inline-block' : 'none';
-        // ThermoDiagPRO: solo Mantenimiento
         const btnTDP = document.getElementById('btnThermoDiagPRO');
         if (btnTDP) btnTDP.style.display = sesion.area === 'Mantenimiento' ? 'inline-block' : 'none';
-        // Mensajes: todos excepto Cliente
         const btnMsg = document.getElementById('btnMensaje');
         if (btnMsg) btnMsg.style.display = sesion.area === 'Cliente' ? 'none' : 'inline-block';
-        // Trabajo hoy: todos pueden ver
         const btnHoy = document.getElementById('btnTrabajoHoy');
         if (btnHoy) btnHoy.style.display = 'inline-block';
         if (sesion.area === 'Cliente') aplicarModoClienteUI(true);
@@ -1327,11 +1286,8 @@
         return true;
     }
 
-    // ===== PERMISOS DE CAMBIO DE ESTATUS =====
-    // Gerencia puede mover a cualquier estatus.
-    // Los demás solo pueden hacer las transiciones indicadas.
     const permisosCambio = {
-        'Gerencia': null, // null = puede todo
+        'Gerencia': null,
         'Mantenimiento': {
             'Recibida': ['Diagnosticando'],
             'Diagnosticando': ['Cotizando', 'Reparando'],
@@ -1346,7 +1302,6 @@
         }
     };
 
-    // ===== FLUJO AVANZADO: campos obligatorios al cambiar a un estatus =====
     const camposRequeridosPorEstatus = {
         'Diagnosticando': [
             { campo: 'problema', nombre: 'Problema / descripción' }
@@ -1362,10 +1317,9 @@
             { campo: 'problema', nombre: 'Problema / descripción' },
             { campo: 'diagnosticador', nombre: 'Diagnosticador' }
         ],
-        'Finalizada': null // se usa validarCamposParaFinalizar (más completa)
+        'Finalizada': null
     };
 
-    // Responsable sugerido por estatus (para notificaciones)
     const areaResponsableEstatus = {
         'Recibida': 'Mantenimiento',
         'Diagnosticando': 'Mantenimiento',
@@ -1375,7 +1329,6 @@
         'Finalizada': 'Ventas'
     };
 
-    // ===== COLORES =====
     const colores = {
         'Recibida': '#007bff',
         'Diagnosticando': '#ffc107',
@@ -1394,88 +1347,6 @@
         'Finalizada': '✅ Finalizada'
     };
 
-    // ===== VARIABLES GLOBALES =====
-    let unidades = [];
-    let mensajes = [];
-    let trabajoHoy = []; // lista del día { id, unidad_id, orden, ... }
-    let modoCliente = false;
-    let unidadEnEdicion = null;
-    let filtroEstatus = null; // null = mostrar todos
-
-    // ===== CUPO DE PRIORIDADES (2 técnicos) =====
-    // Máx. 2 Alta. Con 1 Alta → máx. 2 Media. Sin Alta → máx. 3 Media. Baja sin límite.
-    function contarPrioridadesActivas(excludeId) {
-        const activas = unidades.filter(u =>
-            !u.eliminado &&
-            u.estatus !== 'Finalizada' &&
-            (excludeId == null || u.id !== excludeId)
-        );
-        let alta = 0, media = 0, baja = 0;
-        activas.forEach(u => {
-            const p = u.prioridad || 'Media';
-            if (p === 'Alta') alta++;
-            else if (p === 'Baja') baja++;
-            else media++;
-        });
-        return { alta, media, baja, total: activas.length };
-    }
-
-    function validarCupoPrioridad(prioridad, excludeId) {
-        const p = prioridad || 'Media';
-        const c = contarPrioridadesActivas(excludeId);
-        // Simular estado si se asigna esta prioridad a la unidad
-        let alta = c.alta;
-        let media = c.media;
-        if (p === 'Alta') alta++;
-        else if (p === 'Media') media++;
-        // Baja no suma a cupos limitados
-
-        if (alta > 2) {
-            return {
-                ok: false,
-                msg: '⚠️ Máximo 2 unidades en ALTA (hay 2 técnicos).\n\nAhora hay ' + c.alta + ' en Alta.\nPon esta en Media/Baja o baja otra de Alta.'
-            };
-        }
-        const maxMedia = alta >= 2 ? 0 : (alta === 1 ? 2 : 3);
-        if (media > maxMedia) {
-            if (alta >= 2) {
-                return {
-                    ok: false,
-                    msg: '⚠️ Con 2 unidades en ALTA el resto debe ir en BAJA.\nNo se permiten unidades en Media.'
-                };
-            }
-            if (alta === 1) {
-                return {
-                    ok: false,
-                    msg: '⚠️ Con 1 unidad en ALTA solo se permiten 2 en MEDIA.\nEl resto en Baja.\n\nAhora: Alta ' + c.alta + ', Media ' + c.media + '.'
-                };
-            }
-            return {
-                ok: false,
-                msg: '⚠️ Sin unidades en ALTA solo se permiten 3 en MEDIA.\nEl resto en Baja.\n\nAhora hay ' + c.media + ' en Media.'
-            };
-        }
-        return { ok: true };
-    }
-
-    function textoCupoPrioridades() {
-        const c = contarPrioridadesActivas(null);
-        const maxM = c.alta >= 2 ? 0 : (c.alta === 1 ? 2 : 3);
-        return `Cupos (2 técnicos): Alta ${c.alta}/2 · Media ${c.media}/${maxM} · Baja libre (${c.baja})`;
-    }
-
-    function filtrarPorEstatus(estatus) {
-        // Si vuelves a tocar el mismo, quita el filtro
-        if (filtroEstatus === estatus) {
-            filtroEstatus = null;
-        } else {
-            filtroEstatus = estatus;
-        }
-        renderizarTablero();
-        actualizarStats();
-    }
-
-    // ===== MODO OSCURO =====
     function toggleDarkMode() {
         document.body.classList.toggle('dark');
         const isDark = document.body.classList.contains('dark');
@@ -1486,17 +1357,13 @@
         document.body.classList.add('dark');
     }
 
-    // ===== FOTOS LOCALES (solo en este dispositivo - IndexedDB) =====
-    const DB_NAME = 'ThermoControlFotos';
-    const STORE_NAME = 'fotos';
-
     function openFotoDB() {
         return new Promise((resolve, reject) => {
-            const req = indexedDB.open(DB_NAME, 1);
+            const req = indexedDB.open('ThermoControlFotos', 1);
             req.onupgradeneeded = (e) => {
                 const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    db.createObjectStore(STORE_NAME);
+                if (!db.objectStoreNames.contains('fotos')) {
+                    db.createObjectStore('fotos');
                 }
             };
             req.onsuccess = () => resolve(req.result);
@@ -1510,8 +1377,8 @@
         const todas = [...existentes, ...nuevasFotosBase64];
         const db = await openFotoDB();
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            tx.objectStore(STORE_NAME).put(todas, String(unidadId));
+            const tx = db.transaction('fotos', 'readwrite');
+            tx.objectStore('fotos').put(todas, String(unidadId));
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
         });
@@ -1522,8 +1389,8 @@
         try {
             const db = await openFotoDB();
             return new Promise((resolve) => {
-                const tx = db.transaction(STORE_NAME, 'readonly');
-                const req = tx.objectStore(STORE_NAME).get(String(unidadId));
+                const tx = db.transaction('fotos', 'readonly');
+                const req = tx.objectStore('fotos').get(String(unidadId));
                 req.onsuccess = () => resolve(req.result || []);
                 req.onerror = () => resolve([]);
             });
@@ -1536,8 +1403,8 @@
         try {
             const db = await openFotoDB();
             return new Promise((resolve) => {
-                const tx = db.transaction(STORE_NAME, 'readwrite');
-                tx.objectStore(STORE_NAME).delete(String(unidadId));
+                const tx = db.transaction('fotos', 'readwrite');
+                tx.objectStore('fotos').delete(String(unidadId));
                 tx.oncomplete = () => resolve();
                 tx.onerror = () => resolve();
             });
@@ -1562,8 +1429,6 @@
             });
         });
     }
-
-    // ===== FUNCIONES CRUD =====
 
     async function cargarDatos() {
         const loading = document.getElementById('loadingContainer');
@@ -1641,7 +1506,6 @@
         }
     }
 
-    // Soft-delete: marca como eliminado pero guarda el registro en historial
     async function eliminarUnidadBD(id) {
         if (!requerirSesion()) return;
         if (!confirm('¿Archivar / quitar esta unidad del tablero?\n\nEl registro se conservará en el Historial.\n\nArchiva: ' + sesion.area + ' (' + sesion.persona + ')')) return;
@@ -1681,17 +1545,48 @@
         }
     }
 
-    // Exportar historial a CSV (abre en Excel)
+    async function eliminarPermanente(id) {
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+        if (!requerirSesion()) return;
+
+        if (sesion.area !== 'Gerencia') {
+            alert('❌ Solo Gerencia puede borrar permanentemente. Cierra sesión y entra como Gerencia.');
+            return;
+        }
+
+        if (!confirm(`⚠️ ¿ELIMINAR PERMANENTEMENTE la unidad ${u.no_unidad}?\n\nEsta acción NO se puede deshacer.`)) return;
+
+        try {
+            const { error } = await supabaseClient
+                .from('unidades')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            
+            unidades = unidades.filter(item => item.id !== id);
+            await eliminarFotosLocal(id);
+            renderizarTablero();
+            actualizarStats();
+            cerrarModal('modalDetalle');
+            alert('✅ Registro eliminado permanentemente.');
+        } catch (error) {
+            console.error('Error al eliminar permanentemente:', error);
+            alert('❌ Error al eliminar: ' + error.message);
+        }
+    }
+
     function exportarHistorialExcel() {
         const registros = unidades.filter(u => u.estatus === 'Finalizada' || u.eliminado);
         if (registros.length === 0) {
             alert('No hay registros en el historial para exportar.');
             return;
         }
-        const headers = ['Unidad','Cliente','Modelo','Placas','Orden de trabajo','No Serie','Orden Compra','Hoja de servicio','Prioridad','Llegada','Salida','Estatus','Diagnosticador','Reparador','Archivada'];
+        const headers = ['Unidad','Cliente','Modelo','Placas','Orden de trabajo','No Serie','Orden Compra','Hoja de servicio','Llegada','Salida','Estatus','Diagnosticador','Reparador','Archivada'];
         const rows = registros.map(u => [
             u.no_unidad, u.cliente, u.modelo, u.placas, u.folio, u.no_serie,
-            u.orden_compra, u.hoja_servicio, u.prioridad || 'Media',
+            u.orden_compra, u.hoja_servicio,
             u.fecha_llegada, u.fecha_salida, u.estatus,
             u.diagnosticador, u.reparador, u.eliminado ? 'Sí' : 'No'
         ].map(v => `"${(v || '').toString().replace(/"/g, '""')}"`).join(','));
@@ -1704,7 +1599,6 @@
         link.click();
     }
 
-    // ===== REPORTE DIARIO =====
     function fechaHoyISO() {
         const d = new Date();
         const y = d.getFullYear();
@@ -1717,21 +1611,17 @@
         if (!fechaStr) return false;
         const s = String(fechaStr);
         const hoy = fechaHoyISO();
-        // fecha_llegada tipo YYYY-MM-DD o historial con toLocaleString
         if (s.startsWith(hoy)) return true;
-        // formato local dd/mm/yyyy o similar
         try {
             const d = new Date(s);
             if (!isNaN(d.getTime())) {
                 return d.toISOString().slice(0, 10) === hoy;
             }
         } catch (e) {}
-        // toLocaleString a veces: "1/9/2026" o "01/09/2026"
         const partes = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
         if (partes) {
             const day = partes[1].padStart(2, '0');
             const month = partes[2].padStart(2, '0');
-            // puede ser d/m/y o m/d/y — comparar con hoy local
             const ahora = new Date();
             const dLocal = String(ahora.getDate()).padStart(2, '0');
             const mLocal = String(ahora.getMonth() + 1).padStart(2, '0');
@@ -1766,8 +1656,6 @@
             return d >= 3 && d < 5;
         });
         const retrasadas5 = enTaller.filter(u => diasEnTaller(u) >= 5);
-        const retrasadas = enTaller.filter(u => diasEnTaller(u) >= 3);
-        const prioridadAlta = enTaller.filter(u => (u.prioridad || 'Media') === 'Alta');
 
         const movimientos = [];
         const movPorArea = { Gerencia: 0, Mantenimiento: 0, Ventas: 0, Compras: 0 };
@@ -1795,13 +1683,9 @@
         });
         movimientos.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 
-        // Sin movimiento hoy (activas en taller)
         const sinMovimiento = enTaller.filter(u => !idsConMovHoy.has(u.id));
-
-        // Balance del día
         const balance = entradasHoy.length - finalizadasHoy.length;
 
-        // Tiempo promedio en taller de finalizadas hoy (días desde llegada)
         let promedioDias = null;
         if (finalizadasHoy.length > 0) {
             const suma = finalizadasHoy.reduce((acc, u) => acc + diasEnTaller(u), 0);
@@ -1810,8 +1694,8 @@
 
         return {
             hoy, entradasHoy, finalizadasHoy, counts,
-            retrasadas, retrasadas3, retrasadas5,
-            prioridadAlta, movimientos, activas, enTaller,
+            retrasadas3, retrasadas5,
+            movimientos, activas, enTaller,
             sinMovimiento, movPorArea, balance, promedioDias
         };
     }
@@ -1852,10 +1736,6 @@
             }).join('<br>')
             : '<span style="color:#888;">Ninguna</span>';
 
-        const listaPrio = data.prioridadAlta.length
-            ? data.prioridadAlta.map(u => `• ${u.no_unidad || '—'} — ${u.cliente || '—'} · ${u.estatus}`).join('<br>')
-            : '<span style="color:#888;">Ninguna</span>';
-
         const listaSinMov = data.sinMovimiento.length
             ? data.sinMovimiento.map(u => `• ${u.no_unidad || '—'} — ${u.cliente || '—'} · ${u.estatus}`).join('<br>')
             : '<span style="color:#888;">Todas tuvieron movimiento hoy ✅</span>';
@@ -1883,7 +1763,6 @@
                 <div class="detalle-item" style="text-align:center;"><div class="label">Retraso 3–4 d</div><div class="valor" style="font-size:22px; color:#d39e00;">${data.retrasadas3.length}</div></div>
                 <div class="detalle-item" style="text-align:center;"><div class="label">Retraso 5+ d</div><div class="valor" style="font-size:22px; color:#dc3545;">${data.retrasadas5.length}</div></div>
                 <div class="detalle-item" style="text-align:center;"><div class="label">Sin movimiento hoy</div><div class="valor" style="font-size:22px;">${data.sinMovimiento.length}</div></div>
-                <div class="detalle-item" style="text-align:center;"><div class="label">Prioridad alta</div><div class="valor" style="font-size:22px; color:#fd7e14;">${data.prioridadAlta.length}</div></div>
             </div>
             <div class="detalle-item full" style="margin-bottom:12px;">
                 <div class="label">Por estatus (activas)</div>
@@ -1913,10 +1792,6 @@
                 <div class="label">⏸️ Sin movimiento hoy</div>
                 <div class="valor" style="max-height:140px; overflow-y:auto;">${listaSinMov}</div>
             </div>
-            <div class="detalle-item full" style="margin-bottom:12px;">
-                <div class="label">🔴 Prioridad alta</div>
-                <div class="valor">${listaPrio}</div>
-            </div>
             <div class="detalle-item full">
                 <div class="label">🔄 Movimientos de hoy</div>
                 <div class="valor" style="max-height:180px; overflow-y:auto;">${listaMov}</div>
@@ -1944,7 +1819,6 @@
         lineas.push('Retrasadas 3-4 dias,' + data.retrasadas3.length);
         lineas.push('Retrasadas 5+ dias,' + data.retrasadas5.length);
         lineas.push('Sin movimiento hoy,' + data.sinMovimiento.length);
-        lineas.push('Prioridad alta,' + data.prioridadAlta.length);
         lineas.push('');
         lineas.push('Movimientos por area');
         Object.keys(data.movPorArea).forEach(a => lineas.push(a + ',' + data.movPorArea[a]));
@@ -1983,41 +1857,6 @@
         link.click();
     }
 
-    // Eliminación permanente: solo Gerencia con clave 210
-    async function eliminarPermanente(id) {
-        const u = unidades.find(item => item.id === id);
-        if (!u) return;
-        if (!requerirSesion()) return;
-
-        if (sesion.area !== 'Gerencia') {
-            alert('❌ Solo Gerencia puede borrar permanentemente. Cierra sesión y entra como Gerencia.');
-            return;
-        }
-
-        if (!confirm(`⚠️ ¿ELIMINAR PERMANENTEMENTE la unidad ${u.no_unidad}?\n\nEsta acción NO se puede deshacer.`)) return;
-
-        try {
-            const { error } = await supabaseClient
-                .from('unidades')
-                .delete()
-                .eq('id', id);
-            
-            if (error) throw error;
-            
-            unidades = unidades.filter(item => item.id !== id);
-            await eliminarFotosLocal(id); // también borra fotos de este dispositivo
-            renderizarTablero();
-            actualizarStats();
-            cerrarModal('modalDetalle');
-            alert('✅ Registro eliminado permanentemente.');
-        } catch (error) {
-            console.error('Error al eliminar permanentemente:', error);
-            alert('❌ Error al eliminar: ' + error.message);
-        }
-    }
-
-    // ===== FUNCIONES DE RENDERIZADO =====
-
     function getColor(status) { return colores[status] || '#6c757d'; }
 
     function formatearFecha(fecha) {
@@ -2035,7 +1874,6 @@
         return Math.floor(diff);
     }
 
-    // Días en taller desde fecha de llegada (o historial)
     function diasEnTaller(u) {
         if (u.fecha_llegada) {
             const llegada = new Date(u.fecha_llegada);
@@ -2046,7 +1884,6 @@
         return diasEnEstatus(u.historial);
     }
 
-    // 0-2 verde | 3-4 amarillo | 5+ rojo
     function claseColorDias(dias) {
         if (dias >= 5) return 'dias-rojo';
         if (dias >= 3) return 'dias-amarillo';
@@ -2059,7 +1896,6 @@
         return dias + ' días';
     }
 
-    // Formatea milisegundos a texto legible (ej: "2d 5h 30m")
     function formatearDuracion(ms) {
         if (ms < 0 || isNaN(ms)) return '—';
         const totalMin = Math.floor(ms / 60000);
@@ -2073,7 +1909,6 @@
         return partes.join(' ');
     }
 
-    // Calcula tiempo muerto / duración de cada entrada del historial
     function calcularTiemposHistorial(historial) {
         if (!historial || historial.length === 0) return [];
         const ahora = new Date();
@@ -2088,6 +1923,16 @@
                 enCurso: i === historial.length - 1
             };
         });
+    }
+
+    function filtrarPorEstatus(estatus) {
+        if (filtroEstatus === estatus) {
+            filtroEstatus = null;
+        } else {
+            filtroEstatus = estatus;
+        }
+        renderizarTablero();
+        actualizarStats();
     }
 
     function actualizarStats() {
@@ -2111,7 +1956,6 @@
     function renderizarTablero() {
         const search = document.getElementById('searchGlobal').value.toLowerCase();
         
-        // Unidades activas (no eliminadas/archivadas)
         let filtered = unidades.filter(u => 
             !u.eliminado && (
                 (u.no_unidad || '').toLowerCase().includes(search) ||
@@ -2124,17 +1968,14 @@
             )
         );
 
-        // Filtro por estatus (al tocar etiqueta)
         if (filtroEstatus) {
             filtered = filtered.filter(u => u.estatus === filtroEstatus);
         }
 
-        // Kanban (solo activas)
         const container = document.getElementById('kanbanContainer');
         container.innerHTML = '';
         container.style.gridTemplateColumns = filtroEstatus ? '1fr' : '';
         const estatusOrden = ['Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada'];
-        // Si hay filtro, solo mostrar esa columna; si no, todas
         const columnas = filtroEstatus ? [filtroEstatus] : estatusOrden;
         columnas.forEach(status => {
             const items = filtered.filter(u => u.estatus === status);
@@ -2160,26 +2001,19 @@
                 };
                 card.ondragend = () => card.classList.remove('dragging');
                 card.onclick = (e) => {
-                    if (e.target.tagName === 'BUTTON') return;
+                    if (e.target.closest('button')) return;
                     abrirModalDetalle(u.id);
                 };
                 const ultimo = u.historial && u.historial.length > 0 ? u.historial[u.historial.length-1] : null;
-                const prio = u.prioridad || 'Media';
                 card.innerHTML = `
-                    <div class="unidad-id">
-                        ${u.no_unidad || '—'}
-                        <span class="badge-prioridad prio-${prio}">${prio}</span>
-                    </div>
+                    <div class="unidad-id">${u.no_unidad || '—'}</div>
                     <div class="cliente">${u.cliente || '—'} ${u.modelo ? '· '+u.modelo : ''}</div>
                     <div class="fechas">
                         📅 Llegada: ${formatearFecha(u.fecha_llegada)}
                         ${u.fecha_salida ? ' | 🚚 Salida: '+formatearFecha(u.fecha_salida) : ''}
                     </div>
                     <div class="meta">
-                        <span>
-                            🔧 ${u.diagnosticador || '—'} 
-                            🛠️ ${u.reparador || '—'}
-                        </span>
+                        <span>🔧 ${u.diagnosticador || '—'} 🛠️ ${u.reparador || '—'}</span>
                         <span class="badge-area">${ultimo ? ultimo.area + (ultimo.persona ? ' ('+ultimo.persona+')' : '') : '—'}</span>
                     </div>
                     <div class="meta">
@@ -2202,7 +2036,6 @@
                 col.appendChild(card);
             });
 
-            // Drag & drop sobre la columna
             col.ondragover = (e) => { e.preventDefault(); col.classList.add('drag-over'); };
             col.ondragleave = () => col.classList.remove('drag-over');
             col.ondrop = (e) => {
@@ -2210,20 +2043,13 @@
                 col.classList.remove('drag-over');
                 const id = parseInt(e.dataTransfer.getData('text/plain'));
                 if (!id || modoCliente) return;
-                // Abrir modal de cambio con el estatus de esta columna preseleccionado
+                cerrarModal('modalDetalle');
+                cerrarModal('modalEditar');
                 abrirModalCambio(id);
-                setTimeout(() => {
-                    // Intentar preseleccionar si Gerencia o si el área lo permite
-                    const sel = document.getElementById('estatusCambio');
-                    if (sel) {
-                        // El usuario aún debe elegir área y clave
-                    }
-                }, 100);
             };
             container.appendChild(col);
         });
 
-        // Lista
         const listaContainer = document.getElementById('listaContainer');
         let tablaHtml = `
             <table>
@@ -2255,7 +2081,6 @@
         tablaHtml += '</tbody></table>';
         listaContainer.innerHTML = tablaHtml;
 
-        // ===== HISTORIAL (Finalizadas + archivadas/eliminadas) =====
         const historialContainer = document.getElementById('historialContainer');
         const registrosHistorial = unidades
             .filter(u => 
@@ -2328,7 +2153,6 @@
         historialContainer.innerHTML = histHtml;
     }
 
-    // ===== VISTAS =====
     function cambiarVista(vista) {
         const kanban = document.getElementById('kanbanContainer');
         const lista = document.getElementById('listaContainer');
@@ -2337,7 +2161,6 @@
         const btnL = document.getElementById('btnVistaLista');
         const btnH = document.getElementById('btnVistaHistorial');
 
-        // Ocultar todos
         kanban.style.display = 'none';
         lista.style.display = 'none';
         historial.style.display = 'none';
@@ -2357,26 +2180,15 @@
         }
     }
 
-    function alternarModoCliente() {
-        modoCliente = !modoCliente;
-        document.querySelector('.header h1 small').textContent = modoCliente ? '👁️ MODO CLIENTE (solo vista)' : 'Base de Datos en la Nube';
-        renderizarTablero();
-    }
-
-    // ===== MODALES =====
-
     function cerrarModal(id) {
         document.getElementById(id).style.display = 'none';
     }
 
     function abrirModalNueva() {
         if (!requerirSesion()) return;
-        const cupoEl = document.getElementById('cupoPrioridadNueva');
-        if (cupoEl) cupoEl.textContent = textoCupoPrioridades();
         document.getElementById('modalNueva').style.display = 'flex';
     }
 
-    // ===== MODAL DETALLE =====
     async function abrirModalDetalle(id) {
         const u = unidades.find(item => item.id === id);
         if (!u) return;
@@ -2439,10 +2251,6 @@
                 <div class="label">Fecha de Salida</div>
                 <div class="valor">${formatearFecha(u.fecha_salida)}</div>
             </div>
-            <div class="detalle-item">
-                <div class="label">Prioridad</div>
-                <div class="valor"><span class="badge-prioridad prio-${u.prioridad || 'Media'}">${u.prioridad || 'Media'}</span></div>
-            </div>
             <div class="detalle-item full">
                 <div class="label">Problema / Descripción</div>
                 <div class="valor">${u.problema || '—'}</div>
@@ -2474,7 +2282,6 @@
             </div>
         `;
 
-        // Cargar fotos desde almacenamiento local del dispositivo
         obtenerFotosLocal(id).then(fotos => {
             const gridEl = document.getElementById('detalleFotosGrid');
             if (!gridEl) return;
@@ -2487,7 +2294,6 @@
             }
         });
 
-        // Historial con tiempos (no se muestra tiempo en taller si está Finalizada)
         const histBox = document.getElementById('detalleHistorial');
         if (u.historial && u.historial.length > 0) {
             const esFin = u.estatus === 'Finalizada';
@@ -2522,7 +2328,6 @@
             histBox.innerHTML = '<div style="color:#888; font-size:13px;">Sin historial registrado</div>';
         }
 
-        // Botones según modo cliente, estatus y si está archivada
         const botones = document.getElementById('detalleBotones');
         if (modoCliente) {
             botones.innerHTML = `<button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>`;
@@ -2555,12 +2360,6 @@
     document.getElementById('formNueva').addEventListener('submit', async function(e) {
         e.preventDefault();
         const hoy = new Date().toISOString().split('T')[0];
-        const prioridadElegida = document.getElementById('prioridadNueva').value || 'Media';
-        const cupo = validarCupoPrioridad(prioridadElegida, null);
-        if (!cupo.ok) {
-            alert(cupo.msg + '\n\n' + textoCupoPrioridades());
-            return;
-        }
         const fotosLocales = await leerArchivosComoBase64(document.getElementById('fotosNueva'));
         const nueva = {
             no_unidad: document.getElementById('noUnidadNueva').value.trim(),
@@ -2575,7 +2374,6 @@
             diagnosticador: document.getElementById('diagnosticadorNueva').value.trim(),
             reparador: document.getElementById('reparadorNueva').value.trim(),
             estatus: document.getElementById('estatusNueva').value,
-            prioridad: prioridadElegida,
             fecha_llegada: hoy,
             fecha_salida: null,
             eliminado: false,
@@ -2590,7 +2388,6 @@
         
         const resultado = await agregarUnidad(nueva);
         if (resultado.success) {
-            // Guardar fotos SOLO en este dispositivo
             if (fotosLocales.length > 0 && resultado.data && resultado.data.id) {
                 await guardarFotosLocal(resultado.data.id, fotosLocales);
             }
@@ -2619,10 +2416,7 @@
         document.getElementById('diagnosticadorEditar').value = u.diagnosticador || '';
         document.getElementById('reparadorEditar').value = u.reparador || '';
         document.getElementById('fechaSalidaEditar').value = u.fecha_salida || '';
-        document.getElementById('prioridadEditar').value = u.prioridad || 'Media';
         document.getElementById('fotosEditar').value = '';
-        const cupoEl = document.getElementById('cupoPrioridadEditar');
-        if (cupoEl) cupoEl.textContent = textoCupoPrioridades();
         document.getElementById('modalEditar').style.display = 'flex';
     }
 
@@ -2631,13 +2425,6 @@
         const id = unidadEnEdicion;
         if (!id) return;
 
-        const prioridadElegida = document.getElementById('prioridadEditar').value || 'Media';
-        const cupo = validarCupoPrioridad(prioridadElegida, id);
-        if (!cupo.ok) {
-            alert(cupo.msg + '\n\n' + textoCupoPrioridades());
-            return;
-        }
-        
         const datos = {
             no_unidad: document.getElementById('noUnidadEditar').value.trim(),
             folio: document.getElementById('folioEditar').value.trim(),
@@ -2650,12 +2437,10 @@
             problema: document.getElementById('problemaEditar').value.trim(),
             diagnosticador: document.getElementById('diagnosticadorEditar').value.trim(),
             reparador: document.getElementById('reparadorEditar').value.trim(),
-            prioridad: prioridadElegida,
             fecha_salida: document.getElementById('fechaSalidaEditar').value || null
         };
         
         const u = unidades.find(item => item.id === id);
-        // Fotos solo en este dispositivo
         const nuevasFotosLocales = await leerArchivosComoBase64(document.getElementById('fotosEditar'));
 
         if (datos.fecha_salida && u && u.estatus !== 'Finalizada') {
@@ -2689,10 +2474,6 @@
         }
     });
 
-    // ===== CAMBIO DE ESTATUS =====
-    const ULTIMA_AREA_KEY = 'thermocontrol_ultima_area';
-    const ULTIMA_PERSONA_KEY = 'thermocontrol_ultima_persona';
-
     function actualizarPersonas() {
         const area = document.getElementById('areaCambio').value;
         const container = document.getElementById('personasList');
@@ -2711,7 +2492,7 @@
             return;
         }
 
-        const ultimaPersona = localStorage.getItem(ULTIMA_PERSONA_KEY) || '';
+        const ultimaPersona = localStorage.getItem('thermocontrol_ultima_persona') || '';
         let preselect = personas.includes(ultimaPersona) ? ultimaPersona : personas[0];
         
         let html = '';
@@ -2725,7 +2506,6 @@
             `;
         });
         container.innerHTML = html;
-        // Foco en clave para ir más rápido
         setTimeout(() => document.getElementById('claveCambio').focus(), 50);
     }
 
@@ -2752,7 +2532,6 @@
         let opcionesPermitidas = [];
 
         if (area === 'Gerencia') {
-            // Gerencia puede mover a cualquier estatus
             opcionesPermitidas = Object.keys(nombresEstatus);
             ayuda.textContent = '👔 Gerencia puede cambiar a cualquier estatus.';
         } else {
@@ -2774,7 +2553,6 @@
             select.appendChild(opt);
         });
 
-        // Aviso de campos obligatorios del flujo avanzado
         if (u && opcionesPermitidas.length > 0) {
             const dest = opcionesPermitidas[0];
             const falt = dest === 'Finalizada' ? validarCamposParaFinalizar(u) : validarCamposParaEstatus(u, dest);
@@ -2799,12 +2577,10 @@
         document.getElementById('nombrePersonalizado').value = '';
         document.getElementById('nombrePersonalizadoContainer').style.display = 'none';
 
-        // Área fija de la sesión (ya no pide clave cada vez)
         const selArea = document.getElementById('areaCambio');
         selArea.value = sesion.area;
         selArea.disabled = true;
         actualizarPersonas();
-        // Forzar persona de sesión
         const radios = document.querySelectorAll('input[name="personaSeleccionada"]');
         radios.forEach(r => {
             r.checked = (r.value === sesion.persona);
@@ -2812,7 +2588,6 @@
         });
         actualizarEstatusPermitidos();
 
-        // Ocultar campo de clave (sesión ya validada)
         const claveGroup = document.getElementById('claveCambio').closest('.form-group');
         if (claveGroup) claveGroup.style.display = 'none';
 
@@ -2825,7 +2600,6 @@
         if (!id) return;
         if (!requerirSesion()) return;
 
-        // Usar sesión activa (clave ya validada al entrar)
         const area = sesion.area;
         const persona = sesion.persona;
         
@@ -2835,7 +2609,6 @@
             return;
         }
 
-        // Validar permisos de transición (por seguridad extra)
         const u = unidades.find(item => item.id === id);
         if (!u) return;
 
@@ -2859,7 +2632,6 @@
             comentario: comentario || `Cambio autorizado con clave de ${area}`
         });
         
-        // Flujo avanzado: campos obligatorios según estatus destino
         if (nuevoEstatus === 'Finalizada') {
             const faltantes = validarCamposParaFinalizar(u);
             if (faltantes.length > 0) {
@@ -2885,8 +2657,8 @@
         
         const resultado = await actualizarUnidad(id, datos);
         if (resultado.success) {
-            localStorage.setItem(ULTIMA_AREA_KEY, area);
-            localStorage.setItem(ULTIMA_PERSONA_KEY, persona);
+            localStorage.setItem('thermocontrol_ultima_area', area);
+            localStorage.setItem('thermocontrol_ultima_persona', persona);
             registrarNotificacionEvento({
                 tipo: 'info',
                 titulo: `${u.no_unidad || 'Unidad'} → ${nuevoEstatus}`,
@@ -2895,7 +2667,6 @@
             });
             cerrarModal('modalCambio');
             actualizarNotificaciones();
-            // Aviso corto sin bloquear tanto el flujo
             const toast = document.createElement('div');
             toast.textContent = `✅ ${u.no_unidad || 'Unidad'} → ${nuevoEstatus}`;
             toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#28a745;color:#fff;padding:12px 20px;border-radius:10px;z-index:9999;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.2);';
@@ -2936,14 +2707,12 @@
         return faltantes;
     }
 
-    // ===== NOTIFICACIONES AUTOMÁTICAS =====
     const CFG_NOTIF_KEY = 'thermocontrol_notif_cfg';
 
     function getConfigNotif() {
         const def = {
             retraso: true,
             diasAviso: 3,
-            prioridad: true,
             diagnostico: true,
             cambios: true,
             navegador: false
@@ -2959,7 +2728,6 @@
         const cfg = {
             retraso: document.getElementById('cfgNotifRetraso').checked,
             diasAviso: parseInt(document.getElementById('cfgDiasAviso').value, 10) || 3,
-            prioridad: document.getElementById('cfgNotifPrioridad').checked,
             diagnostico: document.getElementById('cfgNotifDiagnostico').checked,
             cambios: document.getElementById('cfgNotifCambios').checked,
             navegador: document.getElementById('cfgNotifNavegador').checked
@@ -2974,7 +2742,6 @@
         if (!el('cfgNotifRetraso')) return;
         el('cfgNotifRetraso').checked = cfg.retraso !== false;
         el('cfgDiasAviso').value = String(cfg.diasAviso || 3);
-        el('cfgNotifPrioridad').checked = cfg.prioridad !== false;
         el('cfgNotifDiagnostico').checked = cfg.diagnostico !== false;
         el('cfgNotifCambios').checked = cfg.cambios !== false;
         el('cfgNotifNavegador').checked = !!cfg.navegador;
@@ -3065,13 +2832,11 @@
             id: Date.now()
         });
         localStorage.setItem('thermocontrol_notif_eventos', JSON.stringify(lista.slice(0, 30)));
-        // Aviso del navegador solo si el evento es de esta sesión o Gerencia
         if (ev.titulo && sesion) {
             mostrarNotifNavegador('ThermoControl · ' + sesion.area, ev.titulo + (ev.detalle ? ' — ' + ev.detalle : ''));
         }
     }
 
-    // ===== TRABAJO DE HOY (lista numerada) =====
     function puedeEditarTrabajoHoy() {
         return sesion && (sesion.area === 'Gerencia' || sesion.area === 'Ventas');
     }
@@ -3120,7 +2885,7 @@
         box.innerHTML = trabajoHoy.map((t, idx) => {
             const u = unidades.find(x => x.id === t.unidad_id);
             const nombre = u ? `${u.no_unidad || '—'} — ${u.cliente || '—'}` : `Unidad #${t.unidad_id}`;
-            const extra = u ? `${u.estatus || ''} · ${u.prioridad || 'Media'}` : '';
+            const extra = u ? `${u.estatus || ''}` : '';
             const acciones = editable ? `
                 <div class="acciones">
                     <button class="btn-accion" onclick="moverTrabajoHoy(${t.id}, -1)" title="Subir">↑</button>
@@ -3176,7 +2941,6 @@
             const { error } = await supabaseClient.from('trabajo_hoy').delete().eq('id', id);
             if (error) throw error;
             await cargarTrabajoHoy();
-            // Reordenar 1..n
             await reordenarTrabajoHoySecuencial();
             await cargarTrabajoHoy();
             abrirModalTrabajoHoy();
@@ -3213,7 +2977,6 @@
         }
     }
 
-    // ===== MENSAJES ENTRE USUARIOS =====
     async function cargarMensajes() {
         if (!sesion || sesion.area === 'Cliente') {
             mensajes = [];
@@ -3331,6 +3094,20 @@
         }
     }
 
+    async function borrarTodosMensajes() {
+        if (!(mensajes || []).length) return;
+        if (!confirm('¿Borrar todos tus mensajes?')) return;
+        try {
+            for (const m of mensajes) {
+                await supabaseClient.from('mensajes').delete().eq('id', m.id);
+            }
+            mensajes = [];
+            actualizarNotificaciones();
+        } catch (e) {
+            alert('❌ Error: ' + (e.message || e));
+        }
+    }
+
     async function abrirMensajeNotif(id) {
         const m = mensajes.find(x => x.id === id);
         if (!m) return;
@@ -3351,7 +3128,6 @@
         const activas = unidades.filter(u => !u.eliminado && u.estatus !== 'Finalizada');
         const umbral = cfg.diasAviso || 3;
 
-        // Mensajes recibidos (esta persona)
         (mensajes || []).forEach(m => {
             const fecha = m.created_at ? new Date(m.created_at).toLocaleString() : '';
             notifs.push({
@@ -3365,30 +3141,18 @@
 
         activas.forEach(u => {
             const dias = diasEnTaller(u);
-            const prio = u.prioridad || 'Media';
             const responsable = areaResponsableEstatus[u.estatus] || '—';
-            // Cada área solo ve unidades de las que es responsable (Gerencia ve todo)
             if (!notifRelevanteParaArea(responsable, areaSesion)) return;
 
             if (cfg.retraso !== false && dias >= umbral) {
                 notifs.push({
                     tipo: dias >= 5 ? 'urgente' : 'aviso',
                     titulo: `⏱️ ${u.no_unidad || 'Sin número'} — ${dias} días en taller (${u.estatus})`,
-                    detalle: `${u.cliente || '—'} · Tu área: ${responsable}${prio === 'Alta' ? ' · Prioridad ALTA' : ''}`,
+                    detalle: `${u.cliente || '—'} · Tu área: ${responsable}`,
                     unidadId: u.id
                 });
             }
 
-            if (cfg.prioridad !== false && prio === 'Alta' && dias < umbral) {
-                notifs.push({
-                    tipo: 'aviso',
-                    titulo: `🔴 Prioridad alta: ${u.no_unidad || 'Sin número'}`,
-                    detalle: `${u.cliente || '—'} · Estatus: ${u.estatus}`,
-                    unidadId: u.id
-                });
-            }
-
-            // Diagnóstico pendiente: relevante para Mantenimiento y Ventas (y Gerencia)
             if (cfg.diagnostico !== false && u.estatus === 'Cotizando' && !(u.diagnostico_detalle || '').toString().trim()) {
                 if (!areaSesion || areaSesion === 'Gerencia' || areaSesion === 'Mantenimiento' || areaSesion === 'Ventas') {
                     notifs.push({
@@ -3403,7 +3167,6 @@
 
         if (cfg.cambios !== false) {
             obtenerEventosNotif().forEach(ev => {
-                // Gerencia ve todos los eventos; cada área solo los de su sesión
                 if (areaSesion && areaSesion !== 'Gerencia') {
                     if (ev.areaSesion && ev.areaSesion !== areaSesion) return;
                 }
@@ -3467,26 +3230,11 @@
         }).join('');
     }
 
-    async function borrarTodosMensajes() {
-        if (!(mensajes || []).length) return;
-        if (!confirm('¿Borrar todos tus mensajes?')) return;
-        try {
-            for (const m of mensajes) {
-                await supabaseClient.from('mensajes').delete().eq('id', m.id);
-            }
-            mensajes = [];
-            actualizarNotificaciones();
-        } catch (e) {
-            alert('❌ Error: ' + (e.message || e));
-        }
-    }
-
     function abrirDesdeNotif(id) {
         cerrarPanelNotif();
         if (id) abrirModalDetalle(id);
     }
 
-    // Aviso del sistema al cargar si hay urgentes (máx. 1 resumen)
     function notificarUrgentesAlCargar() {
         const cfg = getConfigNotif();
         if (!cfg.navegador) return;
@@ -3501,7 +3249,6 @@
         );
     }
 
-    // ===== NOTA LIBRE (sin cambiar estatus) =====
     function abrirModalNota(id) {
         if (modoCliente) return;
         if (!requerirSesion()) return;
@@ -3583,7 +3330,6 @@
         }
     }
 
-    // ===== DIAGNÓSTICO DETALLADO =====
     function abrirModalDiagnostico(id) {
         if (modoCliente) return;
         const u = unidades.find(item => item.id === id);
@@ -3629,7 +3375,6 @@
         }
     }
 
-    // ===== SUBIR PDF DE DIAGNÓSTICO (almacenamiento central) =====
     async function subirDiagnosticoPdf() {
         const id = unidadEnEdicion;
         if (!id) return;
@@ -3645,7 +3390,6 @@
         }
 
         try {
-            // Nombre único por unidad + fecha
             const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
             const path = `unidad_${id}/${Date.now()}_${safeName}`;
 
@@ -3691,7 +3435,6 @@
         }
     }
 
-    // ===== PDF ORDEN DE TRABAJO =====
     function abrirModalOrdenTrabajoPdf(id) {
         if (modoCliente) return;
         const u = unidades.find(item => item.id === id);
@@ -3770,10 +3513,6 @@
         }
     }
 
-    // ===== PDF + FIRMA =====
-    let firmaDrawing = false;
-    let firmaCtx = null;
-
     function initFirmaCanvas() {
         const canvas = document.getElementById('firmaCanvas');
         if (!canvas) return;
@@ -3837,7 +3576,6 @@
         document.querySelector('#modalPDF h3').textContent = tituloModal;
         document.getElementById('infoPDF').textContent = `${u.no_unidad} - ${u.cliente}`;
         document.getElementById('nombreRecibe').value = '';
-        // En espera de refacciones no se pide firma
         document.getElementById('bloqueFirmaPDF').style.display = esEspera ? 'none' : 'block';
         document.getElementById('modalPDF').style.display = 'flex';
         if (!esEspera) {
@@ -3928,7 +3666,6 @@
         y += 15;
         if (y > 230) { doc.addPage(); y = 20; }
 
-        // Firma solo en entrega (Finalizada), no en espera de refacciones
         if (!esEspera) {
             doc.setFont(undefined, 'bold');
             doc.text('Entrega al cliente', margin, y);
@@ -3986,7 +3723,6 @@
         return true;
     }
 
-    // ===== INICIALIZAR =====
     window.onclick = function(event) {
         if(event.target.classList.contains('modal')) {
             event.target.style.display = 'none';
@@ -3998,7 +3734,6 @@
         document.getElementById('btnDarkMode').textContent = '☀️';
     }
 
-    // Enter en clave de cambio (por si se muestra)
     document.getElementById('claveCambio').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -4013,7 +3748,6 @@
         }
     });
     
-    // Sesión: si ya hay login, entrar; si no, esperar al login
     sesion = getSesionGuardada();
     const sesionValida = sesion && sesion.area && sesion.persona &&
         (sesion.area === 'Cliente' || clavesPorArea[sesion.area]);
@@ -4023,7 +3757,6 @@
         cargarDatos();
     } else {
         sesion = null;
-        // No cargar datos hasta que inicie sesión
     }
 </script>
 </body>
