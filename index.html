@@ -634,7 +634,7 @@
         <button class="btn-header" id="btnDiagnosticosExt" onclick="window.open('https://insert-code-067286.onhercules.app/', '_blank')" title="Herramienta de diagnósticos" style="display:none;">🔧 Diagnósticos</button>
         <button class="btn-header" id="btnThermoDiagPRO" onclick="window.open('https://cosmic-zabaione-7bd9cc.netlify.app/', '_blank')" title="ThermoDiagPRO" style="display:none;">🔬 ThermoDiagPRO</button>
         <button class="btn-header" id="btnMensaje" onclick="abrirModalMensaje()" title="Enviar mensaje" style="display:none;">💬 Mensaje</button>
-        <button class="btn-header" id="btnTrabajoHoy" onclick="abrirModalTrabajoHoy()" title="Agenda de trabajos del taller" style="display:none;">📅 Agenda</button>
+        <button class="btn-header" id="btnTrabajoHoy" onclick="abrirModalTrabajoHoy()" title="Trabajar hoy" style="display:none;">📋 Trabajar hoy</button>
         <button class="btn-header" id="btnNotif" onclick="togglePanelNotif()" title="Notificaciones">🔔 <span id="badgeNotif" class="badge-notif" style="display:none;">0</span></button>
         <span id="sesionInfo" style="display:none;"></span>
         <button class="btn-header" id="btnCerrarSesion" onclick="cerrarSesion()" style="display:none;" title="Cerrar sesión">🚪 Salir</button>
@@ -719,10 +719,10 @@
 <!-- ===== MODAL AGENDA DE TRABAJOS ===== -->
 <div class="modal" id="modalTrabajoHoy">
     <div class="modal-content wide">
-        <h3>📅 Agenda de trabajos del taller</h3>
-        <p style="font-size:12px; color:#888; margin-bottom:12px;">Programa qué unidades se atienden cada día. Visible para todos. Solo <strong>Ventas</strong> y <strong>Gerencia</strong> pueden editar.</p>
+        <h3>📋 Trabajar hoy</h3>
+        <p style="font-size:12px; color:#888; margin-bottom:12px;">Lista de unidades a trabajar. Solo <strong>Diagnosticando</strong> o <strong>Reparando</strong>. Visible para todos. Solo <strong>Ventas</strong> y <strong>Gerencia</strong> pueden editar.</p>
         <div class="form-group" style="margin-bottom:12px;">
-            <label>Fecha de la agenda</label>
+            <label>Fecha</label>
             <input type="date" id="agendaFecha" onchange="cambiarFechaAgenda()">
         </div>
         <p id="trabajoHoyFecha" style="color:#666; font-size:13px; margin-bottom:10px;"></p>
@@ -737,7 +737,7 @@
                 <label>Nota / trabajo a realizar (opcional)</label>
                 <input type="text" id="agendaNota" placeholder="Ej. Diagnóstico, cambio de compresor...">
             </div>
-            <button class="btn-modal success" onclick="agregarATrabajoHoy()">➕ Agregar a la agenda</button>
+            <button class="btn-modal success" onclick="agregarATrabajoHoy()">➕ Agregar a trabajar hoy</button>
         </div>
         <div id="listaTrabajoHoy" style="min-height:80px;"></div>
         <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
@@ -1337,7 +1337,7 @@
         },
         'Ventas': {
             'Agenda': ['Recibida'],
-            'Recibida': ['Diagnosticando'],
+            'Recibida': ['Diagnosticando', 'Agenda'],
             'Cotizando': ['Reparando', 'Finalizada', 'Espera de refacciones']
         },
         'Compras': {
@@ -2309,6 +2309,10 @@
         const est = document.getElementById('estatusNueva').value;
         const box = document.getElementById('camposAgendaNueva');
         if (box) box.style.display = est === 'Agenda' ? 'block' : 'none';
+        if (est === 'Agenda') {
+            const el = document.getElementById('fechaAgendaNueva');
+            if (el && !el.value) el.value = fechaHoyISO();
+        }
     }
 
     function abrirModalNueva() {
@@ -2507,10 +2511,13 @@
         let fechaAgenda = null;
         let fallaLlegada = '';
         if (estatusInicial === 'Agenda') {
-            fechaAgenda = document.getElementById('fechaAgendaNueva').value;
+            const rawFecha = document.getElementById('fechaAgendaNueva').value;
+            fechaAgenda = normalizarFechaISO(rawFecha);
             fallaLlegada = (document.getElementById('fallaLlegadaNueva').value || '').trim();
             if (!fechaAgenda) {
-                alert('⚠️ Indica la fecha de llegada programada para unidades en Agenda');
+                alert('⚠️ Selecciona la fecha de llegada programada en el calendario');
+                const el = document.getElementById('fechaAgendaNueva');
+                if (el) el.focus();
                 return;
             }
         }
@@ -2526,13 +2533,11 @@
             hoja_servicio: document.getElementById('hojaServicioNueva').value.trim(),
             folio: document.getElementById('folioNueva').value.trim(),
             problema: fallaLlegada || problemaBase,
-            falla_llegada: fallaLlegada || problemaBase || null,
-            fecha_agenda: fechaAgenda,
             diagnosticador: document.getElementById('diagnosticadorNueva').value.trim(),
             reparador: document.getElementById('reparadorNueva').value.trim(),
             estatus: estatusInicial,
-            fecha_llegada: estatusInicial === 'Agenda' ? null : hoy,
-            fecha_salida: null,
+            // No enviar null en fechas (evita error "null value" en Supabase)
+            fecha_llegada: estatusInicial === 'Agenda' ? (fechaAgenda || hoy) : hoy,
             eliminado: false,
             historial: [{
                 fecha: new Date().toLocaleString(),
@@ -2544,6 +2549,8 @@
                     : 'Unidad creada'
             }]
         };
+        if (fechaAgenda) nueva.fecha_agenda = fechaAgenda;
+        if (fallaLlegada || problemaBase) nueva.falla_llegada = fallaLlegada || problemaBase;
         
         const resultado = await agregarUnidad(nueva);
         if (resultado.success) {
@@ -2812,7 +2819,7 @@
                 alert('⚠️ No se puede finalizar. Faltan estos datos:\n\n• ' + faltantes.join('\n• ') + '\n\nComplétalos en Editar antes de finalizar.');
                 return;
             }
-        } else {
+        } else if (nuevoEstatus !== 'Agenda') {
             const faltantes = validarCamposParaEstatus(u, nuevoEstatus);
             if (faltantes.length > 0) {
                 alert('⚠️ Flujo de trabajo: no se puede pasar a "' + nuevoEstatus + '".\n\nFaltan:\n• ' + faltantes.join('\n• ') + '\n\nComplétalos en Editar o en Diagnóstico.');
@@ -2824,6 +2831,23 @@
             estatus: nuevoEstatus,
             historial: historial
         };
+
+        // Al pasar a Agenda: pedir fecha de llegada programada si falta
+        if (nuevoEstatus === 'Agenda') {
+            let fechaAg = normalizarFechaISO(u.fecha_agenda);
+            if (!fechaAg) {
+                const ingresada = prompt('📅 Fecha de llegada programada (AAAA-MM-DD):', fechaHoyISO());
+                if (ingresada === null) return;
+                fechaAg = normalizarFechaISO(ingresada);
+                if (!fechaAg) {
+                    alert('⚠️ Fecha no válida. Usa el formato AAAA-MM-DD (ej. 2026-09-10)');
+                    return;
+                }
+            }
+            datos.fecha_agenda = fechaAg;
+            historial[historial.length - 1].comentario =
+                (comentario || 'Pasó a Agenda') + ' · Llegada programada: ' + fechaAg;
+        }
         
         if (nuevoEstatus === 'Finalizada' && !u.fecha_salida) {
             datos.fecha_salida = new Date().toISOString().split('T')[0];
@@ -3078,25 +3102,55 @@
         return sesion && (sesion.area === 'Gerencia' || sesion.area === 'Ventas');
     }
 
+    function normalizarFechaISO(val) {
+        if (!val) return null;
+        const s = String(val).trim();
+        // YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+        // datetime o ISO completo
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+        try {
+            const d = new Date(s);
+            if (!isNaN(d.getTime())) {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            }
+        } catch (e) {}
+        return null;
+    }
+
     function getFechaAgenda() {
         const el = document.getElementById('agendaFecha');
-        if (el && el.value) return el.value;
-        return agendaFechaSeleccionada || fechaHoyISO();
+        let fecha = null;
+        if (el && el.value) fecha = normalizarFechaISO(el.value);
+        if (!fecha) fecha = normalizarFechaISO(agendaFechaSeleccionada);
+        if (!fecha) fecha = fechaHoyISO();
+        // Asegurar que el input siempre tenga valor válido
+        if (el && el.value !== fecha) el.value = fecha;
+        agendaFechaSeleccionada = fecha;
+        return fecha;
     }
 
     function formatearFechaLarga(iso) {
+        const f = normalizarFechaISO(iso) || fechaHoyISO();
         try {
-            const [y, m, d] = iso.split('-').map(Number);
+            const [y, m, d] = f.split('-').map(Number);
             const dt = new Date(y, m - 1, d);
             return dt.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         } catch {
-            return iso;
+            return f;
         }
     }
 
     async function cargarTrabajoHoy() {
         try {
             const fecha = getFechaAgenda();
+            if (!fecha) {
+                trabajoHoy = [];
+                return;
+            }
             agendaFechaSeleccionada = fecha;
             const { data, error } = await supabaseClient
                 .from('trabajo_hoy')
@@ -3106,22 +3160,31 @@
             if (error) throw error;
             trabajoHoy = data || [];
         } catch (e) {
-            console.warn('Agenda:', e);
+            console.warn('Trabajar hoy:', e);
             trabajoHoy = [];
         }
     }
 
     async function cambiarFechaAgenda() {
+        // Si el usuario borra la fecha del calendario, restaurar hoy
+        const el = document.getElementById('agendaFecha');
+        if (el && !el.value) {
+            el.value = fechaHoyISO();
+        }
         await cargarTrabajoHoy();
         const fecha = getFechaAgenda();
-        document.getElementById('trabajoHoyFecha').textContent = 'Agenda del ' + formatearFechaLarga(fecha);
+        document.getElementById('trabajoHoyFecha').textContent = 'Trabajar: ' + formatearFechaLarga(fecha);
         const editor = document.getElementById('trabajoHoyEditor');
         editor.style.display = puedeEditarTrabajoHoy() ? 'block' : 'none';
         if (puedeEditarTrabajoHoy()) {
             const idsEnLista = new Set(trabajoHoy.map(t => t.unidad_id));
-            const activas = unidades.filter(u => !u.eliminado && u.estatus !== 'Finalizada' && !idsEnLista.has(u.id));
+            const activas = unidades.filter(u =>
+                !u.eliminado &&
+                (u.estatus === 'Diagnosticando' || u.estatus === 'Reparando') &&
+                !idsEnLista.has(u.id)
+            );
             const sel = document.getElementById('trabajoHoySelectUnidad');
-            sel.innerHTML = '<option value="">Selecciona unidad...</option>' +
+            sel.innerHTML = '<option value="">Selecciona unidad (Diagnosticando / Reparando)...</option>' +
                 activas.map(u => `<option value="${u.id}">${u.no_unidad || '—'} — ${u.cliente || '—'} (${u.estatus})</option>`).join('');
             const notaEl = document.getElementById('agendaNota');
             if (notaEl) notaEl.value = '';
@@ -3132,7 +3195,9 @@
     async function abrirModalTrabajoHoy() {
         if (!requerirSesion()) return;
         const elFecha = document.getElementById('agendaFecha');
-        if (elFecha && !elFecha.value) elFecha.value = fechaHoyISO();
+        if (elFecha) {
+            elFecha.value = normalizarFechaISO(elFecha.value) || fechaHoyISO();
+        }
         agendaFechaSeleccionada = getFechaAgenda();
         await cargarTrabajoHoy();
         await cambiarFechaAgenda();
@@ -3143,7 +3208,7 @@
         const box = document.getElementById('listaTrabajoHoy');
         if (!box) return;
         if (!trabajoHoy.length) {
-            box.innerHTML = '<div style="color:#888; text-align:center; padding:20px;">No hay unidades agendadas para esta fecha</div>';
+            box.innerHTML = '<div style="color:#888; text-align:center; padding:20px;">No hay unidades para trabajar en esta fecha</div>';
             return;
         }
         const editable = puedeEditarTrabajoHoy();
@@ -3179,21 +3244,36 @@
             alert('⚠️ Selecciona una unidad');
             return;
         }
+        const uSel = unidades.find(x => x.id === unidadId);
+        if (!uSel || (uSel.estatus !== 'Diagnosticando' && uSel.estatus !== 'Reparando')) {
+            alert('⚠️ Solo se pueden poner a trabajar unidades en Diagnosticando o Reparando');
+            return;
+        }
         if (trabajoHoy.some(t => t.unidad_id === unidadId)) {
-            alert('Esa unidad ya está en la agenda de esta fecha');
+            alert('Esa unidad ya está en Trabajar hoy para esta fecha');
             return;
         }
         const orden = trabajoHoy.length + 1;
         const nota = (document.getElementById('agendaNota')?.value || '').trim();
         const fecha = getFechaAgenda();
+        if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+            alert('⚠️ Selecciona una fecha válida en el calendario');
+            const el = document.getElementById('agendaFecha');
+            if (el) {
+                el.value = fechaHoyISO();
+                el.focus();
+            }
+            return;
+        }
         try {
             const payload = {
                 fecha: fecha,
                 unidad_id: unidadId,
                 orden: orden,
-                created_by_area: sesion.area,
-                created_by_persona: sesion.persona
+                created_by_area: sesion.area || null,
+                created_by_persona: sesion.persona || null
             };
+            // Solo enviar nota si hay texto (evita error si la columna no existe)
             if (nota) payload.nota = nota;
             const { error } = await supabaseClient.from('trabajo_hoy').insert([payload]);
             if (error) throw error;
@@ -3201,7 +3281,8 @@
             await cambiarFechaAgenda();
         } catch (e) {
             console.error(e);
-            alert('❌ Error al agregar: ' + (e.message || e) + '\n\n¿Creaste la tabla trabajo_hoy en Supabase?');
+            const msg = (e && e.message) ? e.message : String(e);
+            alert('❌ Error al agregar: ' + msg + '\n\nRevisa que exista la tabla trabajo_hoy y la fecha esté elegida.');
         }
     }
 
