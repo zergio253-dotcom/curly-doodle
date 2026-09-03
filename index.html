@@ -555,6 +555,32 @@
             border-radius: 12px;
             white-space: nowrap;
         }
+        .trabajo-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--card, #fff);
+            border: 1px solid var(--border, #e0e0e0);
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+        .trabajo-item .num {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #1a3a5c;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .trabajo-item .info { flex: 1; min-width: 0; }
+        .trabajo-item .info strong { display: block; }
+        .trabajo-item .info span { font-size: 12px; color: var(--text2, #666); }
+        .trabajo-item .acciones { display: flex; gap: 4px; flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -608,6 +634,7 @@
         <button class="btn-header" id="btnDiagnosticosExt" onclick="window.open('https://insert-code-067286.onhercules.app/', '_blank')" title="Herramienta de diagnósticos" style="display:none;">🔧 Diagnósticos</button>
         <button class="btn-header" id="btnThermoDiagPRO" onclick="window.open('https://cosmic-zabaione-7bd9cc.netlify.app/', '_blank')" title="ThermoDiagPRO" style="display:none;">🔬 ThermoDiagPRO</button>
         <button class="btn-header" id="btnMensaje" onclick="abrirModalMensaje()" title="Enviar mensaje" style="display:none;">💬 Mensaje</button>
+        <button class="btn-header" id="btnTrabajoHoy" onclick="abrirModalTrabajoHoy()" title="Unidades a trabajar hoy" style="display:none;">📋 Hoy</button>
         <button class="btn-header" id="btnNotif" onclick="togglePanelNotif()" title="Notificaciones">🔔 <span id="badgeNotif" class="badge-notif" style="display:none;">0</span></button>
         <span id="sesionInfo" style="display:none;"></span>
         <button class="btn-header" id="btnCerrarSesion" onclick="cerrarSesion()" style="display:none;" title="Cerrar sesión">🚪 Salir</button>
@@ -689,6 +716,29 @@
         </div>
         <button class="btn-modal primary" onclick="enviarMensaje()">📤 Enviar</button>
         <button class="btn-modal danger" onclick="cerrarModal('modalMensaje')">❌ Cancelar</button>
+    </div>
+</div>
+
+<!-- ===== MODAL TRABAJO HOY ===== -->
+<div class="modal" id="modalTrabajoHoy">
+    <div class="modal-content wide">
+        <h3>📋 Unidades a trabajar hoy</h3>
+        <p id="trabajoHoyFecha" style="color:#666; font-size:13px; margin-bottom:10px;"></p>
+        <p style="font-size:12px; color:#888; margin-bottom:12px;">Lista numerada visible para todos. Solo <strong>Ventas</strong> y <strong>Gerencia</strong> pueden armarla.</p>
+        <div id="trabajoHoyEditor" style="display:none; margin-bottom:14px; padding:12px; background:var(--detalle-item,#f8f9fa); border-radius:10px;">
+            <div class="form-group" style="margin-bottom:8px;">
+                <label>Agregar unidad al plan de hoy</label>
+                <select id="trabajoHoySelectUnidad">
+                    <option value="">Selecciona unidad...</option>
+                </select>
+            </div>
+            <button class="btn-modal success" onclick="agregarATrabajoHoy()">➕ Agregar a la lista</button>
+        </div>
+        <div id="listaTrabajoHoy" style="min-height:80px;"></div>
+        <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+            <button class="btn-modal secondary" style="flex:1;" onclick="cargarTrabajoHoy().then(renderListaTrabajoHoy)">🔄 Actualizar</button>
+            <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalTrabajoHoy')">Cerrar</button>
+        </div>
     </div>
 </div>
 
@@ -783,6 +833,7 @@
                         <option value="Alta">🔴 Alta</option>
                         <option value="Baja">Baja</option>
                     </select>
+                    <small id="cupoPrioridadNueva" style="color:#666; font-size:11px; display:block; margin-top:4px;"></small>
                 </div>
             </div>
             <div class="form-group">
@@ -866,6 +917,7 @@
                         <option value="Alta">🔴 Alta</option>
                         <option value="Baja">Baja</option>
                     </select>
+                    <small id="cupoPrioridadEditar" style="color:#666; font-size:11px; display:block; margin-top:4px;"></small>
                 </div>
             </div>
             <div class="form-group">
@@ -1224,6 +1276,8 @@
         if (btnTDP) btnTDP.style.display = 'none';
         const btnMsg = document.getElementById('btnMensaje');
         if (btnMsg) btnMsg.style.display = 'none';
+        const btnHoy = document.getElementById('btnTrabajoHoy');
+        if (btnHoy) btnHoy.style.display = 'none';
         document.getElementById('loginArea').value = '';
         document.getElementById('loginPersonasList').innerHTML = '';
         document.getElementById('loginPersonasGroup').style.display = 'block';
@@ -1257,6 +1311,9 @@
         // Mensajes: todos excepto Cliente
         const btnMsg = document.getElementById('btnMensaje');
         if (btnMsg) btnMsg.style.display = sesion.area === 'Cliente' ? 'none' : 'inline-block';
+        // Trabajo hoy: todos pueden ver
+        const btnHoy = document.getElementById('btnTrabajoHoy');
+        if (btnHoy) btnHoy.style.display = 'inline-block';
         if (sesion.area === 'Cliente') aplicarModoClienteUI(true);
         else aplicarModoClienteUI(false);
     }
@@ -1340,9 +1397,72 @@
     // ===== VARIABLES GLOBALES =====
     let unidades = [];
     let mensajes = [];
+    let trabajoHoy = []; // lista del día { id, unidad_id, orden, ... }
     let modoCliente = false;
     let unidadEnEdicion = null;
     let filtroEstatus = null; // null = mostrar todos
+
+    // ===== CUPO DE PRIORIDADES (2 técnicos) =====
+    // Máx. 2 Alta. Con 1 Alta → máx. 2 Media. Sin Alta → máx. 3 Media. Baja sin límite.
+    function contarPrioridadesActivas(excludeId) {
+        const activas = unidades.filter(u =>
+            !u.eliminado &&
+            u.estatus !== 'Finalizada' &&
+            (excludeId == null || u.id !== excludeId)
+        );
+        let alta = 0, media = 0, baja = 0;
+        activas.forEach(u => {
+            const p = u.prioridad || 'Media';
+            if (p === 'Alta') alta++;
+            else if (p === 'Baja') baja++;
+            else media++;
+        });
+        return { alta, media, baja, total: activas.length };
+    }
+
+    function validarCupoPrioridad(prioridad, excludeId) {
+        const p = prioridad || 'Media';
+        const c = contarPrioridadesActivas(excludeId);
+        // Simular estado si se asigna esta prioridad a la unidad
+        let alta = c.alta;
+        let media = c.media;
+        if (p === 'Alta') alta++;
+        else if (p === 'Media') media++;
+        // Baja no suma a cupos limitados
+
+        if (alta > 2) {
+            return {
+                ok: false,
+                msg: '⚠️ Máximo 2 unidades en ALTA (hay 2 técnicos).\n\nAhora hay ' + c.alta + ' en Alta.\nPon esta en Media/Baja o baja otra de Alta.'
+            };
+        }
+        const maxMedia = alta >= 2 ? 0 : (alta === 1 ? 2 : 3);
+        if (media > maxMedia) {
+            if (alta >= 2) {
+                return {
+                    ok: false,
+                    msg: '⚠️ Con 2 unidades en ALTA el resto debe ir en BAJA.\nNo se permiten unidades en Media.'
+                };
+            }
+            if (alta === 1) {
+                return {
+                    ok: false,
+                    msg: '⚠️ Con 1 unidad en ALTA solo se permiten 2 en MEDIA.\nEl resto en Baja.\n\nAhora: Alta ' + c.alta + ', Media ' + c.media + '.'
+                };
+            }
+            return {
+                ok: false,
+                msg: '⚠️ Sin unidades en ALTA solo se permiten 3 en MEDIA.\nEl resto en Baja.\n\nAhora hay ' + c.media + ' en Media.'
+            };
+        }
+        return { ok: true };
+    }
+
+    function textoCupoPrioridades() {
+        const c = contarPrioridadesActivas(null);
+        const maxM = c.alta >= 2 ? 0 : (c.alta === 1 ? 2 : 3);
+        return `Cupos (2 técnicos): Alta ${c.alta}/2 · Media ${c.media}/${maxM} · Baja libre (${c.baja})`;
+    }
 
     function filtrarPorEstatus(estatus) {
         // Si vuelves a tocar el mismo, quita el filtro
@@ -1460,6 +1580,7 @@
             
             unidades = data || [];
             await cargarMensajes();
+            await cargarTrabajoHoy();
             renderizarTablero();
             actualizarStats();
             actualizarNotificaciones();
@@ -2250,6 +2371,8 @@
 
     function abrirModalNueva() {
         if (!requerirSesion()) return;
+        const cupoEl = document.getElementById('cupoPrioridadNueva');
+        if (cupoEl) cupoEl.textContent = textoCupoPrioridades();
         document.getElementById('modalNueva').style.display = 'flex';
     }
 
@@ -2364,31 +2487,35 @@
             }
         });
 
-        // Historial con tiempos muertos / duración por operación
+        // Historial con tiempos (no se muestra tiempo en taller si está Finalizada)
         const histBox = document.getElementById('detalleHistorial');
         if (u.historial && u.historial.length > 0) {
+            const esFin = u.estatus === 'Finalizada';
             const conTiempos = calcularTiemposHistorial(u.historial);
             const totalMs = conTiempos.reduce((acc, h) => acc + (h.duracionMs || 0), 0);
             const filas = conTiempos.slice().reverse().map(h => {
-                const alerta = h.duracionMs >= 3 * 24 * 60 * 60 * 1000; // 3+ días
+                const alerta = !esFin && h.duracionMs >= 3 * 24 * 60 * 60 * 1000;
+                const tiempoBadge = esFin ? '' : `
+                        <span class="depto" style="background:${alerta ? '#f8d7da' : '#d4edda'}; color:${alerta ? '#721c24' : '#155724'}; margin-left:6px;">
+                            ⏱️ ${h.duracionTexto}${h.enCurso ? ' (en curso)' : ''}
+                        </span>`;
                 return `
                 <div class="historial-item">
                     <div>
                         <strong>${h.estatus || '—'}</strong>
                         ${h.area ? `<span class="depto">${h.area}</span>` : ''}
                         ${h.persona ? `<span style="color:#555;"> · ${h.persona}</span>` : ''}
-                        <span class="depto" style="background:${alerta ? '#f8d7da' : '#d4edda'}; color:${alerta ? '#721c24' : '#155724'}; margin-left:6px;">
-                            ⏱️ ${h.duracionTexto}${h.enCurso ? ' (en curso)' : ''}
-                        </span>
+                        ${tiempoBadge}
                     </div>
                     <div class="fecha">${h.fecha || ''}</div>
                     ${h.comentario ? `<div class="nota">📝 ${h.comentario}</div>` : ''}
                 </div>`;
             }).join('');
             histBox.innerHTML = `
+                ${esFin ? '' : `
                 <div style="margin-bottom:10px; padding:8px 10px; background:#e7f1ff; border-radius:8px; font-size:13px;">
                     <strong>⏳ Tiempo total en taller:</strong> ${formatearDuracion(totalMs)}
-                </div>
+                </div>`}
                 ${filas}
             `;
         } else {
@@ -2428,6 +2555,12 @@
     document.getElementById('formNueva').addEventListener('submit', async function(e) {
         e.preventDefault();
         const hoy = new Date().toISOString().split('T')[0];
+        const prioridadElegida = document.getElementById('prioridadNueva').value || 'Media';
+        const cupo = validarCupoPrioridad(prioridadElegida, null);
+        if (!cupo.ok) {
+            alert(cupo.msg + '\n\n' + textoCupoPrioridades());
+            return;
+        }
         const fotosLocales = await leerArchivosComoBase64(document.getElementById('fotosNueva'));
         const nueva = {
             no_unidad: document.getElementById('noUnidadNueva').value.trim(),
@@ -2442,7 +2575,7 @@
             diagnosticador: document.getElementById('diagnosticadorNueva').value.trim(),
             reparador: document.getElementById('reparadorNueva').value.trim(),
             estatus: document.getElementById('estatusNueva').value,
-            prioridad: document.getElementById('prioridadNueva').value || 'Media',
+            prioridad: prioridadElegida,
             fecha_llegada: hoy,
             fecha_salida: null,
             eliminado: false,
@@ -2488,6 +2621,8 @@
         document.getElementById('fechaSalidaEditar').value = u.fecha_salida || '';
         document.getElementById('prioridadEditar').value = u.prioridad || 'Media';
         document.getElementById('fotosEditar').value = '';
+        const cupoEl = document.getElementById('cupoPrioridadEditar');
+        if (cupoEl) cupoEl.textContent = textoCupoPrioridades();
         document.getElementById('modalEditar').style.display = 'flex';
     }
 
@@ -2495,6 +2630,13 @@
         e.preventDefault();
         const id = unidadEnEdicion;
         if (!id) return;
+
+        const prioridadElegida = document.getElementById('prioridadEditar').value || 'Media';
+        const cupo = validarCupoPrioridad(prioridadElegida, id);
+        if (!cupo.ok) {
+            alert(cupo.msg + '\n\n' + textoCupoPrioridades());
+            return;
+        }
         
         const datos = {
             no_unidad: document.getElementById('noUnidadEditar').value.trim(),
@@ -2508,7 +2650,7 @@
             problema: document.getElementById('problemaEditar').value.trim(),
             diagnosticador: document.getElementById('diagnosticadorEditar').value.trim(),
             reparador: document.getElementById('reparadorEditar').value.trim(),
-            prioridad: document.getElementById('prioridadEditar').value || 'Media',
+            prioridad: prioridadElegida,
             fecha_salida: document.getElementById('fechaSalidaEditar').value || null
         };
         
@@ -2929,6 +3071,148 @@
         }
     }
 
+    // ===== TRABAJO DE HOY (lista numerada) =====
+    function puedeEditarTrabajoHoy() {
+        return sesion && (sesion.area === 'Gerencia' || sesion.area === 'Ventas');
+    }
+
+    async function cargarTrabajoHoy() {
+        try {
+            const hoy = fechaHoyISO();
+            const { data, error } = await supabaseClient
+                .from('trabajo_hoy')
+                .select('*')
+                .eq('fecha', hoy)
+                .order('orden', { ascending: true });
+            if (error) throw error;
+            trabajoHoy = data || [];
+        } catch (e) {
+            console.warn('Trabajo hoy:', e);
+            trabajoHoy = [];
+        }
+    }
+
+    function abrirModalTrabajoHoy() {
+        if (!requerirSesion()) return;
+        document.getElementById('trabajoHoyFecha').textContent =
+            new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const editor = document.getElementById('trabajoHoyEditor');
+        editor.style.display = puedeEditarTrabajoHoy() ? 'block' : 'none';
+        if (puedeEditarTrabajoHoy()) {
+            const idsEnLista = new Set(trabajoHoy.map(t => t.unidad_id));
+            const activas = unidades.filter(u => !u.eliminado && u.estatus !== 'Finalizada' && !idsEnLista.has(u.id));
+            const sel = document.getElementById('trabajoHoySelectUnidad');
+            sel.innerHTML = '<option value="">Selecciona unidad...</option>' +
+                activas.map(u => `<option value="${u.id}">${u.no_unidad || '—'} — ${u.cliente || '—'} (${u.estatus})</option>`).join('');
+        }
+        renderListaTrabajoHoy();
+        document.getElementById('modalTrabajoHoy').style.display = 'flex';
+    }
+
+    function renderListaTrabajoHoy() {
+        const box = document.getElementById('listaTrabajoHoy');
+        if (!box) return;
+        if (!trabajoHoy.length) {
+            box.innerHTML = '<div style="color:#888; text-align:center; padding:20px;">No hay unidades en el plan de hoy</div>';
+            return;
+        }
+        const editable = puedeEditarTrabajoHoy();
+        box.innerHTML = trabajoHoy.map((t, idx) => {
+            const u = unidades.find(x => x.id === t.unidad_id);
+            const nombre = u ? `${u.no_unidad || '—'} — ${u.cliente || '—'}` : `Unidad #${t.unidad_id}`;
+            const extra = u ? `${u.estatus || ''} · ${u.prioridad || 'Media'}` : '';
+            const acciones = editable ? `
+                <div class="acciones">
+                    <button class="btn-accion" onclick="moverTrabajoHoy(${t.id}, -1)" title="Subir">↑</button>
+                    <button class="btn-accion" onclick="moverTrabajoHoy(${t.id}, 1)" title="Bajar">↓</button>
+                    <button class="btn-accion" style="color:#dc3545;" onclick="quitarDeTrabajoHoy(${t.id})" title="Quitar">✕</button>
+                </div>` : '';
+            return `
+            <div class="trabajo-item">
+                <div class="num">${idx + 1}</div>
+                <div class="info" style="cursor:pointer;" onclick="cerrarModal('modalTrabajoHoy'); abrirModalDetalle(${t.unidad_id})">
+                    <strong>${nombre}</strong>
+                    <span>${extra}</span>
+                </div>
+                ${acciones}
+            </div>`;
+        }).join('');
+    }
+
+    async function agregarATrabajoHoy() {
+        if (!puedeEditarTrabajoHoy()) return;
+        const sel = document.getElementById('trabajoHoySelectUnidad');
+        const unidadId = parseInt(sel.value, 10);
+        if (!unidadId) {
+            alert('⚠️ Selecciona una unidad');
+            return;
+        }
+        if (trabajoHoy.some(t => t.unidad_id === unidadId)) {
+            alert('Esa unidad ya está en la lista de hoy');
+            return;
+        }
+        const orden = trabajoHoy.length + 1;
+        try {
+            const { error } = await supabaseClient.from('trabajo_hoy').insert([{
+                fecha: fechaHoyISO(),
+                unidad_id: unidadId,
+                orden: orden,
+                created_by_area: sesion.area,
+                created_by_persona: sesion.persona
+            }]);
+            if (error) throw error;
+            await cargarTrabajoHoy();
+            abrirModalTrabajoHoy();
+        } catch (e) {
+            console.error(e);
+            alert('❌ Error al agregar: ' + (e.message || e) + '\n\n¿Creaste la tabla trabajo_hoy en Supabase?');
+        }
+    }
+
+    async function quitarDeTrabajoHoy(id) {
+        if (!puedeEditarTrabajoHoy()) return;
+        if (!confirm('¿Quitar esta unidad del plan de hoy?')) return;
+        try {
+            const { error } = await supabaseClient.from('trabajo_hoy').delete().eq('id', id);
+            if (error) throw error;
+            await cargarTrabajoHoy();
+            // Reordenar 1..n
+            await reordenarTrabajoHoySecuencial();
+            await cargarTrabajoHoy();
+            abrirModalTrabajoHoy();
+        } catch (e) {
+            alert('❌ Error: ' + (e.message || e));
+        }
+    }
+
+    async function reordenarTrabajoHoySecuencial() {
+        const ordenados = [...trabajoHoy].sort((a, b) => a.orden - b.orden);
+        for (let i = 0; i < ordenados.length; i++) {
+            if (ordenados[i].orden !== i + 1) {
+                await supabaseClient.from('trabajo_hoy').update({ orden: i + 1 }).eq('id', ordenados[i].id);
+            }
+        }
+    }
+
+    async function moverTrabajoHoy(id, dir) {
+        if (!puedeEditarTrabajoHoy()) return;
+        const lista = [...trabajoHoy].sort((a, b) => a.orden - b.orden);
+        const idx = lista.findIndex(t => t.id === id);
+        if (idx < 0) return;
+        const nuevo = idx + dir;
+        if (nuevo < 0 || nuevo >= lista.length) return;
+        const a = lista[idx];
+        const b = lista[nuevo];
+        try {
+            await supabaseClient.from('trabajo_hoy').update({ orden: b.orden }).eq('id', a.id);
+            await supabaseClient.from('trabajo_hoy').update({ orden: a.orden }).eq('id', b.id);
+            await cargarTrabajoHoy();
+            renderListaTrabajoHoy();
+        } catch (e) {
+            alert('❌ Error al reordenar: ' + (e.message || e));
+        }
+    }
+
     // ===== MENSAJES ENTRE USUARIOS =====
     async function cargarMensajes() {
         if (!sesion || sesion.area === 'Cliente') {
@@ -3018,12 +3302,41 @@
         }
     }
 
+    async function borrarMensaje(id) {
+        try {
+            const { error } = await supabaseClient.from('mensajes').delete().eq('id', id);
+            if (error) throw error;
+            mensajes = mensajes.filter(m => m.id !== id);
+            actualizarNotificaciones();
+        } catch (e) {
+            alert('❌ No se pudo borrar el mensaje: ' + (e.message || e));
+        }
+    }
+
+    async function borrarMensajesLeidos() {
+        const leidos = (mensajes || []).filter(m => m.leido);
+        if (leidos.length === 0) {
+            alert('No hay mensajes leídos para borrar');
+            return;
+        }
+        if (!confirm('¿Borrar ' + leidos.length + ' mensaje(s) leído(s)?')) return;
+        try {
+            for (const m of leidos) {
+                await supabaseClient.from('mensajes').delete().eq('id', m.id);
+            }
+            mensajes = mensajes.filter(m => !m.leido);
+            actualizarNotificaciones();
+        } catch (e) {
+            alert('❌ Error al borrar: ' + (e.message || e));
+        }
+    }
+
     async function abrirMensajeNotif(id) {
         const m = mensajes.find(x => x.id === id);
         if (!m) return;
         if (!m.leido) await marcarMensajeLeido(id);
-        cerrarPanelNotif();
-        alert(`💬 Mensaje de ${m.de_persona} (${m.de_area})\n\n${m.texto}\n\n${m.created_at ? new Date(m.created_at).toLocaleString() : ''}`);
+        const borrar = confirm(`💬 Mensaje de ${m.de_persona} (${m.de_area})\n\n${m.texto}\n\n${m.created_at ? new Date(m.created_at).toLocaleString() : ''}\n\n¿Borrar este mensaje?`);
+        if (borrar) await borrarMensaje(id);
     }
 
     function notifRelevanteParaArea(responsable, areaSesion) {
@@ -3126,16 +3439,46 @@
             return;
         }
 
-        lista.innerHTML = notifs.map(n => {
-            const click = n.mensajeId
-                ? `abrirMensajeNotif(${n.mensajeId})`
-                : `abrirDesdeNotif(${n.unidadId || 'null'})`;
+        const hayMensajes = (mensajes || []).length > 0;
+        const hayLeidos = (mensajes || []).some(m => m.leido);
+        const barraMsg = hayMensajes ? `
+            <div style="margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap;">
+                ${hayLeidos ? `<button class="btn-accion" onclick="event.stopPropagation(); borrarMensajesLeidos()">🗑️ Borrar mensajes leídos</button>` : ''}
+                <button class="btn-accion" style="color:#dc3545;" onclick="event.stopPropagation(); borrarTodosMensajes()">🗑️ Borrar todos los mensajes</button>
+            </div>` : '';
+
+        lista.innerHTML = barraMsg + notifs.map(n => {
+            if (n.mensajeId) {
+                return `
+                <div class="notif-item ${n.tipo}" style="position:relative;">
+                    <div onclick="abrirMensajeNotif(${n.mensajeId})" style="cursor:pointer; padding-right:28px;">
+                        <div class="titulo">${n.titulo}</div>
+                        <div class="detalle">${n.detalle || ''}</div>
+                    </div>
+                    <button class="btn-accion" title="Borrar mensaje" style="position:absolute; top:8px; right:8px; color:#dc3545;"
+                        onclick="event.stopPropagation(); borrarMensaje(${n.mensajeId})">✕</button>
+                </div>`;
+            }
             return `
-            <div class="notif-item ${n.tipo}" onclick="${click}">
+            <div class="notif-item ${n.tipo}" onclick="abrirDesdeNotif(${n.unidadId || 'null'})">
                 <div class="titulo">${n.titulo}</div>
                 <div class="detalle">${n.detalle || ''}</div>
             </div>`;
         }).join('');
+    }
+
+    async function borrarTodosMensajes() {
+        if (!(mensajes || []).length) return;
+        if (!confirm('¿Borrar todos tus mensajes?')) return;
+        try {
+            for (const m of mensajes) {
+                await supabaseClient.from('mensajes').delete().eq('id', m.id);
+            }
+            mensajes = [];
+            actualizarNotificaciones();
+        } catch (e) {
+            alert('❌ Error: ' + (e.message || e));
+        }
     }
 
     function abrirDesdeNotif(id) {
