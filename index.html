@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>ThermoControl - Taller Thermoking</title>
+    <title>Thermo King del Noroeste</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -167,7 +167,30 @@
         }
         body.dark .stat-item.activo { background: #1a2a3c; border-color: #6ab0f3; }
         .stat-item .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-        .kanban-col h4 { cursor: pointer; }
+        .kanban-col h4 { cursor: pointer; position: relative; }
+        .kanban-col h4 .btn-colapsar {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.25);
+            border: none;
+            color: white;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            padding: 0;
+        }
+        .kanban-col h4 .btn-colapsar:hover { background: rgba(255,255,255,0.4); }
+        .kanban-col.colapsada {
+            max-height: none;
+            min-height: auto;
+            overflow: visible;
+        }
+        .kanban-col.colapsada .cards-wrap { display: none; }
         .kanban-col.filtro-activo {
             outline: 3px solid #1a3a5c;
             box-shadow: 0 0 12px rgba(26,58,92,0.3);
@@ -588,7 +611,7 @@
 <!-- ===== LOGIN DEPARTAMENTO ===== -->
 <div class="login-overlay" id="loginOverlay">
     <div class="login-box">
-        <h2>❄️ ThermoControl</h2>
+        <h2>❄️ Thermo King del Noroeste</h2>
         <p class="sub">Ingresa tu departamento y clave para continuar</p>
         <div class="form-group">
             <label>Departamento</label>
@@ -622,14 +645,13 @@
 
 <!-- ===== HEADER ===== -->
 <div class="header">
-    <h1>❄️ ThermoControl <small>Base de Datos en la Nube</small></h1>
+    <h1>❄️ Thermo King del Noroeste <small>Base de Datos en la Nube</small></h1>
     <div class="header-actions">
         <input type="text" id="searchGlobal" placeholder="🔍 Buscar unidad..." oninput="renderizarTablero()">
         <button class="btn-header" id="btnVistaKanban" onclick="cambiarVista('kanban')">📊 Kanban</button>
         <button class="btn-header" id="btnVistaLista" onclick="cambiarVista('lista')">📋 Lista</button>
         <button class="btn-header" id="btnVistaHistorial" onclick="cambiarVista('historial')">📜 Historial</button>
         <button class="btn-header" onclick="abrirModalNueva()">➕ Nueva</button>
-        <button class="btn-header" onclick="exportarHistorialExcel()" title="Exportar historial a Excel">📥 Excel</button>
         <button class="btn-header" id="btnReporteDiario" onclick="abrirReporteDiario()" title="Reporte del día (solo Gerencia)" style="display:none;">📊 Reporte diario</button>
         <button class="btn-header" id="btnDiagnosticosExt" onclick="window.open('https://insert-code-067286.onhercules.app/', '_blank')" title="Herramienta de diagnósticos" style="display:none;">🔧 Diagnósticos</button>
         <button class="btn-header" id="btnThermoDiagPRO" onclick="window.open('https://cosmic-zabaione-7bd9cc.netlify.app/', '_blank')" title="ThermoDiagPRO" style="display:none;">🔬 ThermoDiagPRO</button>
@@ -690,7 +712,7 @@
         <p id="reporteDiarioFecha" style="color:#666; margin-bottom:12px;"></p>
         <div id="reporteDiarioContenido" style="font-size:14px;"></div>
         <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
-            <button class="btn-modal success" style="flex:1;" onclick="exportarReporteDiarioExcel()">📥 Exportar Excel</button>
+            <button class="btn-modal success" style="flex:1;" onclick="exportarReporteDiarioExcel()">📥 Exportar CSV</button>
             <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalReporteDiario')">Cerrar</button>
         </div>
     </div>
@@ -1170,7 +1192,7 @@
         document.querySelectorAll('.header-actions .btn-header').forEach(btn => {
             const t = btn.textContent || '';
             const id = btn.id || '';
-            if (t.includes('Nueva') || t.includes('Excel') || t.includes('Reporte') ||
+            if (t.includes('Nueva') || t.includes('Reporte') ||
                 t.includes('Lista') || t.includes('Historial') || id === 'btnNotif' || id === 'btnMensaje') {
                 btn.style.display = activo ? 'none' : '';
             }
@@ -1416,6 +1438,29 @@
         }
         renderizarTablero();
         actualizarStats();
+    }
+
+    // Contraer / expandir columnas del Kanban
+    const KANBAN_COLAPSADAS_KEY = 'thermocontrol_kanban_colapsadas';
+    function getColumnasColapsadas() {
+        try {
+            return JSON.parse(localStorage.getItem(KANBAN_COLAPSADAS_KEY) || '[]');
+        } catch (e) {
+            return [];
+        }
+    }
+    function estaColumnaColapsada(status) {
+        return getColumnasColapsadas().includes(status);
+    }
+    function toggleColumnaKanban(status) {
+        let list = getColumnasColapsadas();
+        if (list.includes(status)) {
+            list = list.filter(s => s !== status);
+        } else {
+            list.push(status);
+        }
+        localStorage.setItem(KANBAN_COLAPSADAS_KEY, JSON.stringify(list));
+        renderizarTablero();
     }
 
     // ===== MODO OSCURO =====
@@ -1870,7 +1915,7 @@
         }
         const data = generarDatosReporteDiario();
         const lineas = [];
-        lineas.push('Reporte diario ThermoControl');
+        lineas.push('Reporte diario Thermo King del Noroeste');
         lineas.push('Fecha,' + data.hoy);
         lineas.push('');
         lineas.push('Metrica,Valor');
@@ -2076,13 +2121,19 @@
         const columnas = filtroEstatus ? [filtroEstatus] : estatusOrden;
         columnas.forEach(status => {
             const items = filtered.filter(u => u.estatus === status);
+            const colapsada = estaColumnaColapsada(status);
             const col = document.createElement('div');
-            col.className = 'kanban-col' + (filtroEstatus === status ? ' filtro-activo' : '');
+            col.className = 'kanban-col' + (filtroEstatus === status ? ' filtro-activo' : '') + (colapsada ? ' colapsada' : '');
             col.innerHTML = `
-                <h4 style="background:${getColor(status)}" onclick="filtrarPorEstatus('${status}')" title="Clic para filtrar / quitar filtro">
-                    ${nombresEstatus[status]} <span class="count">${items.length}</span>
+                <h4 style="background:${getColor(status)}" title="Clic en el nombre para filtrar">
+                    <span onclick="filtrarPorEstatus('${status}')" style="cursor:pointer;">${nombresEstatus[status]} <span class="count">${items.length}</span></span>
+                    <button type="button" class="btn-colapsar" onclick="event.stopPropagation(); toggleColumnaKanban('${status}')" title="${colapsada ? 'Expandir' : 'Contraer'}">
+                        ${colapsada ? '▸' : '▾'}
+                    </button>
                 </h4>
+                <div class="cards-wrap"></div>
             `;
+            const wrap = col.querySelector('.cards-wrap');
             items.forEach((u) => {
                 const dias = diasEnTaller(u);
                 const esFinalizada = u.estatus === 'Finalizada';
@@ -2135,7 +2186,7 @@
                         </div>
                     ` : ''}
                 `;
-                col.appendChild(card);
+                wrap.appendChild(card);
             });
 
             // Drag & drop sobre la columna
@@ -2990,7 +3041,7 @@
             }
             document.getElementById('cfgNotifNavegador').checked = true;
             guardarConfigNotif();
-            mostrarNotifNavegador('ThermoControl', 'Avisos del sistema activados correctamente ✅');
+            mostrarNotifNavegador('Thermo King del Noroeste', 'Avisos del sistema activados correctamente ✅');
         });
     }
 
@@ -3034,7 +3085,7 @@
         localStorage.setItem('thermocontrol_notif_eventos', JSON.stringify(lista.slice(0, 30)));
         // Aviso del navegador solo si el evento es de esta sesión o Gerencia
         if (ev.titulo && sesion) {
-            mostrarNotifNavegador('ThermoControl · ' + sesion.area, ev.titulo + (ev.detalle ? ' — ' + ev.detalle : ''));
+            mostrarNotifNavegador('Thermo King · ' + sesion.area, ev.titulo + (ev.detalle ? ' — ' + ev.detalle : ''));
         }
     }
 
@@ -3615,7 +3666,7 @@
         if (ya) return;
         sessionStorage.setItem('thermocontrol_notif_resumen', '1');
         mostrarNotifNavegador(
-            'ThermoControl — ' + urgentes.length + ' alerta(s)',
+            'Thermo King del Noroeste — ' + urgentes.length + ' alerta(s)',
             urgentes.slice(0, 3).map(n => n.titulo).join(' · ')
         );
     }
@@ -3987,7 +4038,7 @@
 
         doc.setFontSize(18);
         doc.setTextColor(26, 58, 92);
-        doc.text('ThermoControl - Taller Thermoking', margin, y);
+        doc.text('Thermo King del Noroeste', margin, y);
         y += 8;
         doc.setFontSize(14);
         const tituloPdf = u.estatus === 'Espera de refacciones'
@@ -4086,7 +4137,7 @@
         y += 10;
         doc.setFontSize(9);
         doc.setTextColor(100);
-        doc.text('Documento generado por ThermoControl', margin, y);
+        doc.text('Documento generado por Thermo King del Noroeste', margin, y);
 
         const prefijo = esEspera ? 'EsperaRefacciones' : 'Entrega';
         const nombreArchivo = `${prefijo}_${(u.no_unidad || 'unidad').replace(/\s/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
