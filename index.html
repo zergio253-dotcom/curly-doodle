@@ -89,6 +89,56 @@
             position: relative;
             min-width: 44px;
         }
+        .menu-desplegable {
+            position: relative;
+            display: inline-block;
+        }
+        .menu-desplegable .menu-panel {
+            display: none;
+            position: absolute;
+            right: 0;
+            left: auto;
+            top: calc(100% + 6px);
+            min-width: 230px;
+            max-width: min(280px, 92vw);
+            max-height: 70vh;
+            overflow-y: auto;
+            background: #fff;
+            color: #222;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+            z-index: 500;
+            padding: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        body.dark .menu-desplegable .menu-panel {
+            background: #2a2a2a;
+            color: #eee;
+            border-color: #444;
+        }
+        .menu-desplegable.abierto .menu-panel { display: block; }
+        .menu-desplegable .menu-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            color: inherit;
+            font-weight: 500;
+        }
+        .menu-desplegable .menu-item:hover { background: rgba(26,58,92,0.1); }
+        body.dark .menu-desplegable .menu-item:hover { background: rgba(255,255,255,0.08); }
+        .menu-desplegable .menu-item.oculto { display: none; }
+        .menu-desplegable .menu-sep {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 6px 4px;
+        }
+        body.dark .menu-desplegable .menu-sep { background: #444; }
         .header-actions {
             display: flex;
             gap: 10px;
@@ -671,22 +721,28 @@
         <div class="header-user-corner">
             <span id="sesionInfo"></span>
             <button class="btn-header btn-notif" id="btnNotif" onclick="togglePanelNotif()" title="Notificaciones">🔔 <span id="badgeNotif" class="badge-notif" style="display:none;">0</span></button>
+            <div class="menu-desplegable" id="menuPrincipal">
+                <button class="btn-header" id="btnMenuPrincipal" onclick="toggleMenuPrincipal(event)" title="Más opciones">☰ Menú</button>
+                <div class="menu-panel" id="menuPrincipalPanel">
+                    <button type="button" class="menu-item" id="btnVistaLista" onclick="cambiarVista('lista'); cerrarMenuPrincipal();">📋 Lista</button>
+                    <button type="button" class="menu-item" id="btnVistaHistorial" onclick="cambiarVista('historial'); cerrarMenuPrincipal();">📜 Historial</button>
+                    <button type="button" class="menu-item" id="btnTrabajoHoy" onclick="abrirModalTrabajoHoy(); cerrarMenuPrincipal();" style="display:none;">📋 Trabajar hoy</button>
+                    <button type="button" class="menu-item" id="btnMensaje" onclick="abrirModalMensaje(); cerrarMenuPrincipal();" style="display:none;">💬 Mensaje</button>
+                    <button type="button" class="menu-item" id="btnReporteDiario" onclick="abrirReporteDiario(); cerrarMenuPrincipal();" style="display:none;">📊 Reporte diario</button>
+                    <button type="button" class="menu-item" id="btnDiagnosticosExt" onclick="window.open('https://insert-code-067286.onhercules.app/', '_blank'); cerrarMenuPrincipal();" style="display:none;">🔧 Diagnósticos</button>
+                    <button type="button" class="menu-item" id="btnThermoDiagPRO" onclick="window.open('https://cosmic-zabaione-7bd9cc.netlify.app/', '_blank'); cerrarMenuPrincipal();" style="display:none;">🔬 ThermoDiagPRO</button>
+                    <div class="menu-sep"></div>
+                    <button type="button" class="menu-item" id="btnDarkMode" onclick="toggleDarkMode(); cerrarMenuPrincipal();">🌙 Modo oscuro</button>
+                    <button type="button" class="menu-item" onclick="cargarDatos(); cerrarMenuPrincipal();">🔄 Recargar datos</button>
+                </div>
+            </div>
             <button class="btn-header" id="btnCerrarSesion" onclick="cerrarSesion()" style="display:none;" title="Cerrar sesión">🚪 Salir</button>
         </div>
     </div>
     <div class="header-actions">
         <input type="text" id="searchGlobal" placeholder="🔍 Buscar unidad..." oninput="renderizarTablero()">
         <button class="btn-header" id="btnVistaKanban" onclick="cambiarVista('kanban')">📊 Kanban</button>
-        <button class="btn-header" id="btnVistaLista" onclick="cambiarVista('lista')">📋 Lista</button>
-        <button class="btn-header" id="btnVistaHistorial" onclick="cambiarVista('historial')">📜 Historial</button>
         <button class="btn-header" onclick="abrirModalNueva()">➕ Nueva</button>
-        <button class="btn-header" id="btnReporteDiario" onclick="abrirReporteDiario()" title="Reporte del día (solo Gerencia)" style="display:none;">📊 Reporte diario</button>
-        <button class="btn-header" id="btnDiagnosticosExt" onclick="window.open('https://insert-code-067286.onhercules.app/', '_blank')" title="Herramienta de diagnósticos" style="display:none;">🔧 Diagnósticos</button>
-        <button class="btn-header" id="btnThermoDiagPRO" onclick="window.open('https://cosmic-zabaione-7bd9cc.netlify.app/', '_blank')" title="ThermoDiagPRO" style="display:none;">🔬 ThermoDiagPRO</button>
-        <button class="btn-header" id="btnMensaje" onclick="abrirModalMensaje()" title="Enviar mensaje" style="display:none;">💬 Mensaje</button>
-        <button class="btn-header" id="btnTrabajoHoy" onclick="abrirModalTrabajoHoy()" title="Trabajar hoy" style="display:none;">📋 Trabajar hoy</button>
-        <button class="btn-header" id="btnDarkMode" onclick="toggleDarkMode()">🌙</button>
-        <button class="btn-header danger" onclick="cargarDatos()">🔄 Recargar</button>
         <span id="statusConexion" style="color:white; font-size:12px; padding:4px 10px; background:rgba(255,255,255,0.15); border-radius:12px;">⏳ Conectando...</span>
     </div>
 </div>
@@ -1064,9 +1120,21 @@
             <small style="color:#888; font-size:11px;">Se guarda en el almacenamiento central. Todos los usuarios de la app podrán verlo.</small>
             <div id="diagnosticoPdfActual" style="margin-top:6px; font-size:13px;"></div>
         </div>
+        <button class="btn-modal success" id="btnAbrirTkDiag" onclick="abrirTkDiagDesdeModal()" style="display:none;">🧊 Abrir TK Diag (formulario completo)</button>
         <button class="btn-modal primary" onclick="guardarDiagnostico()">💾 Guardar diagnóstico</button>
         <button class="btn-modal secondary" onclick="subirDiagnosticoPdf()">☁️ Subir PDF</button>
         <button class="btn-modal danger" onclick="cerrarModal('modalDiagnostico')">❌ Cancelar</button>
+    </div>
+</div>
+
+<!-- ===== MODAL TK DIAG (iframe) ===== -->
+<div class="modal" id="modalTkDiag" style="align-items:stretch;">
+    <div class="modal-content" style="width:100%; max-width:960px; height:95vh; max-height:95vh; display:flex; flex-direction:column; padding:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; flex-wrap:wrap;">
+            <h3 style="margin:0;">🧊 TK Diag · Diagnóstico Thermo King</h3>
+            <button class="btn-modal danger" style="margin:0; width:auto;" onclick="cerrarModalTkDiag()">✕ Cerrar</button>
+        </div>
+        <iframe id="iframeTkDiag" src="about:blank" style="flex:1; width:100%; border:1px solid #dde; border-radius:12px; background:#fff;"></iframe>
     </div>
 </div>
 
@@ -1214,46 +1282,35 @@
 
     function aplicarModoClienteUI(activo) {
         modoCliente = !!activo;
+        // Ocultar acciones de edición en modo cliente
         document.querySelectorAll('.header-actions .btn-header').forEach(btn => {
             const t = btn.textContent || '';
-            const id = btn.id || '';
-            if (t.includes('Nueva') || t.includes('Reporte') ||
-                t.includes('Lista') || t.includes('Historial') || id === 'btnNotif' || id === 'btnMensaje') {
-                btn.style.display = activo ? 'none' : '';
-            }
+            if (t.includes('Nueva')) btn.style.display = activo ? 'none' : '';
         });
-        const btnRep = document.getElementById('btnReporteDiario');
-        const btnDiag = document.getElementById('btnDiagnosticosExt');
-        const btnTDP = document.getElementById('btnThermoDiagPRO');
-        const btnMsg = document.getElementById('btnMensaje');
-        if (btnRep && activo) btnRep.style.display = 'none';
-        if (btnDiag && activo) btnDiag.style.display = 'none';
-        if (btnTDP && activo) btnTDP.style.display = 'none';
-        if (btnMsg && activo) btnMsg.style.display = 'none';
+        const idsClienteOcultar = ['btnVistaLista', 'btnVistaHistorial', 'btnReporteDiario', 'btnDiagnosticosExt', 'btnThermoDiagPRO', 'btnMensaje', 'btnTrabajoHoy'];
+        idsClienteOcultar.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && activo) el.style.display = 'none';
+        });
         if (activo) {
             cambiarVista('kanban');
             document.querySelector('.header h1 small').textContent = '👁️ Vista cliente (solo lectura)';
         } else if (sesion) {
             document.querySelector('.header h1 small').textContent = 'Base de Datos en la Nube';
+            // Restaurar ítems del menú según área
+            const show = (id, visible) => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = visible ? 'block' : 'none';
+            };
+            show('btnVistaLista', true);
+            show('btnVistaHistorial', true);
+            show('btnTrabajoHoy', true);
+            show('btnReporteDiario', sesion.area === 'Gerencia');
+            show('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
+            show('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
+            show('btnMensaje', sesion.area !== 'Cliente');
             document.querySelectorAll('.header-actions .btn-header').forEach(btn => {
-                if (btn.id === 'btnReporteDiario') {
-                    btn.style.display = sesion.area === 'Gerencia' ? 'inline-block' : 'none';
-                    return;
-                }
-                if (btn.id === 'btnDiagnosticosExt') {
-                    btn.style.display = sesion.area === 'Mantenimiento' ? 'inline-block' : 'none';
-                    return;
-                }
-                if (btn.id === 'btnThermoDiagPRO') {
-                    btn.style.display = sesion.area === 'Mantenimiento' ? 'inline-block' : 'none';
-                    return;
-                }
-                if (btn.id === 'btnMensaje') {
-                    btn.style.display = sesion.area === 'Cliente' ? 'none' : 'inline-block';
-                    return;
-                }
-                if (btn.id === 'btnCerrarSesion') return;
-                btn.style.display = '';
+                if ((btn.textContent || '').includes('Nueva')) btn.style.display = '';
             });
         }
     }
@@ -1345,21 +1402,18 @@
             : `👤 ${sesion.persona} · ${sesion.area}`;
         el.title = el.textContent;
         document.getElementById('btnCerrarSesion').style.display = 'inline-block';
-        // Reporte diario solo Gerencia
-        const btnRep = document.getElementById('btnReporteDiario');
-        if (btnRep) btnRep.style.display = sesion.area === 'Gerencia' ? 'inline-block' : 'none';
-        // Diagnósticos externos: solo Mantenimiento
-        const btnDiag = document.getElementById('btnDiagnosticosExt');
-        if (btnDiag) btnDiag.style.display = sesion.area === 'Mantenimiento' ? 'inline-block' : 'none';
-        // ThermoDiagPRO: solo Mantenimiento
-        const btnTDP = document.getElementById('btnThermoDiagPRO');
-        if (btnTDP) btnTDP.style.display = sesion.area === 'Mantenimiento' ? 'inline-block' : 'none';
-        // Mensajes: todos excepto Cliente
-        const btnMsg = document.getElementById('btnMensaje');
-        if (btnMsg) btnMsg.style.display = sesion.area === 'Cliente' ? 'none' : 'inline-block';
-        // Trabajo hoy: todos pueden ver
-        const btnHoy = document.getElementById('btnTrabajoHoy');
-        if (btnHoy) btnHoy.style.display = 'inline-block';
+        // Ítems del menú según área (display block = ítem de menú)
+        const showMenu = (id, visible) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = visible ? 'block' : 'none';
+        };
+        showMenu('btnReporteDiario', sesion.area === 'Gerencia');
+        showMenu('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
+        showMenu('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
+        showMenu('btnMensaje', sesion.area !== 'Cliente');
+        showMenu('btnTrabajoHoy', true);
+        showMenu('btnVistaLista', true);
+        showMenu('btnVistaHistorial', true);
         if (sesion.area === 'Cliente') aplicarModoClienteUI(true);
         else aplicarModoClienteUI(false);
     }
@@ -1466,6 +1520,22 @@
         actualizarStats();
     }
 
+    function toggleMenuPrincipal(e) {
+        if (e) e.stopPropagation();
+        const menu = document.getElementById('menuPrincipal');
+        if (!menu) return;
+        menu.classList.toggle('abierto');
+    }
+    function cerrarMenuPrincipal() {
+        const menu = document.getElementById('menuPrincipal');
+        if (menu) menu.classList.remove('abierto');
+    }
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('menuPrincipal');
+        if (!menu) return;
+        if (!menu.contains(e.target)) menu.classList.remove('abierto');
+    });
+
     // Contraer / expandir columnas del Kanban
     const KANBAN_COLAPSADAS_KEY = 'thermocontrol_kanban_colapsadas';
     function getColumnasColapsadas() {
@@ -1494,7 +1564,8 @@
         document.body.classList.toggle('dark');
         const isDark = document.body.classList.contains('dark');
         localStorage.setItem('thermocontrol_dark', isDark ? '1' : '0');
-        document.getElementById('btnDarkMode').textContent = isDark ? '☀️' : '🌙';
+        const btnDark = document.getElementById('btnDarkMode');
+        if (btnDark) btnDark.textContent = isDark ? '☀️ Modo claro' : '🌙 Modo oscuro';
     }
     if (localStorage.getItem('thermocontrol_dark') === '1') {
         document.body.classList.add('dark');
@@ -2564,6 +2635,9 @@
             }
             if (u.estatus === 'Diagnosticando' || u.estatus === 'Cotizando' || u.diagnostico_detalle) {
                 extraBtns += `<button class="btn-modal secondary" style="flex:1;" onclick="abrirModalDiagnostico(${id})">🔍 Diagnóstico</button>`;
+            }
+            if (u.estatus === 'Diagnosticando' || u.estatus === 'Reparando') {
+                extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirTkDiag(${id})">🧊 TK Diag</button>`;
             }
             if (u.estatus === 'Finalizada' || u.estatus === 'Espera de refacciones') {
                 const labelPdf = u.estatus === 'Finalizada' ? '📄 PDF entrega' : '📄 PDF cotización / espera';
@@ -3794,8 +3868,111 @@
         } else {
             pdfActual.innerHTML = '<span style="color:#888;">Ningún PDF subido todavía</span>';
         }
+        const btnTk = document.getElementById('btnAbrirTkDiag');
+        if (btnTk) btnTk.style.display = (u.estatus === 'Diagnosticando' || u.estatus === 'Reparando') ? 'block' : 'none';
         document.getElementById('modalDiagnostico').style.display = 'flex';
     }
+
+    function abrirTkDiagDesdeModal() {
+        if (unidadEnEdicion) abrirTkDiag(unidadEnEdicion);
+    }
+
+    function abrirTkDiag(id) {
+        if (modoCliente) return;
+        if (!requerirSesion()) return;
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+        if (u.estatus !== 'Diagnosticando' && u.estatus !== 'Reparando') {
+            alert('⚠️ TK Diag está disponible cuando la unidad está en Diagnosticando o Reparando.');
+            return;
+        }
+        unidadEnEdicion = id;
+        const prefill = {
+            cliente: u.cliente || '',
+            no_unidad: u.no_unidad || '',
+            modelo: u.modelo || '',
+            placas: u.placas || '',
+            no_serie: u.no_serie || '',
+            problema: u.problema || '',
+            falla_llegada: u.falla_llegada || ''
+        };
+        try { localStorage.setItem('tk_diag_prefill', JSON.stringify(prefill)); } catch (e) {}
+        const iframe = document.getElementById('iframeTkDiag');
+        // Ruta relativa: sube tk-diag.html junto a index.html en GitHub Pages
+        iframe.src = 'tk-diag.html?embed=1&unidadId=' + encodeURIComponent(id);
+        document.getElementById('modalTkDiag').style.display = 'flex';
+    }
+
+    function cerrarModalTkDiag() {
+        const iframe = document.getElementById('iframeTkDiag');
+        if (iframe) iframe.src = 'about:blank';
+        document.getElementById('modalTkDiag').style.display = 'none';
+    }
+
+    function dataURLtoBlob(dataurl) {
+        const arr = dataurl.split(',');
+        const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'application/pdf';
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) u8arr[n] = bstr.charCodeAt(n);
+        return new Blob([u8arr], { type: mime });
+    }
+
+    async function recibirPdfDesdeTkDiag(payload) {
+        const id = payload.unidadId || unidadEnEdicion;
+        if (!id || !payload.pdfBase64) {
+            alert('No se recibió el PDF');
+            return;
+        }
+        try {
+            const blob = dataURLtoBlob(payload.pdfBase64);
+            const fileName = payload.pdfName || ('diagnostico_tk_' + id + '.pdf');
+            const path = `diagnosticos/${id}_${Date.now()}.pdf`;
+            const { error: upErr } = await supabaseClient.storage
+                .from('diagnosticos')
+                .upload(path, blob, { contentType: 'application/pdf', upsert: true });
+            if (upErr) throw upErr;
+            const { data: urlData } = supabaseClient.storage.from('diagnosticos').getPublicUrl(path);
+            const link = urlData.publicUrl;
+            const u = unidades.find(x => x.id === id);
+            const historial = (u && u.historial) ? [...u.historial] : [];
+            historial.push({
+                fecha: new Date().toLocaleString(),
+                estatus: u ? u.estatus : 'Diagnosticando',
+                area: sesion ? sesion.area : 'Mantenimiento',
+                persona: sesion ? sesion.persona : 'TK Diag',
+                comentario: 'PDF de diagnóstico TK Diag subido: ' + fileName
+            });
+            const update = {
+                diagnostico_pdf_url: link,
+                diagnostico_pdf_nombre: fileName,
+                historial: historial
+            };
+            if (payload.diagnosticoTexto) update.diagnostico_detalle = payload.diagnosticoTexto;
+            const resultado = await actualizarUnidad(id, update);
+            if (resultado.success) {
+                alert('✅ Diagnóstico PDF subido a la unidad');
+                cerrarModalTkDiag();
+                cerrarModal('modalDiagnostico');
+                abrirModalDetalle(id);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('❌ Error al subir PDF: ' + (err.message || err) + '\n\nRevisa el bucket "diagnosticos" en Supabase Storage.');
+        }
+    }
+
+    window.addEventListener('message', function(ev) {
+        const data = ev.data;
+        if (!data || typeof data !== 'object') return;
+        if (data.type === 'tk-diag-close') {
+            cerrarModalTkDiag();
+        }
+        if (data.type === 'tk-diag-pdf') {
+            recibirPdfDesdeTkDiag(data);
+        }
+    });
 
     async function guardarDiagnostico() {
         const id = unidadEnEdicion;
