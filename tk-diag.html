@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+  <title>TK Diag · Thermo King</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+    }
+    body {
+      background: #f2f5f9;
+      display: flex;
+      justify-content: center;
+      padding: 20px 10px;
+    }
+    .app {
+      max-width: 880px;
+      width: 100%;
+      background: #ffffff;
+      border-radius: 32px;
+      box-shadow: 0 12px 30px rgba(0, 20, 40, 0.15);
+      padding: 24px 20px 30px;
+      transition: all 0.2s;
+    }
+    h1 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 1.7rem;
+      color: #0b2b4a;
+      letter-spacing: -0.3px;
+      border-bottom: 3px solid #e6edf5;
+      padding-bottom: 14px;
+      margin-bottom: 22px;
+      cursor: default;
+      user-select: none;
+    }
+    h1 small {
+      font-size: 0.9rem;
+      font-weight: 400;
+      color: #2c6b8a;
+      background: #dde9f3;
+      padding: 4px 14px;
+      border-radius: 40px;
+      margin-left: 8px;
+    }
+    .mode-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: #eef3f9;
+      border-radius: 60px;
+      padding: 6px;
+      margin-bottom: 28px;
+    }
+    .mode-btn {
+      flex: 1 1 0;
+      min-width: 100px;
+      border: none;
+      background: transparent;
+      padding: 12px 8px;
+      border-radius: 40px;
+      font-weight: 600;
+      font-size: 1rem;
+      color: #1d4460;
+      transition: 0.2s;
+      cursor: pointer;
+      text-align: center;
+      box-shadow: none;
+    }
+    .mode-btn.active {
+      background: white;
+      color: #003057;
+      box-shadow: 0 4px 10px rgba(0, 40, 70, 0.12);
+    }
+    .mode-btn:first-child { border-radius: 40px 8px 8px 40px; }
+    .mode-btn:last-child { border-radius: 8px 40px 40px 8px; }
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px 20px;
+    }
+    .section {
+      background: #f9fcff;
+      border-radius: 20px;
+      padding: 16px 18px 18px;
+      margin-bottom: 18px;
+      border: 1px solid #e2ebf3;
+    }
+    .section-title {
+      font-weight: 600;
+      color: #003f66;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px dashed #b8cfdf;
+      padding-bottom: 8px;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 12px;
+      margin-bottom: 12px;
+    }
+    .row label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #1b405a;
+      min-width: 80px;
+    }
+    .row input, .row select {
+      flex: 1;
+      min-width: 100px;
+      padding: 8px 12px;
+      border: 1px solid #cbdae7;
+      border-radius: 30px;
+      background: white;
+      font-size: 0.9rem;
+      transition: 0.15s;
+    }
+    .row input:focus, .row select:focus {
+      border-color: #0077be;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(0, 119, 190, 0.2);
+    }
+    .row textarea {
+      flex: 1;
+      min-width: 200px;
+      padding: 12px 16px;
+      border: 1px solid #cbdae7;
+      border-radius: 20px;
+      background: white;
+      font-size: 0.95rem;
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      transition: 0.15s;
+      resize: vertical;
+      min-height: 80px;
+      line-height: 1.5;
+    }
+    .row textarea:focus {
+      border-color: #0077be;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(0, 119, 190, 0.2);
+    }
+    .chip-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      align-items: center;
+    }
+    .chip-group label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      background: #e6eef7;
+      padding: 5px 14px 5px 10px;
+      border-radius: 40px;
+      font-weight: 500;
+      color: #1f4a66;
+    }
+    .chip-group input[type="radio"], 
+    .chip-group input[type="checkbox"] {
+      accent-color: #006699;
+      width: 16px;
+      height: 16px;
+    }
+    .alarm-list {
+      background: #f1f6fb;
+      border-radius: 20px;
+      padding: 12px;
+      margin-top: 6px;
+    }
+    .alarm-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #d7e2ed;
+      padding: 8px 2px;
+      font-size: 0.85rem;
+    }
+    .alarm-item:last-child { border: none; }
+    .alarm-tag {
+      background: #d4e0ec;
+      padding: 2px 12px;
+      border-radius: 50px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 10px;
+      margin-right: 6px;
+    }
+    .dot-green { background: #2b8c5e; }
+    .dot-yellow { background: #d9a13b; }
+    .dot-red { background: #c9423a; }
+    .inspection-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 16px;
+      margin-top: 6px;
+    }
+    .inspection-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      padding: 6px 0;
+      border-bottom: 1px solid #e5edf5;
+    }
+    .inspection-item select {
+      border: none;
+      background: #eef3f9;
+      border-radius: 30px;
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 22px;
+      border-top: 2px solid #dce6f0;
+      padding-top: 20px;
+    }
+    .btn {
+      background: white;
+      border: 1px solid #b6ccdf;
+      padding: 10px 24px;
+      border-radius: 60px;
+      font-weight: 600;
+      color: #1c4b6b;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 0.15s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary {
+      background: #003d66;
+      border: 1px solid #003d66;
+      color: white;
+    }
+    .btn-primary:hover { background: #004d7a; }
+    .btn-outline { background: transparent; }
+    .btn-outline:hover { background: #e3ecf5; }
+    .btn-small { padding: 6px 18px; font-size: 0.8rem; }
+    .btn-danger { color: #b13b3b; border-color: #dbb8b8; }
+    .btn-danger:hover { background: #fce8e8; }
+    .btn-success { background: #1d7a4a; border-color: #1d7a4a; color: white; }
+    .btn-success:hover { background: #1f8a55; }
+    .alarm-add-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0 6px;
+      align-items: center;
+    }
+    .alarm-add-row select, .alarm-add-row input {
+      padding: 6px 14px;
+      border-radius: 40px;
+      border: 1px solid #c0d3e3;
+      background: white;
+      font-size: 0.85rem;
+    }
+    .alarm-add-row select { flex: 1; min-width: 120px; }
+    .alarm-add-row input { flex: 2; min-width: 150px; }
+    @media (max-width: 650px) {
+      .grid-2col { grid-template-columns: 1fr; }
+      .inspection-grid { grid-template-columns: 1fr; }
+      .mode-btn { font-size: 0.8rem; padding: 8px 4px; min-width: 70px; }
+      .action-bar { justify-content: center; }
+      .row textarea { min-height: 60px; }
+    }
+    .vp-highlight {
+      background: #f2f9ff;
+      border-left: 4px solid #0073b7;
+      padding-left: 12px;
+    }
+    .alarm-empty {
+      color: #4e6f8a;
+      font-style: italic;
+      padding: 8px 0;
+      text-align: center;
+    }
+    .mini-simple .row label {
+      min-width: 120px;
+    }
+    .modelo-version-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .modelo-version-row select, .modelo-version-row input {
+      flex: 1;
+      min-width: 120px;
+    }
+    .tecnico-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+    }
+    .tecnico-row select, .tecnico-row input {
+      flex: 1;
+      min-width: 120px;
+    }
+    .unidad-temp {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #eef3f9;
+      padding: 4px 16px 4px 12px;
+      border-radius: 40px;
+    }
+    .unidad-temp label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #1b405a;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .unidad-temp input[type="radio"] {
+      accent-color: #006699;
+      width: 14px;
+      height: 14px;
+      margin: 0;
+    }
+    .delta-display {
+      font-weight: 600;
+      color: #003f66;
+      background: #dde9f3;
+      padding: 4px 14px;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      min-width: 70px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+  <h1 id="tkTitle">
+    🧊 TK DIAG
+    <small>Thermo King</small>
+  </h1>
+  <!-- modo -->
+  <div class="mode-selector">
+    <button class="mode-btn active" data-mode="full">🚛 Full · Trailer</button>
+    <button class="mode-btn" data-mode="vp">📦 VP Truck</button>
+    <button class="mode-btn" data-mode="mini">⚡ Mini · Lite</button>
+  </div>
+
+  <!-- formulario dinámico -->
+  <div id="formContainer">
+    <!-- inyectado por js -->
+  </div>
+
+  <!-- acciones -->
+  <div class="action-bar">
+    <button class="btn btn-outline btn-small" id="clearBtn">🗑️ Limpiar</button>
+    <button class="btn btn-success" id="whatsappTextBtn">💬 WhatsApp Texto</button>
+    <button class="btn btn-success" id="whatsappPdfBtn">📄 WhatsApp PDF</button>
+    <button class="btn btn-primary" id="savePdfBtn">📄 Generar PDF</button>
+    <button class="btn btn-success" id="uploadAppBtn" style="display:none;">☁️ Subir a diagnóstico PDF</button>
+    <button class="btn btn-outline" id="printBtn">🖨️ Imprimir</button>
+    <button class="btn btn-outline btn-small" id="closeEmbedBtn" style="display:none;">✕ Cerrar</button>
+  </div>
+  <div style="text-align: right; font-size: 0.7rem; color: #5f7d97; margin-top: 12px;">R-452A READY · Diagnóstico TK</div>
+</div>
+<script>
+  (function() {
+    // ---- EASTER EGG: 5 clics en el título ----
+    let clickCount = 0;
+    let clickTimer = null;
+    const title = document.getElementById('tkTitle');
+    title.addEventListener('click', function(e) {
+      clickCount++;
+      clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => { clickCount = 0; }, 800);
+      if (clickCount >= 5) {
+        clickCount = 0;
+        window.open('https://tk78.ru/thermo-king-cat', '_blank');
+      }
+    });
+
+    // ---- LISTAS PREDETERMINADAS ----
+    const TECNICOS = ['Sergio Holguin', 'Marcos Sifuentes', 'Alfredo Hernandez', 'OTRO'];
+    const MODELOS_FULL = [
+      'T-1090', 'T-1000', 'T-800', 'T-890', 'T-1080', 'T-880',
+      'C-600', 'S-600', 'SB-210', 'SB-310',
+      'T-600', 'T-690', 'T-680',
+      'Carrier X4', 'Carrier X2', 'S-700', 'OTRO'
+    ];
+    const MODELOS_VP = ['V-200', 'V-300', 'V-500', 'V-500 X', 'C-350', 'C-450', 'OTRO'];
+
+    // ---- Estado de unidades ----
+    let usarFahrenheit = false; // false = °C, true = °F
+
+    // ---- Funciones de conversión ----
+    function celsiusToFahrenheit(c) {
+      if (c === '' || isNaN(c)) return '';
+      return (parseFloat(c) * 9/5 + 32).toFixed(1);
+    }
+    function fahrenheitToCelsius(f) {
+      if (f === '' || isNaN(f)) return '';
+      return ((parseFloat(f) - 32) * 5/9).toFixed(1);
+    }
+    function convertirValor(valor, aFahrenheit) {
+      if (valor === '' || isNaN(valor)) return '';
+      const num = parseFloat(valor);
+      return aFahrenheit ? celsiusToFahrenheit(num) : fahrenheitToCelsius(num);
+    }
+
+    // ---- Actualizar todos los campos de temperatura ----
+    function actualizarTemperaturas() {
+      const inputs = document.querySelectorAll('input[data-temp="true"]');
+      inputs.forEach(input => {
+        const valorOriginal = input.dataset.valorCelsius;
+        if (valorOriginal !== undefined) {
+          if (usarFahrenheit) {
+            input.value = celsiusToFahrenheit(valorOriginal);
+          } else {
+            input.value = valorOriginal;
+          }
+        }
+      });
+      calcularDeltaT();
+      document.querySelectorAll('.unidad-label').forEach(el => {
+        el.textContent = usarFahrenheit ? '°F' : '°C';
+      });
+    }
+
+    // ---- Calcular Delta T (Retorno - Suministro) ----
+    function calcularDeltaT() {
+      const retornoInput = document.getElementById('full_retorno');
+      const suministroInput = document.getElementById('full_suministro');
+      const deltaInput = document.getElementById('full_delta');
+      
+      if (retornoInput && suministroInput && deltaInput) {
+        const retorno = parseFloat(retornoInput.value);
+        const suministro = parseFloat(suministroInput.value);
+        if (!isNaN(retorno) && !isNaN(suministro)) {
+          const delta = retorno - suministro;
+          const simbolo = usarFahrenheit ? '°F' : '°C';
+          deltaInput.value = delta.toFixed(1) + simbolo;
+        } else {
+          deltaInput.value = '---';
+        }
+      }
+    }
+
+    // ---- ALARM DATABASE ----
+    const ALARM_DB = [
+      { code: '00', status: 'green', desc: 'No hay alarmas' },
+      { code: '02', status: 'yellow', desc: 'Comprobar sensor bobina evaporador' },
+      { code: '03', status: 'yellow', desc: 'Sensor de retorno de aire' },
+      { code: '04', status: 'yellow', desc: 'Sensor de aire de descarga' },
+      { code: '05', status: 'green', desc: 'Sensor temperatura ambiente' },
+      { code: '06', status: 'green', desc: 'Sensor temperatura refrigerante' },
+      { code: '07', status: 'green', desc: 'Sensor RPM del motor' },
+      { code: '08', status: 'yellow', desc: 'Unidad funciona con sensor de bobina' },
+      { code: '09', status: 'yellow', desc: 'Alta temperatura del evaporador' },
+      { code: '10', status: 'red', desc: 'Alta presión de descarga' },
+      { code: '11', status: 'yellow', desc: 'Control con sensor alternativo' },
+      { code: '12', status: 'red', desc: 'Apagado por sensor o entrada digital' },
+      { code: '13', status: 'yellow', desc: 'Comprobación del sensor' },
+      { code: '14', status: 'green', desc: 'Descongelación finalizada por tiempo' },
+      { code: '15', status: 'yellow', desc: 'Comprobar bujías incandescentes' },
+      { code: '16', status: 'green', desc: 'Inicio manual no completado' },
+      { code: '17', status: 'yellow', desc: 'El motor no arranca' },
+      { code: '18', status: 'yellow', desc: 'Alta temp. refrigerante del motor' },
+      { code: '19', status: 'yellow', desc: 'Baja presión de aceite del motor' },
+      { code: '20', status: 'yellow', desc: 'Motor de vapor no arranca' },
+      { code: '21', status: 'yellow', desc: 'Verificación ciclo refrigeración' },
+      { code: '22', status: 'yellow', desc: 'Verificación ciclo calefacción' },
+      { code: '23', status: 'red', desc: 'Fallo en ciclo refrigeración' },
+      { code: '24', status: 'red', desc: 'Fallo en ciclo calefacción' },
+      { code: '25', status: 'yellow', desc: 'Comprobación del alternador' },
+      { code: '26', status: 'yellow', desc: 'Check Refrigeration Capacity' },
+      { code: '27', status: 'red', desc: 'Vapor Motor RPM High (CR)' },
+      { code: '28', status: 'green', desc: 'Pretrip or Self Check Abort' },
+      { code: '29', status: 'yellow', desc: 'Defrost Damper Circuit Check' },
+      { code: '30', status: 'red', desc: 'Defrost Damper Stuck Closed' },
+      { code: '31', status: 'yellow', desc: 'Check Oil Pressure Switch' },
+      { code: '32', status: 'red', desc: 'Refrigeration Capacity Low' },
+      { code: '33', status: 'green', desc: 'Check Engine RPM' },
+      { code: '34', status: 'yellow', desc: 'Check Modulation Circuit' },
+      { code: '35', status: 'red', desc: 'Check Run Relay Circuit' },
+      { code: '36', status: 'red', desc: 'Electric Motor Failed to Run' },
+      { code: '37', status: 'green', desc: 'Check Engine Coolant Level' },
+      { code: '38', status: 'red', desc: 'Electric Phase Reversed' },
+      { code: '39', status: 'yellow', desc: 'Check Water Valve Circuit' },
+      { code: '40', status: 'yellow', desc: 'Check High Speed Circuit' },
+      { code: '41', status: 'yellow', desc: 'Check Engine Coolant Temp' },
+      { code: '42', status: 'yellow', desc: 'Unit Forced to Low Speed' },
+      { code: '43', status: 'green', desc: 'Unit Forced to Low Speed Modulation' },
+      { code: '44', status: 'red', desc: 'Check Fuel System' },
+      { code: '45', status: 'yellow', desc: 'Check Hot Gas or Hot Gas Bypass' },
+      { code: '46', status: 'yellow', desc: 'Check Air Flow' },
+      { code: '47', status: 'red', desc: 'Remote Sensor Shutdown' },
+      { code: '48', status: 'red', desc: 'Check Belts or Clutch' },
+      { code: '49', status: 'green', desc: 'Check Spare Sensor 1' },
+      { code: '50', status: 'green', desc: 'Reset Clock' },
+      { code: '51', status: 'red', desc: 'Check Shutdown Circuit' },
+      { code: '52', status: 'yellow', desc: 'Check Heat Circuit' },
+      { code: '53', status: 'yellow', desc: 'Check Economizer Valve Circuit' },
+      { code: '54', status: 'green', desc: 'Test Mode Timeout' },
+      { code: '55', status: 'green', desc: 'Check Engine Speeds' },
+      { code: '56', status: 'yellow', desc: 'Check Evaporator Fan Low Speed' },
+      { code: '57', status: 'yellow', desc: 'Check Evaporator Fan High Speed' },
+      { code: '61', status: 'yellow', desc: 'Low Battery Voltage' },
+      { code: '62', status: 'red', desc: 'Ammeter Out of Calibration' },
+      { code: '63', status: 'red', desc: 'Engine or Vapor Motor Stopped' },
+      { code: '64', status: 'green', desc: 'Pretrip Reminder' },
+      { code: '65', status: 'yellow', desc: 'Abnormal Temperature Differential' },
+      { code: '66', status: 'red', desc: 'Low Engine Oil Level' },
+      { code: '67', status: 'yellow', desc: 'Check Liquid Line Solenoid' },
+      { code: '68', status: 'red', desc: 'Internal Controller Fault' },
+      { code: '70', status: 'green', desc: 'Hourmeter Failure' },
+      { code: '71', status: 'green', desc: 'Hourmeter 4 Exceeds Set Time' },
+      { code: '72', status: 'green', desc: 'Hourmeter 5 Exceeds Set Time' },
+      { code: '73', status: 'green', desc: 'Hourmeter 6 Exceeds Set Time' },
+      { code: '74', status: 'green', desc: 'Controller Reset to Defaults' },
+      { code: '75', status: 'red', desc: 'Controller RAM Failure' },
+      { code: '76', status: 'red', desc: 'Controller EPROM Failure' },
+      { code: '77', status: 'red', desc: 'Controller EPROM Checksum Failure' },
+      { code: '78', status: 'red', desc: 'Data Log EPROM Failure' },
+      { code: '79', status: 'green', desc: 'Internal Data Logger Overflow' },
+      { code: '80', status: 'green', desc: 'Check Compressor Temp Sensor' },
+      { code: '81', status: 'red', desc: 'High Compressor Temp' },
+      { code: '82', status: 'red', desc: 'High Compressor Temp Shutdown' },
+      { code: '83', status: 'green', desc: 'Low Engine Coolant Temp' },
+      { code: '84', status: 'green', desc: 'Restart Null' },
+      { code: '85', status: 'green', desc: 'Forced Unit Operation' },
+      { code: '86', status: 'green', desc: 'Check Discharge Pressure Sensor' },
+      { code: '87', status: 'green', desc: 'Check Suction Pressure Sensor' },
+      { code: '88', status: 'green', desc: 'Reserved for CR' },
+      { code: '89', status: 'green', desc: 'Check ETV Circuit' },
+      { code: '90', status: 'green', desc: 'Electric Overload' },
+      { code: '91', status: 'green', desc: 'Check Electric Ready Input' },
+      { code: '92', status: 'green', desc: 'Sensor Grades Not Set' },
+      { code: '93', status: 'green', desc: 'Low Compressor Suction Pressure' },
+      { code: '94', status: 'green', desc: 'Check Loader #1 Circuit' },
+      { code: '95', status: 'green', desc: 'Check Loader #2 Circuit' },
+      { code: '96', status: 'yellow', desc: 'Low Fuel Level' },
+      { code: '97', status: 'red', desc: 'Failed Remote Return Air Sensor' },
+      { code: '98', status: 'green', desc: 'Check Fuel Level Sensor' },
+      { code: '99', status: 'red', desc: 'High Compressor Pressure Ratio' },
+      { code: '100', status: 'yellow', desc: 'Heater Fan Failure (CR)' },
+      { code: '101', status: 'red', desc: 'Controlling on Evap Coil Outlet Temp' },
+      { code: '102', status: 'yellow', desc: 'Low Evaporator Coil Temperature' },
+      { code: '103', status: 'yellow', desc: 'Low Heater Fuel Level (CR)' },
+      { code: '104', status: 'yellow', desc: 'Check Remote Fan Speed' },
+      { code: '105', status: 'yellow', desc: 'Check Receiver Tank Press Sol' },
+      { code: '106', status: 'yellow', desc: 'Check Purge Valve Circuit' },
+      { code: '107', status: 'yellow', desc: 'Check Condenser Inlet Sol' },
+      { code: '108', status: 'yellow', desc: 'Door Open Timeout' },
+      { code: '110', status: 'yellow', desc: 'Check Suction Line Sol' },
+      { code: '111', status: 'green', desc: 'Unit Not Configured Correctly' },
+      { code: '112', status: 'yellow', desc: 'Check Remote Fans' },
+      { code: '113', status: 'yellow', desc: 'Check Electric Heat Circuit' },
+      { code: '114', status: 'red', desc: 'Multiple Alarms - Can Not Run' },
+      { code: '115', status: 'yellow', desc: 'Check High Pressure Cut Out' },
+      { code: '116', status: 'green', desc: 'Check High Pressure Cut In' },
+      { code: '117', status: 'green', desc: 'Auto Switch Diesel to Electric' },
+      { code: '118', status: 'green', desc: 'Auto Switch Electric to Diesel' },
+      { code: '120', status: 'yellow', desc: 'Check Alternator Excite' },
+      { code: '121', status: 'yellow', desc: 'Check PMW Liquid Injection' },
+      { code: '122', status: 'yellow', desc: 'Check Diesel/Electric Circuit' },
+      { code: '123', status: 'yellow', desc: 'Check Evap Coil Inlet Temp' },
+      { code: '124', status: 'green', desc: 'Check Evap Coil Outlet Temp' },
+      { code: '125', status: 'yellow', desc: 'Check Tank Level Sensor' },
+      { code: '126', status: 'yellow', desc: 'Check Back Pressure Regulator' },
+      { code: '127', status: 'yellow', desc: 'Setpoint Not Entered' },
+      { code: '128', status: 'green', desc: 'Engine Maint Reminder #1' },
+      { code: '129', status: 'green', desc: 'Engine Maint Reminder #2' },
+      { code: '130', status: 'green', desc: 'Engine Maint Reminder #1' },
+      { code: '131', status: 'green', desc: 'Electric Maint Reminder #2' },
+      { code: '132', status: 'green', desc: 'Total Unit Maint Reminder #1' },
+      { code: '133', status: 'green', desc: 'Total Unit Maint Reminder #2' },
+      { code: '134', status: 'green', desc: 'Controller Power On Hours' },
+      { code: '135', status: 'green', desc: 'Check Spare Digital Inputs' },
+      { code: '137', status: 'yellow', desc: 'Check Damper Motor Heater' },
+      { code: '138', status: 'green', desc: 'Log DAS Real Time Clock Battery' },
+      { code: '139', status: 'green', desc: 'Abort Evacuation Mode' },
+      { code: '141', status: 'yellow', desc: 'Auto Switch Disabled' },
+      { code: '142', status: 'yellow', desc: 'Check Thermax Valve' },
+      { code: '143', status: 'green', desc: 'Check Remote Drain Hose Heater' },
+      { code: '144', status: 'red', desc: 'Lost CAN to Expansion Module' },
+      { code: '145', status: 'yellow', desc: 'Lost Controller ON Feedback' },
+      { code: '146', status: 'green', desc: 'Software Version Mismatch' },
+      { code: '147', status: 'yellow', desc: 'Check Multi-Temp Fan Speed' },
+      { code: '148', status: 'yellow', desc: 'Auto Switch Electric to Diesel Disabled' },
+      { code: '149', status: 'yellow', desc: 'Alarm Not Identified' },
+      { code: '150', status: 'green', desc: 'Sensor Out of Range Low' },
+      { code: '151', status: 'green', desc: 'Sensor Out of Range High' },
+      { code: '152', status: 'green', desc: 'DAS Failed Sensor' },
+      { code: '153', status: 'green', desc: 'Expansion Module Flash Load Fail' },
+      { code: '154', status: 'yellow', desc: 'Low Suction Pressure Switch Failure' },
+      { code: '155', status: 'red', desc: 'Lost CAN to HMI' },
+      { code: '156', status: 'yellow', desc: 'Check Suction/Liquid HX Bypass' },
+      { code: '157', status: 'green', desc: 'OptiSet Plus Profile Mismatch' },
+      { code: '158', status: 'green', desc: 'Primary Software Failed to Load' },
+      { code: '159', status: 'green', desc: 'Check Battery Condition' },
+      { code: '160', status: 'green', desc: 'Lost CAN to Radio Expansion' },
+      { code: '161', status: 'green', desc: 'Log DAS Real Time Clock Invalid' },
+      { code: '163', status: 'yellow', desc: 'Emission Control Failure' },
+      { code: '175', status: 'yellow', desc: 'Check Electronic Expansion Valve' },
+      { code: '176', status: 'yellow', desc: 'Check Evaporator Pressure Sensor' },
+      { code: '177', status: 'yellow', desc: 'Check CO2 Tank Pressure Sensor' },
+      { code: '178', status: 'yellow', desc: 'Low CO2 Fuel Level' },
+      { code: '180', status: 'yellow', desc: 'TriPac Compressor Alarm' },
+      { code: '188', status: 'yellow', desc: 'Log DAS Microprocessor Fault' },
+      { code: '203', status: 'yellow', desc: 'Check Display Return Air Sensor' },
+      { code: '204', status: 'yellow', desc: 'Check Display Discharge Air Sensor' },
+      { code: '216', status: 'green', desc: 'Check DAS Digital Inputs' },
+      { code: '233', status: 'green', desc: 'REB Switching Off' },
+      { code: '234', status: 'green', desc: 'Check Relative Humidity Sensor' },
+      { code: '235', status: 'green', desc: 'High Engine Coolant Temperature Check' },
+      { code: '250', status: 'green', desc: 'DAS Clock Time Reset' },
+      { code: '251', status: 'green', desc: 'Check Radio Expansion Board Config' },
+      { code: '252', status: 'green', desc: 'Check Auto Fresh Air Exchange' },
+      { code: '253', status: 'green', desc: 'REB On Back Up Battery' },
+      { code: '254', status: 'green', desc: 'Check Auxiliary Coolant Temp' },
+      { code: '500', status: 'yellow', desc: 'Check Host Evaporator Blower Low' },
+      { code: '501', status: 'yellow', desc: 'Check Host Evaporator Blower High' },
+      { code: '505', status: 'yellow', desc: 'Check Roadside Condenser Fan' },
+      { code: '506', status: 'yellow', desc: 'Check Curbside Condenser Fan' },
+      { code: '507', status: 'green', desc: 'Check Digital Scroll Output' },
+      { code: '508', status: 'green', desc: 'Speed Request Communication Error' },
+      { code: '509', status: 'yellow', desc: 'ECU Failed to Enable' },
+      { code: '510', status: 'yellow', desc: 'ECU Run Signal Failed' },
+      { code: '511', status: 'green', desc: 'Engine Wait to Start Timeout' },
+      { code: '512', status: 'yellow', desc: 'High Compressor Suction Pressure' },
+      { code: '513', status: 'yellow', desc: 'Low Compressor Suction Ratio' },
+      { code: '514', status: 'yellow', desc: 'Low Compressor Discharge Pressure' },
+      { code: '515', status: 'yellow', desc: 'Minimum ETV Discharge Superheat' },
+      { code: '516', status: 'red', desc: 'I/O to Application Controller Com Fail' },
+      { code: '518', status: 'yellow', desc: 'Generator Ground Fault' },
+      { code: '519', status: 'yellow', desc: 'Check Battery Charger Input Power' },
+      { code: '520', status: 'yellow', desc: 'Check Battery Charger Output Power' },
+      { code: '521', status: 'yellow', desc: 'Battery Charger External Fault' },
+      { code: '522', status: 'yellow', desc: 'Battery Temperature Sensor Alarm' },
+      { code: '523', status: 'yellow', desc: 'Battery Charger Indicated Conditions' },
+      { code: '524', status: 'yellow', desc: 'Generator Op Limit Vout to Freq' },
+      { code: '525', status: 'yellow', desc: 'Generator Frequency Range Fault' },
+      { code: '526', status: 'yellow', desc: 'Generator Op Limit Output Current' },
+      { code: '528', status: 'yellow', desc: 'Failed J1939 CAN Comm' },
+      { code: '529', status: 'yellow', desc: 'Check Fuel Pump Circuit' },
+      { code: '530', status: 'yellow', desc: 'Low Pressure Differential' },
+      { code: '531', status: 'yellow', desc: 'Check Economizer Pressure Sensor' },
+      { code: '538', status: 'yellow', desc: 'Engine J1939 CAN Data Link Degraded' },
+      { code: '539', status: 'yellow', desc: 'Engine J1939 CAN Data Link Failed' },
+      { code: '540', status: 'yellow', desc: 'Illegal Engine Operating State' },
+      { code: '542', status: 'green', desc: 'Battery Charger Fault – Forced Low Speed' },
+      { code: '543', status: 'green', desc: 'Battery Charger Internal Short' },
+      { code: '544', status: 'green', desc: 'Battery Charger External Short' },
+      { code: '545', status: 'green', desc: 'Battery Charger Output Voltage Exceeded' },
+      { code: '546', status: 'green', desc: 'Battery Charger Bulk Voltage Out of Range' },
+      { code: '547', status: 'yellow', desc: 'AC Bus Phase Loss' },
+      { code: '548', status: 'green', desc: 'Battery Charger Temp Below Range' },
+      { code: '549', status: 'green', desc: 'Battery Charger AC Input Overvoltage' },
+      { code: '550', status: 'yellow', desc: 'Battery Charger Internal Overvoltage' },
+      { code: '551', status: 'green', desc: 'Battery Charger Internal Temp Sensor Fault' },
+      { code: '552', status: 'green', desc: 'Battery Charger Charging – Low Battery' },
+      { code: '553', status: 'green', desc: 'Battery Charger Derated Due to High Temp' },
+      { code: '599', status: 'green', desc: 'Engine Service Tool Connected' },
+      { code: '600', status: 'green', desc: 'Check Crankshaft Speed Sensor' },
+      { code: '601', status: 'green', desc: 'Check Camshaft Speed Sensor' },
+      { code: '603', status: 'green', desc: 'Check Exhaust Pressure Sensor' },
+      { code: '604', status: 'green', desc: 'Check Coolant Temp Sensor' },
+      { code: '605', status: 'green', desc: 'Check Fresh Air Temp Sensor' },
+      { code: '607', status: 'green', desc: 'Check Fuel Temperature Sensor' },
+      { code: '608', status: 'green', desc: 'Check Rail Pressure Sensor' },
+      { code: '609', status: 'green', desc: 'Check Intake Pressure Sensor' },
+      { code: '610', status: 'green', desc: 'Check Atmospheric Pressure Sensor' },
+      { code: '611', status: 'green', desc: 'Check Glow Plug Circuit' },
+      { code: '613', status: 'green', desc: 'Check Injectors' },
+      { code: '614', status: 'green', desc: 'Check High Pressure Fuel Pump' },
+      { code: '615', status: 'yellow', desc: 'Rail Pressure Fault' },
+      { code: '616', status: 'yellow', desc: 'Engine Overspeed' },
+      { code: '617', status: 'yellow', desc: 'Internal ECU Fault' },
+      { code: '618', status: 'green', desc: 'Check EGR System' },
+      { code: '619', status: 'green', desc: 'ECU Main Relay Fault' },
+      { code: '620', status: 'yellow', desc: 'No RPM Detected During Start' },
+      { code: '623', status: 'green', desc: 'TRUCAN Message Timeout' },
+      { code: '624', status: 'green', desc: 'Check EGR Temperature Sensor' },
+      { code: '625', status: 'green', desc: 'Check Intake Air Temperature Sensor' },
+      { code: '626', status: 'green', desc: 'Check Exhaust Temperature Sensor' },
+      { code: '642', status: 'green', desc: 'ECU Forced Low Speed' },
+      { code: '699', status: 'yellow', desc: 'Unknown ECU Fault' },
+      { code: '800', status: 'green', desc: 'Crankshaft Position Sensor Error' },
+      { code: '801', status: 'green', desc: 'Camshaft Position Sensor Error' },
+      { code: '804', status: 'green', desc: 'Engine Coolant Temperature Sensor Error' },
+      { code: '807', status: 'green', desc: 'Fuel Temperature Sensor Error' },
+      { code: '808', status: 'green', desc: 'Rail Pressure Sensor Error' },
+      { code: '809', status: 'green', desc: 'Intake Air Pressure Sensor Error' },
+      { code: '810', status: 'green', desc: 'Atmospheric Pressure Sensor Error' },
+      { code: '811', status: 'green', desc: 'Glow Plug Circuit Error' },
+      { code: '813', status: 'green', desc: 'General Injector Error' },
+      { code: '815', status: 'yellow', desc: 'Fuel Pressure Regulator Error' },
+      { code: '818', status: 'green', desc: 'EGR Valve Actuator Error' },
+      { code: '819', status: 'green', desc: 'ECU Power Relay Error' },
+      { code: '825', status: 'green', desc: 'T1 Air Intake Temperature Error' },
+      { code: '826', status: 'green', desc: 'T2 Air Intake Temperature Error' },
+      { code: '827', status: 'green', desc: 'EGR Valve Position Sensor Error' },
+      { code: '828', status: 'green', desc: 'Lambda System Error' },
+      { code: '829', status: 'green', desc: 'Main ECU Relay Error / Engine Communication Error' },
+      { code: '830', status: 'green', desc: 'Air Flow Meter Error' },
+      { code: '832', status: 'green', desc: 'Engine Power Supply Error' },
+      { code: '833', status: 'green', desc: 'High Pressure Pump Fuel Metering Error' },
+      { code: '834', status: 'green', desc: 'Water in Fuel Sensor Error' },
+      { code: '836', status: 'green', desc: 'Major ECU Failures' },
+      { code: '838', status: 'green', desc: 'Intake Air System Error' },
+      { code: '839', status: 'green', desc: 'Engine Speed Error' },
+      { code: '840', status: 'green', desc: 'Fuel Injection Energizing Error' },
+      { code: '841', status: 'green', desc: 'High Pressure Pump Wear' },
+      { code: '842', status: 'green', desc: 'Engine Running Safe Mode – Low Speed' },
+      { code: '843', status: 'green', desc: 'Fuel Injection System Error' },
+      { code: '844', status: 'green', desc: 'Engine Failed to Crank' },
+      { code: '845', status: 'green', desc: 'Starter Relay Error' },
+      { code: '846', status: 'green', desc: 'T50 Switch Error' },
+      { code: '847', status: 'green', desc: 'Variant Coding Error' },
+      { code: '853', status: 'yellow', desc: 'Engine Overspeed (No DTC)' },
+      { code: '854', status: 'yellow', desc: 'Engine Protection Self Shutdown' },
+      { code: '899', status: 'yellow', desc: 'Unknown ECU Fault' },
+      { code: 'SOF', status: 'red', desc: 'Microprocessor Software Failure' },
+      { code: 'tEP', status: 'red', desc: 'Electric Standby Motor Thermal Protection' },
+      { code: '- C -', status: 'red', desc: 'Comms Failure Microprocessor to In-Cab' },
+      { code: 'dr2', status: 'yellow', desc: 'Door 2 Open/Door Switch 2 Failure' },
+      { code: 'LP', status: 'red', desc: 'Low Suction Pressure' },
+      { code: 'P1E', status: 'yellow', desc: 'Return Air Temperature Sensor Fault' },
+      { code: 'HP', status: 'red', desc: 'High Discharge Pressure' },
+      { code: 'dr1', status: 'yellow', desc: 'Door 1 Open/Door Switch 1 Failure' },
+      { code: 'OL', status: 'red', desc: 'Electric Standby Overload' },
+      { code: 'P2E', status: 'yellow', desc: 'Remote Return Air Sensor Fault' },
+      { code: 'bAt', status: 'red', desc: 'Low Battery Voltage' },
+      { code: 'tP4', status: 'red', desc: 'Power Supply Thermal Protection' },
+      { code: 'PSE', status: 'red', desc: 'High Pressure Sensor Fault' },
+      { code: 'tCO', status: 'red', desc: 'ECM Internal Temperature Exceeds Limit' }
+    ];
+
+    // ---- Helper ----
+    function getStatusDot(status) {
+      if (status === 'green') return '<span class="status-dot dot-green"></span>';
+      if (status === 'yellow') return '<span class="status-dot dot-yellow"></span>';
+      if (status === 'red') return '<span class="status-dot dot-red"></span>';
+      return '';
+    }
+
+    function getStatusLabel(status) {
+      const map = { green: 'Verde', yellow: 'Amarillo', red: 'Rojo' };
+      return map[status] || status;
+    }
+
+    // ---- Render ----
+    const container = document.getElementById('formContainer');
+    let currentMode = 'full';
+    let alarmState = { full: [], vp: [], mini: [] };
+
+    function buildFormHTML(modeKey) {
+      const isVP = (modeKey === 'vp');
+      const isMini = (modeKey === 'mini');
+      let html = '';
+
+      // ===== MODO MINI =====
+      if (isMini) {
+        html += `<div style="background:#e2edf7; padding:6px 16px; border-radius:40px; margin-bottom:12px; font-size:0.8rem;">⚡ Modo Mini · diagnóstico rápido</div>`;
+        html += `<div class="section mini-simple">
+          <div class="section-title">📋 Diagnóstico Rápido</div>
+          <div class="row"><label>👤 Técnico</label>
+            <div class="tecnico-row">
+              <select id="mini_tecnico_select">
+                <option value="">— Seleccionar —</option>
+                ${TECNICOS.map(t => `<option value="${t}">${t}</option>`).join('')}
+              </select>
+              <input type="text" id="mini_tecnico_otro" placeholder="Especificar técnico" style="flex:1; min-width:100px; display:none;">
+            </div>
+          </div>
+          <div class="row"><label>🏢 Cliente</label><input type="text" id="mini_cliente" placeholder="Razón social" value=""></div>
+          <div class="row"><label>🚛 Placas</label><input type="text" id="mini_placas" placeholder="Placas" value=""></div>
+          <div class="row"><label>🔢 No. Económico</label><input type="text" id="mini_economico" placeholder="Económico" value=""></div>
+          <div class="row"><label>📦 Modelo TK</label><input type="text" id="mini_modelo" placeholder="ej. T-1000" value=""></div>
+          <div class="row"><label>🔢 No. Serie</label><input type="text" id="mini_serie" placeholder="Serie" value=""></div>
+          <div class="row"><label>⚠️ Falla encontrada</label><textarea id="mini_falla" placeholder="Descripción de la falla" rows="2"></textarea></div>
+          <div class="row"><label>🔧 Trabajo realizado</label><textarea id="mini_trabajo" placeholder="Trabajo efectuado" rows="2"></textarea></div>
+          <div class="row"><label>🧰 Refacciones</label><textarea id="mini_refacciones" placeholder="Refacciones usadas o necesarias" rows="2"></textarea></div>
+          <div class="row" style="margin-top:10px;"><label>📌 Estatus final</label>
+            <div class="chip-group">
+              <label><input type="radio" name="estadoMini" checked> Operativo</label>
+              <label><input type="radio" name="estadoMini"> No operativo - Requiere taller</label>
+            </div>
+          </div>
+        </div>`;
+        // Alarmas simplificadas
+        html += `<div class="section"><div class="section-title">🔔 Códigos Alarma</div>
+          <div class="alarm-list" id="alarmList_${modeKey}">`;
+        const alarms = alarmState[modeKey] || [];
+        if (alarms.length === 0) {
+          html += `<div class="alarm-empty">No hay alarmas registradas</div>`;
+        } else {
+          alarms.forEach((alarm, idx) => {
+            html += `<div class="alarm-item" data-index="${idx}">
+              <span>${getStatusDot(alarm.status)} <strong>${alarm.code}</strong> · ${alarm.desc}</span>
+              <span><span class="alarm-tag">${getStatusLabel(alarm.status)}</span>
+              <button class="btn btn-small btn-danger" style="margin-left:8px; padding:2px 12px;" data-alarm-del="${modeKey}|${idx}">✕</button></span>
+            </div>`;
+          });
+        }
+        html += `</div>
+          <div class="alarm-add-row">
+            <select id="alarmSelect_${modeKey}">
+              <option value="">— Seleccionar —</option>`;
+        ALARM_DB.slice(0, 30).forEach(a => {
+          html += `<option value="${a.code}|${a.status}|${a.desc}">${a.code} - ${a.desc}</option>`;
+        });
+        html += `</select>
+            <input type="text" id="alarmCustom_${modeKey}" placeholder="Código personalizado" style="flex:1; min-width:80px;">
+            <button class="btn btn-small btn-primary" data-alarm-add="${modeKey}">➕</button>
+          </div>
+        </div>`;
+        return html;
+      }
+
+      // ===== FULL y VP =====
+      // 0. Selector de unidades
+      html += `<div class="section" style="background:#eef3f9; border-color:#cbdae7;">
+        <div class="section-title" style="border-bottom-color:#b8cfdf;">🌡️ Unidades de Temperatura</div>
+        <div class="row">
+          <label style="min-width:60px;">Unidad</label>
+          <div class="unidad-temp">
+            <label><input type="radio" name="unidadTemp" value="C" ${!usarFahrenheit ? 'checked' : ''}> °C</label>
+            <label><input type="radio" name="unidadTemp" value="F" ${usarFahrenheit ? 'checked' : ''}> °F</label>
+          </div>
+        </div>
+      </div>`;
+
+      // 1. cliente + unidad
+      html += `<div class="section"><div class="section-title">📋 1. Cliente / Unidad</div>
+        <div class="grid-2col">
+          <div class="row"><label>👤 Técnico</label>
+            <div class="tecnico-row">
+              <select id="full_tecnico_select">
+                <option value="">— Seleccionar —</option>
+                ${TECNICOS.map(t => `<option value="${t}">${t}</option>`).join('')}
+              </select>
+              <input type="text" id="full_tecnico_otro" placeholder="Especificar técnico" style="flex:1; min-width:100px; display:none;">
+            </div>
+          </div>
+          <div class="row"><label>Cliente</label><input type="text" id="full_cliente" placeholder="Razón social" value=""></div>
+          <div class="row"><label>Tel / Contacto</label><input type="text" id="full_contacto" placeholder="Teléfono" value=""></div>
+          <div class="row"><label>Operador</label><input type="text" id="full_operador" placeholder="Nombre" value=""></div>
+          <div class="row"><label>Placas tractor</label><input type="text" id="full_placas_tractor" placeholder="Placas" value=""></div>
+          <div class="row"><label>Placas caja</label><input type="text" id="full_placas_caja" placeholder="Remolque" value=""></div>
+          <div class="row"><label>No. Económico</label><input type="text" id="full_economico" placeholder="Económico" value=""></div>
+        </div>
+      </div>`;
+
+      // 2. Equipo TK
+      html += `<div class="section"><div class="section-title">⚙️ 2. Equipo Thermo King</div>
+        <div class="grid-2col">
+          <div class="row"><label>Modelo TK</label>
+            ${isVP ? `
+            <div class="modelo-version-row">
+              <select id="full_modelo_select" style="flex:1;">
+                <option value="">— Seleccionar —</option>
+                ${MODELOS_VP.map(m => `<option value="${m}">${m}</option>`).join('')}
+              </select>
+              <input type="text" id="full_modelo_otro" placeholder="Especificar modelo" style="flex:1; min-width:100px; display:none;">
+            </div>
+            ` : `
+            <div class="modelo-version-row">
+              <select id="full_modelo_select" style="flex:1;">
+                <option value="">— Seleccionar —</option>
+                ${MODELOS_FULL.map(m => `<option value="${m}">${m}</option>`).join('')}
+              </select>
+              <input type="text" id="full_modelo_otro" placeholder="Especificar modelo" style="flex:1; min-width:100px; display:none;">
+            </div>
+            `}
+          </div>
+          ${isVP ? `
+          <div class="row"><label>Versión</label>
+            <select id="full_version">
+              <option value="Normal">Normal</option>
+              <option value="Max">Max</option>
+            </select>
+          </div>` : ''}
+          <div class="row"><label>No. Serie</label><input type="text" id="full_serie" placeholder="Serie" value=""></div>
+          <div class="row"><label>Horas totales</label><input type="number" id="full_horas" placeholder="0" value=""></div>
+          ${!isVP ? `<div class="row"><label>Horas Diesel</label><input type="number" id="full_horas_diesel" placeholder="0" value=""></div>` : ''}
+          ${!isVP ? `<div class="row"><label>Horas Eléctricas</label><input type="number" id="full_horas_electricas" placeholder="0" value=""></div>` : ''}
+          ${!isVP ? `<div class="row"><label>Combustible</label><select id="full_combustible"><option>Diesel</option><option>Eléctrico</option><option>Híbrido</option><option>No aplica</option></select></div>` : ''}
+          <div class="row"><label>Refrigerante</label><select id="full_refrigerante"><option>R-404A</option><option selected>R-452A</option><option>R-134a</option><option>No aplica</option></select></div>
+          <div class="row"><label>Voltaje</label><select id="full_voltaje"><option>12 Volts</option><option>24 Volts</option><option>12V / 24V</option><option>No aplica</option></select></div>
+        </div>
+      </div>`;
+
+      // 3. Configuración con campos de temperatura y Delta T
+      html += `<div class="section"><div class="section-title">🌡️ 3. Temperaturas / Config</div>
+        <div class="grid-2col">
+          <div class="row"><label>Setpoint</label><input type="number" step="0.1" id="full_setpoint" data-temp="true" data-valor-celsius="0.0" value="${usarFahrenheit ? celsiusToFahrenheit(0) : '0.0'}"></div>
+          <div class="row"><label>Retorno</label><input type="number" step="0.1" id="full_retorno" data-temp="true" data-valor-celsius="0.0" value="${usarFahrenheit ? celsiusToFahrenheit(0) : '0.0'}"></div>
+          <div class="row"><label>Suministro</label><input type="number" step="0.1" id="full_suministro" data-temp="true" data-valor-celsius="0.0" value="${usarFahrenheit ? celsiusToFahrenheit(0) : '0.0'}"></div>
+          <div class="row"><label>Ambiente</label><input type="number" step="0.1" id="full_ambiente" data-temp="true" data-valor-celsius="0.0" value="${usarFahrenheit ? celsiusToFahrenheit(0) : '0.0'}"></div>
+          <div class="row"><label>Delta T</label><input type="text" id="full_delta" value="---" readonly style="background:#eef3f9; font-weight:600; color:#003f66;"></div>
+          <div class="row"><label>Modo</label><select id="full_modo"><option>Continuo</option><option>Ciclo Sentry</option><option>Deshielo</option><option>Calentamiento</option><option>OptiSet</option></select></div>
+          <div class="row"><label>Tipo carga</label><select id="full_tipo_carga"><option>Congelado</option><option>Fresco</option><option>Farmacéutico</option></select></div>
+        </div>
+      </div>`;
+
+      // 4. Alarmas
+      let alarmDBFiltered = ALARM_DB;
+      if (isVP) {
+        alarmDBFiltered = ALARM_DB.filter(a => /[a-zA-Z]/.test(a.code));
+      }
+      const alarms = alarmState[modeKey] || [];
+      html += `<div class="section"><div class="section-title">🔔 4. Códigos Alarma ${isVP ? '(solo letras)' : ''}</div>
+        <div class="alarm-list" id="alarmList_${modeKey}">`;
+      if (alarms.length === 0) {
+        html += `<div class="alarm-empty">No hay alarmas registradas</div>`;
+      } else {
+        alarms.forEach((alarm, idx) => {
+          html += `<div class="alarm-item" data-index="${idx}">
+            <span>${getStatusDot(alarm.status)} <strong>${alarm.code}</strong> · ${alarm.desc}</span>
+            <span><span class="alarm-tag">${getStatusLabel(alarm.status)}</span>
+            <button class="btn btn-small btn-danger" style="margin-left:8px; padding:2px 12px;" data-alarm-del="${modeKey}|${idx}">✕</button></span>
+          </div>`;
+        });
+      }
+      html += `</div>
+        <div class="alarm-add-row">
+          <select id="alarmSelect_${modeKey}">
+            <option value="">— Seleccionar código —</option>`;
+      alarmDBFiltered.forEach(a => {
+        html += `<option value="${a.code}|${a.status}|${a.desc}">${a.code} - ${a.desc}</option>`;
+      });
+      html += `</select>
+          <input type="text" id="alarmCustom_${modeKey}" placeholder="O código personalizado" style="flex:1; min-width:100px;">
+          <button class="btn btn-small btn-primary" data-alarm-add="${modeKey}">➕ Agregar</button>
+        </div>
+        <div style="font-size:0.7rem; color:#4f7a9c; margin-top:4px;">🔍 Basado en la lista oficial Thermo King</div>
+      </div>`;
+
+      // 5. Inspección - VP con ítems ampliados
+      let inspectionItems = [];
+      if (isVP) {
+        inspectionItems = [
+          'Banda / Ruta',
+          'Ruteo de mangueras y cableado',
+          'Manchas de aceite por fugas de gas',
+          'Clutch de compresor en buen estado',
+          'Funcionamiento en stand by',
+          'Poleas tensores',
+          'Tornillos de compresor',
+          'Base de compresor en buen estado',
+          'Tapas de equipo en buen estado',
+          'Funcionamiento abanicos (evaporador/condensador)',
+          'Funcionamiento control cabina',
+          'Conexiones de batería en buen estado',
+          'Tapones en puertos de servicio',
+          'Abrazadera en filtro deshidratador/separador de aceite'
+        ];
+      } else {
+        inspectionItems = [
+          'Nivel aceite motor TK', 'Nivel refrigerante motor', 'Nivel combustible / diésel',
+          'Bandas / Correas / Tensión', 'Batería y terminales', 'Alternador / Carga',
+          'Condensador sucio / bloqueado', 'Evaporador bloqueado / hielo', 'Ventiladores',
+          'Mangueras y conexiones', 'Fuga visible refrigerante', 'Precalentador / Glow plugs',
+          'Tablero HMI / Display', 'Sellos de puertas / caja', 'Soportes / Vibración'
+        ];
+      }
+      
+      html += `<div class="section"><div class="section-title">🔧 5. Inspección (${inspectionItems.length}/15)</div>
+        <div class="inspection-grid">`;
+      inspectionItems.forEach(item => {
+        html += `<div class="inspection-item"><span>${item}</span>
+          <select><option>OK</option><option>Atención</option><option>Falla</option><option>N/A</option></select></div>`;
+      });
+      html += `</div></div>`;
+
+      // 6. Mediciones
+      html += `<div class="section"><div class="section-title">📊 6. Mediciones</div>
+        <div class="grid-2col">
+          <div class="row"><label>Presión succión</label><input type="text" placeholder="psig" value=""></div>
+          <div class="row"><label>Presión descarga</label><input type="text" placeholder="psig" value=""></div>
+          ${!isVP ? `<div class="row"><label>T° motor diesel</label><input type="text" placeholder="°C" value=""></div>` : ''}
+          ${!isVP ? `<div class="row"><label>RPM motor</label><input type="text" placeholder="RPM" value=""></div>` : ''}
+          <div class="row"><label>Voltaje batería</label><input type="text" placeholder="V" value=""></div>
+          ${!isVP ? `<div class="row"><label>Amperaje motor</label><input type="text" placeholder="A" value=""></div>` : ''}
+          ${!isVP ? `<div class="row"><label>Posición ETV</label><input type="text" placeholder="1-800" value=""></div>` : ''}
+          ${!isVP ? `<div class="row"><label>Pre-Trip</label><select><option>Passed</option><option>Failed</option><option>OK</option><option>Pendiente</option><option>N/A</option></select></div>` : ''}
+          <div class="row"><label>Deshielo</label><select><option>Passed</option><option>Failed</option><option>OK</option><option>Pendiente</option><option>N/A</option></select></div>
+          ${!isVP ? `<div class="row"><label>Calentamiento</label><select><option>Passed</option><option>Failed</option><option>OK</option><option>Pendiente</option><option>N/A</option></select></div>` : ''}
+        </div>
+      </div>`;
+
+      // 7. Diagnóstico
+      html += `<div class="section"><div class="section-title">🧪 7. Diagnóstico Técnico</div>
+        <div class="row"><label>Causa raíz</label><textarea id="full_diagnostico" placeholder="Análisis detallado de la causa raíz" rows="3" style="flex:2;"></textarea></div>
+      </div>`;
+
+      // 8. Trabajo
+      html += `<div class="section"><div class="section-title">🛠️ 8. Trabajo / Refacciones</div>
+        <div class="row"><label>Trabajo realizado</label><textarea id="full_trabajo" placeholder="Descripción detallada del trabajo y refacciones utilizadas" rows="3" style="flex:2;"></textarea></div>
+      </div>`;
+
+      // 9. Estado final
+      html += `<div class="section"><div class="section-title">✅ 9. Estado Final</div>
+        <div class="chip-group">
+          <label><input type="radio" name="estado" checked> Operativo</label>
+          <label><input type="radio" name="estado"> Operativo con restricción</label>
+          <label><input type="radio" name="estado"> No operativo - Requiere taller</label>
+        </div>
+      </div>`;
+
+      if (isVP) {
+        html = `<div class="vp-highlight" style="padding:8px 12px; border-radius:20px; margin-bottom:12px;">📦 <strong>VP Truck</strong> · versión optimizada para tractocamión</div>` + html;
+      }
+      return html;
+    }
+
+    // ---- Funciones de alarmas ----
+    function addAlarm(modeKey, code, status, desc) {
+      if (!alarmState[modeKey]) alarmState[modeKey] = [];
+      if (alarmState[modeKey].some(a => a.code === code)) {
+        alert(`La alarma ${code} ya está agregada.`);
+        return;
+      }
+      alarmState[modeKey].push({ code, status, desc });
+      render(modeKey);
+    }
+
+    function deleteAlarm(modeKey, index) {
+      if (!alarmState[modeKey]) return;
+      alarmState[modeKey].splice(index, 1);
+      render(modeKey);
+    }
+
+    // ---- Obtener datos del formulario para WhatsApp ----
+    function getFormData() {
+      const isMini = (currentMode === 'mini');
+      let data = {};
+      if (isMini) {
+        const select = document.getElementById('mini_tecnico_select');
+        const otro = document.getElementById('mini_tecnico_otro');
+        if (select && select.value === 'OTRO') {
+          data.tecnico = otro ? otro.value || 'Otro' : 'Otro';
+        } else {
+          data.tecnico = select ? select.value : '';
+        }
+        data.cliente = document.getElementById('mini_cliente')?.value || '';
+        data.placas = document.getElementById('mini_placas')?.value || '';
+        data.economico = document.getElementById('mini_economico')?.value || '';
+        data.modelo = document.getElementById('mini_modelo')?.value || '';
+        data.serie = document.getElementById('mini_serie')?.value || '';
+        data.falla = document.getElementById('mini_falla')?.value || '';
+        data.trabajo = document.getElementById('mini_trabajo')?.value || '';
+        data.refacciones = document.getElementById('mini_refacciones')?.value || '';
+        const estadoRadios = document.querySelectorAll('input[name="estadoMini"]');
+        let estado = 'Operativo';
+        estadoRadios.forEach(r => { if (r.checked) estado = r.nextSibling.textContent.trim(); });
+        data.estado = estado;
+        data.alarmas = alarmState['mini'] || [];
+        data.modo = 'Mini';
+        data.unidad = usarFahrenheit ? '°F' : '°C';
+      } else {
+        const select = document.getElementById('full_tecnico_select');
+        const otro = document.getElementById('full_tecnico_otro');
+        if (select && select.value === 'OTRO') {
+          data.tecnico = otro ? otro.value || 'Otro' : 'Otro';
+        } else {
+          data.tecnico = select ? select.value : '';
+        }
+        data.cliente = document.getElementById('full_cliente')?.value || '';
+        data.contacto = document.getElementById('full_contacto')?.value || '';
+        data.operador = document.getElementById('full_operador')?.value || '';
+        data.placasTractor = document.getElementById('full_placas_tractor')?.value || '';
+        data.placasCaja = document.getElementById('full_placas_caja')?.value || '';
+        data.economico = document.getElementById('full_economico')?.value || '';
+        const selectModelo = document.getElementById('full_modelo_select');
+        const otroModelo = document.getElementById('full_modelo_otro');
+        if (selectModelo && selectModelo.value === 'OTRO') {
+          data.modelo = otroModelo ? otroModelo.value || 'Otro' : 'Otro';
+        } else {
+          data.modelo = selectModelo ? selectModelo.value : '';
+        }
+        if (currentMode === 'vp') {
+          data.version = document.getElementById('full_version')?.value || '';
+        }
+        data.serie = document.getElementById('full_serie')?.value || '';
+        data.horas = document.getElementById('full_horas')?.value || '';
+        data.diagnostico = document.getElementById('full_diagnostico')?.value || '';
+        data.trabajo = document.getElementById('full_trabajo')?.value || '';
+        data.unidad = usarFahrenheit ? '°F' : '°C';
+        data.setpoint = document.getElementById('full_setpoint')?.value || '';
+        data.retorno = document.getElementById('full_retorno')?.value || '';
+        data.suministro = document.getElementById('full_suministro')?.value || '';
+        data.ambiente = document.getElementById('full_ambiente')?.value || '';
+        data.delta = document.getElementById('full_delta')?.value || '';
+        const estadoRadios = document.querySelectorAll('input[name="estado"]');
+        let estado = 'Operativo';
+        estadoRadios.forEach(r => { if (r.checked) estado = r.nextSibling.textContent.trim(); });
+        data.estado = estado;
+        data.alarmas = alarmState[currentMode] || [];
+        data.modo = currentMode === 'vp' ? 'VP Truck' : 'Full Trailer';
+      }
+      return data;
+    }
+
+    // ---- Generar texto para WhatsApp ----
+    function generateWhatsAppText() {
+      const d = getFormData();
+      let text = '🧊 *DIAGNÓSTICO THERMO KING*\n';
+      text += `📋 *Modo:* ${d.modo}\n`;
+      text += `👤 *Técnico:* ${d.tecnico || 'N/E'}\n`;
+      text += `🏢 *Cliente:* ${d.cliente || 'N/E'}\n`;
+      if (d.contacto) text += `📞 *Contacto:* ${d.contacto}\n`;
+      if (d.operador) text += `🚛 *Operador:* ${d.operador}\n`;
+      if (d.placasTractor) text += `🚛 *Placas tractor:* ${d.placasTractor}\n`;
+      if (d.placasCaja) text += `📦 *Placas caja:* ${d.placasCaja}\n`;
+      text += `🔢 *No. Económico:* ${d.economico || 'N/E'}\n`;
+      text += `📦 *Modelo TK:* ${d.modelo || 'N/E'}`;
+      if (d.version) text += ` (${d.version})`;
+      text += `\n`;
+      if (d.serie) text += `🔢 *Serie:* ${d.serie}\n`;
+      if (d.horas) text += `⏱️ *Horas totales:* ${d.horas}\n`;
+      text += `🌡️ *Unidad:* ${d.unidad || '°C'}\n`;
+      if (d.setpoint) text += `🌡️ *Setpoint:* ${d.setpoint}${d.unidad || '°C'}\n`;
+      if (d.retorno) text += `🌡️ *Retorno:* ${d.retorno}${d.unidad || '°C'}\n`;
+      if (d.suministro) text += `🌡️ *Suministro:* ${d.suministro}${d.unidad || '°C'}\n`;
+      if (d.ambiente) text += `🌡️ *Ambiente:* ${d.ambiente}${d.unidad || '°C'}\n`;
+      if (d.delta) text += `🌡️ *Delta T:* ${d.delta}\n`;
+      if (d.diagnostico) text += `🧪 *Diagnóstico:* ${d.diagnostico}\n`;
+      if (d.trabajo) text += `🔧 *Trabajo realizado:* ${d.trabajo}\n`;
+      if (d.refacciones) text += `🧰 *Refacciones:* ${d.refacciones}\n`;
+      text += `📌 *Estatus final:* ${d.estado}\n`;
+      
+      if (d.alarmas && d.alarmas.length > 0) {
+        text += `\n🔔 *ALARMAS:*\n`;
+        d.alarmas.forEach(a => {
+          const emoji = a.status === 'red' ? '🔴' : a.status === 'yellow' ? '🟡' : '🟢';
+          text += `${emoji} ${a.code} - ${a.desc}\n`;
+        });
+      } else {
+        text += `\n🔔 *Alarmas:* Ninguna\n`;
+      }
+      return text;
+    }
+
+    // ---- Render con eventos ----
+    function render(mode) {
+      currentMode = mode;
+      container.innerHTML = buildFormHTML(mode);
+      document.querySelectorAll('.mode-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.mode === mode);
+      });
+
+      // ---- Evento de cambio de unidad ----
+      const radios = document.querySelectorAll('input[name="unidadTemp"]');
+      radios.forEach(radio => {
+        radio.addEventListener('change', function() {
+          if (this.checked) {
+            const nuevaUnidad = this.value === 'F';
+            if (nuevaUnidad !== usarFahrenheit) {
+              const inputs = document.querySelectorAll('input[data-temp="true"]');
+              inputs.forEach(input => {
+                const val = parseFloat(input.value);
+                if (!isNaN(val)) {
+                  if (!usarFahrenheit) {
+                    input.dataset.valorCelsius = val.toString();
+                  } else {
+                    input.dataset.valorCelsius = fahrenheitToCelsius(val);
+                  }
+                }
+              });
+              usarFahrenheit = nuevaUnidad;
+              actualizarTemperaturas();
+            }
+          }
+        });
+      });
+
+      // ---- Eventos para campos de temperatura ----
+      const tempInputs = document.querySelectorAll('input[data-temp="true"]');
+      tempInputs.forEach(input => {
+        input.addEventListener('input', function() {
+          const val = parseFloat(this.value);
+          if (!isNaN(val)) {
+            if (usarFahrenheit) {
+              this.dataset.valorCelsius = fahrenheitToCelsius(val);
+            } else {
+              this.dataset.valorCelsius = val.toString();
+            }
+          } else {
+            this.dataset.valorCelsius = '';
+          }
+          calcularDeltaT();
+        });
+      });
+
+      // ---- Lógica para Técnico "OTRO" ----
+      const tecSelect = document.getElementById('full_tecnico_select') || document.getElementById('mini_tecnico_select');
+      const tecOtro = document.getElementById('full_tecnico_otro') || document.getElementById('mini_tecnico_otro');
+      if (tecSelect && tecOtro) {
+        tecSelect.addEventListener('change', function() {
+          if (this.value === 'OTRO') {
+            tecOtro.style.display = 'block';
+            tecOtro.required = true;
+          } else {
+            tecOtro.style.display = 'none';
+            tecOtro.required = false;
+          }
+        });
+      }
+
+      // ---- Lógica para Modelo "OTRO" ----
+      const modelSelect = document.getElementById('full_modelo_select');
+      const modelOtro = document.getElementById('full_modelo_otro');
+      if (modelSelect && modelOtro) {
+        modelSelect.addEventListener('change', function() {
+          if (this.value === 'OTRO') {
+            modelOtro.style.display = 'block';
+            modelOtro.required = true;
+          } else {
+            modelOtro.style.display = 'none';
+            modelOtro.required = false;
+          }
+        });
+      }
+
+      // ---- Eventos de alarmas ----
+      const addBtn = container.querySelector(`[data-alarm-add="${mode}"]`);
+      if (addBtn) {
+        addBtn.addEventListener('click', function() {
+          const select = document.getElementById(`alarmSelect_${mode}`);
+          const customInput = document.getElementById(`alarmCustom_${mode}`);
+          let code, status, desc;
+          if (select && select.value) {
+            const parts = select.value.split('|');
+            code = parts[0];
+            status = parts[1];
+            desc = parts[2];
+          } else if (customInput && customInput.value.trim()) {
+            code = customInput.value.trim();
+            status = 'yellow';
+            desc = 'Código personalizado';
+          } else {
+            alert('Selecciona un código de la lista o escribe uno personalizado.');
+            return;
+          }
+          addAlarm(mode, code, status, desc);
+          if (select) select.value = '';
+          if (customInput) customInput.value = '';
+        });
+      }
+      container.querySelectorAll('[data-alarm-del]').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const data = this.dataset.alarmDel.split('|');
+          const m = data[0];
+          const idx = parseInt(data[1], 10);
+          if (m === mode) {
+            deleteAlarm(m, idx);
+          }
+        });
+      });
+
+      setTimeout(calcularDeltaT, 50);
+    }
+
+    // ---- Modo ----
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        render(this.dataset.mode);
+      });
+    });
+
+    // ---- Botones ----
+    document.getElementById('clearBtn').addEventListener('click', function() {
+      if (confirm('¿Limpiar todo el formulario y alarmas?')) {
+        alarmState = { full: [], vp: [], mini: [] };
+        render(currentMode);
+      }
+    });
+
+    document.getElementById('printBtn').addEventListener('click', function() {
+      window.print();
+    });
+
+    let lastPdfBase64 = null;
+    let lastPdfName = null;
+    let unidadIdEmbed = null;
+    let embedMode = false;
+
+    function generarPdfReporte() {
+      const d = getFormData();
+      const text = generateWhatsAppText();
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const margin = 14;
+      let y = 16;
+      const lineH = 5.5;
+      const maxW = 180;
+
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text('Thermo King del Noroeste · Diagnóstico TK', margin, y);
+      y += 8;
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      doc.text(new Date().toLocaleString('es-MX'), margin, y);
+      y += 8;
+
+      const lines = text.replace(/\*/g, '').split('\n');
+      lines.forEach(line => {
+        if (y > 280) { doc.addPage(); y = 16; }
+        const wrapped = doc.splitTextToSize(line || ' ', maxW);
+        wrapped.forEach(w => {
+          if (y > 280) { doc.addPage(); y = 16; }
+          doc.text(w, margin, y);
+          y += lineH;
+        });
+      });
+
+      const fileName = 'Diagnostico_TK_' + (d.economico || d.cliente || 'unidad').toString().replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+      lastPdfBase64 = doc.output('datauristring');
+      lastPdfName = fileName;
+
+      if (embedMode) {
+        document.getElementById('uploadAppBtn').style.display = 'inline-flex';
+        alert('PDF generado. Ahora pulsa «Subir a diagnóstico PDF» para guardarlo en la unidad.');
+      } else {
+        doc.save(fileName);
+        alert('PDF descargado: ' + fileName);
+      }
+      return { base64: lastPdfBase64, name: fileName, text: text, data: d };
+    }
+
+    
+    ;
+    }
+
+    document.getElementById('savePdfBtn').addEventListener('click', function() {
+      try { generarPdfReporte(); }
+      catch (e) { console.error(e); alert('Error al generar PDF: ' + (e.message || e)); }
+    });
+
+    document.getElementById('uploadAppBtn').addEventListener('click', function() {
+      if (!lastPdfBase64) { alert('Primero genera el PDF'); return; }
+      const d = getFormData();
+      const resumen = (d.diagnostico || d.falla || d.trabajo || '').substring(0, 2000);
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'tk-diag-pdf',
+          unidadId: unidadIdEmbed,
+          pdfBase64: lastPdfBase64,
+          pdfName: lastPdfName,
+          diagnosticoTexto: resumen,
+          formData: d
+        }, '*');
+      } else {
+        alert('Abre TK Diag desde la app de unidades para subir el PDF.');
+      }
+    });
+
+    document.getElementById('closeEmbedBtn').addEventListener('click', function() {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'tk-diag-close' }, '*');
+      }
+    });
+
+    document.getElementById('whatsappTextBtn').addEventListener('click', function() {
+      const text = generateWhatsAppText();
+      window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    });
+
+    document.getElementById('whatsappPdfBtn').addEventListener('click', function() {
+      try { generarPdfReporte(); } catch (e) {}
+      const text = generateWhatsAppText();
+      window.open('https://wa.me/?text=' + encodeURIComponent('Reporte PDF Thermo King\n\n' + text), '_blank');
+    });
+
+    function aplicarPrefill(data) {
+      if (!data) return;
+      setTimeout(function() {
+        function setVal(id, val) {
+          var el = document.getElementById(id);
+          if (el && val != null && val !== '') el.value = val;
+        }
+        setVal('full_cliente', data.cliente);
+        setVal('mini_cliente', data.cliente);
+        setVal('full_economico', data.no_unidad || data.economico);
+        setVal('mini_economico', data.no_unidad || data.economico);
+        setVal('full_serie', data.no_serie || data.serie);
+        setVal('mini_serie', data.no_serie || data.serie);
+        setVal('full_placas_caja', data.placas);
+        setVal('mini_placas', data.placas);
+        setVal('full_diagnostico', data.problema || data.falla_llegada || '');
+        setVal('mini_falla', data.problema || data.falla_llegada || '');
+        var modelSelect = document.getElementById('full_modelo_select');
+        if (modelSelect && data.modelo) {
+          var opts = Array.from(modelSelect.options).map(function(o) { return o.value; });
+          if (opts.indexOf(data.modelo) >= 0) modelSelect.value = data.modelo;
+          else {
+            modelSelect.value = 'OTRO';
+            var otro = document.getElementById('full_modelo_otro');
+            if (otro) { otro.style.display = 'block'; otro.value = data.modelo; }
+          }
+        }
+      }, 120);
+    }
+
+    var params = new URLSearchParams(window.location.search);
+    unidadIdEmbed = params.get('unidadId') ? parseInt(params.get('unidadId'), 10) : null;
+    embedMode = params.get('embed') === '1' || (window.parent && window.parent !== window);
+    if (embedMode) {
+      document.getElementById('closeEmbedBtn').style.display = 'inline-flex';
+      document.getElementById('uploadAppBtn').style.display = 'none';
+    }
+    var prefill = null;
+    try { if (params.get('data')) prefill = JSON.parse(decodeURIComponent(params.get('data'))); } catch (e) {}
+    try {
+      if (!prefill) {
+        var raw = localStorage.getItem('tk_diag_prefill');
+        if (raw) prefill = JSON.parse(raw);
+      }
+    } catch (e) {}
+
+    render('full');
+    if (prefill) aplicarPrefill(prefill);
+  })();
+</script>
+</body>
+</html>
