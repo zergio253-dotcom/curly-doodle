@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
+<head <!-- Enlace al manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- Registrar el Service Worker (justo antes del cierre de </body> es mejor) -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/curly-doodle/sw.js')
+        .then(reg => console.log('SW registrado:', reg))
+        .catch(err => console.log('Error al registrar SW:', err));
+    });
+  }
+</script>>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Thermo King del Noroeste</title>
