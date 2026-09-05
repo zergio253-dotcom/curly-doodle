@@ -1,41 +1,35 @@
-/* Thermo King del Noroeste - Service Worker (notificaciones) */
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-});
+const CACHE_NAME = 'thermoking-v1';
+const urlsToCache = [
+  '/curly-doodle/',
+  '/curly-doodle/index.html',
+  // Añade aquí todos tus archivos .css y .js que sean estáticos
+  // Ejemplo: '/curly-doodle/styles.css', '/curly-doodle/app.js'
+];
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const targetUrl = (event.notification.data && event.notification.data.url) || './';
+// Instalación: guarda los archivos en caché
+self.addEventListener('install', event => {
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if ('focus' in client) {
-          client.postMessage({ type: 'notif-click', url: targetUrl });
-          return client.focus();
-        }
-      }
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl);
-      }
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(urlsToCache))
+  );
+});
+
+// Activación: limpia cachés viejas
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.filter(name => name !== CACHE_NAME)
+          .map(name => caches.delete(name))
+      );
     })
   );
 });
 
-self.addEventListener('message', (event) => {
-  const data = event.data || {};
-  if (data.type === 'show-notification' && data.title) {
-    event.waitUntil(
-      self.registration.showNotification(data.title, {
-        body: data.body || '',
-        icon: data.icon,
-        tag: data.tag || 'tk-noroeste',
-        renotify: true,
-        data: data.data || {}
-      })
-    );
-  }
+// Intercepción de peticiones: sirve desde caché o red
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => response || fetch(event.request))
+  );
 });
