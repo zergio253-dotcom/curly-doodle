@@ -868,6 +868,7 @@
                     <button type="button" class="menu-item" id="btnTrabajoHoy" onclick="abrirModalTrabajoHoy(); cerrarMenuPrincipal();" style="display:none;">📋 Trabajar hoy</button>
                     <button type="button" class="menu-item" id="btnMensaje" onclick="abrirModalMensaje(); cerrarMenuPrincipal();" style="display:none;">💬 Mensaje</button>
                     <button type="button" class="menu-item" id="btnProduccion" onclick="abrirModalProduccion(); cerrarMenuPrincipal();">📈 Producción</button>
+                    <button type="button" class="menu-item" id="btnInventario" onclick="abrirModalInventario(); cerrarMenuPrincipal();">📦 Inventario</button>
                     <button type="button" class="menu-item" id="btnReporteDiario" onclick="abrirReporteDiario(); cerrarMenuPrincipal();" style="display:none;">📊 Reporte diario</button>
                     <button type="button" class="menu-item" id="btnDiagnosticosExt" onclick="window.open('https://insert-code-067286.onhercules.app/', '_blank'); cerrarMenuPrincipal();" style="display:none;">🔧 Diagnósticos</button>
 
@@ -973,15 +974,21 @@
 <!-- ===== MODAL PRODUCCIÓN POR USUARIO ===== -->
 <div class="modal" id="modalProduccion">
     <div class="modal-content wide">
-        <h3>📈 Producción por usuario</h3>
-        <div class="form-group" style="margin-bottom:10px;">
-            <label>Periodo</label>
-            <select id="prodPeriodo" onchange="renderProduccion()">
-                <option value="hoy">Hoy</option>
-                <option value="7" selected>Últimos 7 días</option>
-                <option value="30">Últimos 30 días</option>
-                <option value="todo">Todo el historial</option>
-            </select>
+        <h3>📈 Producción y ranking</h3>
+        <div class="grid-2" style="gap:10px; margin-bottom:10px;">
+            <div class="form-group" style="margin:0;">
+                <label>Periodo</label>
+                <select id="prodPeriodo" onchange="renderProduccion()">
+                    <option value="hoy">Hoy</option>
+                    <option value="7" selected>Últimos 7 días</option>
+                    <option value="30">Últimos 30 días</option>
+                    <option value="todo">Todo el historial</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label>Meta semanal (finalizadas / técnico)</label>
+                <input type="number" id="prodMetaSemanal" min="1" max="50" value="5" onchange="guardarMetaProduccion(); renderProduccion()" style="width:100%; padding:8px; border-radius:8px;">
+            </div>
         </div>
         <div id="produccionContenido" style="font-size:14px; max-height:60vh; overflow-y:auto;"></div>
         <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
@@ -1356,6 +1363,98 @@
         </div>
         <button class="btn-modal primary" onclick="confirmarCambio()">✅ Confirmar cambio</button>
         <button class="btn-modal danger" onclick="cerrarModal('modalCambio')">❌ Cancelar</button>
+    </div>
+</div>
+
+<!-- ===== MODAL GESTIÓN DE REFACCIONES ===== -->
+<div class="modal" id="modalRefacciones">
+    <div class="modal-content">
+        <h3>🛒 Gestión de refacciones</h3>
+        <p id="infoRefacciones" style="font-weight:bold; color:#1a3a5c; margin-bottom:12px;"></p>
+        <div class="form-group">
+            <label>Estado de las piezas *</label>
+            <select id="estadoRefaccionesModal">
+                <option value="pendiente">⏳ Pendiente (aún no llegan)</option>
+                <option value="parcial">📦 Parcial (llegó algo)</option>
+                <option value="recibida">✅ Completa (todas listas)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Refacciones esperadas / notas *</label>
+            <textarea id="listaRefaccionesModal" rows="3" placeholder="Lista de piezas, números de parte, proveedor..."></textarea>
+        </div>
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Fecha de pedido</label>
+                <input type="date" id="fechaPedidoRefModal">
+            </div>
+            <div class="form-group">
+                <label>Fecha prevista (ETA)</label>
+                <input type="date" id="fechaEtaRefModal">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Nota / seguimiento (opcional)</label>
+            <input type="text" id="notaRefModal" placeholder="Ej. Proveedor confirmó envío">
+        </div>
+        <div id="boxPasarReparandoRef" style="display:none; margin-bottom:12px; padding:10px; background:#d4edda; border-radius:10px; font-size:13px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="chkPasarReparandoRef" checked>
+                <span>Al guardar, pasar unidad a <strong>Reparando</strong> (piezas listas)</span>
+            </label>
+        </div>
+        <div id="boxInventarioRef" style="margin:12px 0; padding:12px; background:#e8f5e9; border-radius:10px;">
+            <strong style="display:block; margin-bottom:8px;">📦 Descontar del inventario</strong>
+            <div id="listaInvRefacciones" style="max-height:140px; overflow-y:auto; font-size:13px;"></div>
+            <small style="color:#666;">Marca piezas y cantidad a usar al recibir (opcional).</small>
+        </div>
+        <button class="btn-modal primary" onclick="guardarGestionRefacciones()">💾 Guardar seguimiento</button>
+        <button class="btn-modal success" onclick="marcarPiezasLlegaron()">✅ Piezas llegaron → Reparando</button>
+        <button class="btn-modal danger" onclick="cerrarModal('modalRefacciones')">Cancelar</button>
+    </div>
+</div>
+
+<!-- ===== MODAL INVENTARIO ===== -->
+<div class="modal" id="modalInventario">
+    <div class="modal-content wide">
+        <h3>📦 Inventario en tiempo real</h3>
+        <p style="font-size:12px; color:#666; margin-bottom:10px;">Catálogo de piezas · stock actualizado · alertas de mínimo. Visible para el taller.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;">
+            <input type="text" id="buscarInventario" placeholder="🔍 Buscar código o nombre..." oninput="renderInventario()" style="flex:1; min-width:160px; padding:8px; border-radius:8px;">
+            <select id="filtroInventario" onchange="renderInventario()" style="padding:8px; border-radius:8px;">
+                <option value="todas" selected>Todas las piezas</option>
+                <option value="bajo">Solo bajo mínimo</option>
+                <option value="agotado">Solo agotadas</option>
+                <option value="ok">Solo con stock OK</option>
+            </select>
+            <button class="btn-modal primary" onclick="abrirFormPiezaInv()">➕ Nueva pieza</button>
+            <button class="btn-modal secondary" onclick="cargarInventario(true).then(function(){renderInventario();})">🔄 Actualizar</button>
+        </div>
+        <div id="inventarioContador" style="font-size:12px; color:#666; margin-bottom:8px;"></div>
+        <div id="formPiezaInv" style="display:none; padding:12px; background:var(--detalle-item,#f8f9fa); border-radius:10px; margin-bottom:12px;">
+            <input type="hidden" id="invEditId">
+            <div class="grid-2">
+                <div class="form-group"><label>Código</label><input type="text" id="invCodigo" placeholder="Ej. TK-COMP-01"></div>
+                <div class="form-group"><label>Nombre *</label><input type="text" id="invNombre" placeholder="Compresor / filtro..."></div>
+            </div>
+            <div class="grid-2">
+                <div class="form-group"><label>Cantidad</label><input type="number" id="invCantidad" value="0" step="1"></div>
+                <div class="form-group"><label>Mínimo (alerta)</label><input type="number" id="invMinimo" value="1" step="1"></div>
+            </div>
+            <div class="grid-2">
+                <div class="form-group"><label>Ubicación</label><input type="text" id="invUbicacion" placeholder="Estante / caja"></div>
+                <div class="form-group"><label>Unidad</label><input type="text" id="invUnidad" value="pza" placeholder="pza"></div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn-modal primary" onclick="guardarPiezaInv()">💾 Guardar</button>
+                <button class="btn-modal danger" onclick="document.getElementById('formPiezaInv').style.display='none'">Cancelar</button>
+            </div>
+        </div>
+        <div id="inventarioAlerta" style="display:none; margin-bottom:10px; padding:10px; background:#fff3cd; border-radius:8px; font-size:13px;"></div>
+        <div id="inventarioLista" style="max-height:50vh; overflow-y:auto; font-size:13px;"></div>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+            <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalInventario')">Cerrar</button>
+        </div>
     </div>
 </div>
 
@@ -1758,6 +1857,7 @@
             show('btnVistaHistorial', true);
             show('btnTrabajoHoy', true);
             show('btnProduccion', true);
+            show('btnInventario', true);
             show('btnReporteDiario', sesion.area === 'Gerencia');
             show('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
             show('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
@@ -1877,6 +1977,7 @@
         };
         showMenu('btnReporteDiario', sesion.area === 'Gerencia');
         showMenu('btnProduccion', true);
+        showMenu('btnInventario', true);
         showMenu('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
         showMenu('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
         showMenu('btnMensaje', sesion.area !== 'Cliente');
@@ -2138,6 +2239,8 @@
             unidades = data || [];
             await cargarMensajes();
             await cargarTrabajoHoy();
+            await cargarInventario(false);
+            suscribirInventarioRealtime();
             renderizarTablero();
             actualizarStats();
             actualizarNotificaciones();
@@ -2152,6 +2255,327 @@
         } finally {
             loading.style.display = 'none';
         }
+    }
+
+    // ===== INVENTARIO EN TIEMPO REAL =====
+    let inventario = [];
+    let invChannel = null;
+    const INV_LOCAL_KEY = 'thermocontrol_inventario_local';
+
+    function inventarioDesdeLocal() {
+        try { return JSON.parse(localStorage.getItem(INV_LOCAL_KEY) || '[]'); } catch { return []; }
+    }
+    function inventarioALocal(lista) {
+        try { localStorage.setItem(INV_LOCAL_KEY, JSON.stringify(lista || [])); } catch (e) {}
+    }
+
+    async function cargarInventario(silencioso) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('inventario')
+                .select('*')
+                .order('nombre', { ascending: true });
+            if (error) throw error;
+            inventario = data || [];
+            inventarioALocal(inventario);
+            if (document.getElementById('modalInventario')?.style.display === 'flex') renderInventario();
+            return true;
+        } catch (err) {
+            console.warn('Inventario Supabase no disponible, usando local:', err.message || err);
+            inventario = inventarioDesdeLocal();
+            if (!silencioso && err.message) {
+                const alerta = document.getElementById('inventarioAlerta');
+                if (alerta && document.getElementById('modalInventario')?.style.display === 'flex') {
+                    alerta.style.display = 'block';
+                    alerta.innerHTML = '⚠️ Tabla <code>inventario</code> no accesible. Usando copia local. Crea la tabla en Supabase (SQL al final de esta pantalla).';
+                }
+            }
+            return false;
+        }
+    }
+
+    function suscribirInventarioRealtime() {
+        try {
+            if (invChannel) {
+                supabaseClient.removeChannel(invChannel);
+                invChannel = null;
+            }
+            invChannel = supabaseClient
+                .channel('inventario-realtime')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'inventario' }, payload => {
+                    const ev = payload.eventType;
+                    if (ev === 'INSERT' && payload.new) {
+                        const exists = inventario.find(i => i.id === payload.new.id);
+                        if (!exists) inventario = [payload.new, ...inventario];
+                        else inventario = inventario.map(i => i.id === payload.new.id ? payload.new : i);
+                    } else if (ev === 'UPDATE' && payload.new) {
+                        inventario = inventario.map(i => i.id === payload.new.id ? { ...i, ...payload.new } : i);
+                    } else if (ev === 'DELETE' && payload.old) {
+                        inventario = inventario.filter(i => i.id !== payload.old.id);
+                    }
+                    inventarioALocal(inventario);
+                    if (document.getElementById('modalInventario')?.style.display === 'flex') renderInventario();
+                    if (document.getElementById('modalRefacciones')?.style.display === 'flex') renderInvEnRefacciones();
+                    actualizarNotificaciones();
+                })
+                .subscribe();
+        } catch (e) {
+            console.warn('Realtime inventario no disponible', e);
+        }
+    }
+
+    function abrirModalInventario() {
+        if (modoCliente) {
+            alert('El cliente solo puede ver el Kanban.');
+            return;
+        }
+        if (!requerirSesion()) return;
+        cargarInventario(true).then(() => {
+            renderInventario();
+            document.getElementById('modalInventario').style.display = 'flex';
+        });
+    }
+
+    function abrirFormPiezaInv(item) {
+        document.getElementById('formPiezaInv').style.display = 'block';
+        document.getElementById('invEditId').value = item ? item.id : '';
+        document.getElementById('invCodigo').value = item ? (item.codigo || '') : '';
+        document.getElementById('invNombre').value = item ? (item.nombre || '') : '';
+        document.getElementById('invCantidad').value = item ? (item.cantidad ?? 0) : 0;
+        document.getElementById('invMinimo').value = item ? (item.minimo ?? 1) : 1;
+        document.getElementById('invUbicacion').value = item ? (item.ubicacion || '') : '';
+        document.getElementById('invUnidad').value = item ? (item.unidad_medida || 'pza') : 'pza';
+    }
+
+    function editarPiezaInvPorId(id) {
+        const item = inventario.find(i => String(i.id) === String(id));
+        if (item) abrirFormPiezaInv(item);
+    }
+
+    async function guardarPiezaInv() {
+        if (!sesion) return;
+        if (sesion.area !== 'Compras' && sesion.area !== 'Gerencia') {
+            alert('Solo Compras o Gerencia pueden crear/editar el catálogo.');
+            return;
+        }
+        const id = document.getElementById('invEditId').value;
+        const payload = {
+            codigo: (document.getElementById('invCodigo').value || '').trim(),
+            nombre: (document.getElementById('invNombre').value || '').trim(),
+            cantidad: parseFloat(document.getElementById('invCantidad').value) || 0,
+            minimo: parseFloat(document.getElementById('invMinimo').value) || 0,
+            ubicacion: (document.getElementById('invUbicacion').value || '').trim(),
+            unidad_medida: (document.getElementById('invUnidad').value || 'pza').trim() || 'pza',
+            updated_at: new Date().toISOString()
+        };
+        if (!payload.nombre) {
+            alert('El nombre de la pieza es obligatorio.');
+            return;
+        }
+        try {
+            if (id) {
+                const { data, error } = await supabaseClient.from('inventario').update(payload).eq('id', id).select();
+                if (error) throw error;
+                if (data && data[0]) inventario = inventario.map(i => i.id == id ? data[0] : i);
+            } else {
+                const { data, error } = await supabaseClient.from('inventario').insert([payload]).select();
+                if (error) throw error;
+                if (data && data[0]) inventario = [data[0], ...inventario];
+            }
+            inventarioALocal(inventario);
+            document.getElementById('formPiezaInv').style.display = 'none';
+            renderInventario();
+            mostrarToastApp('📦 Inventario actualizado', '#28a745');
+        } catch (err) {
+            // Fallback local
+            if (id) {
+                inventario = inventario.map(i => String(i.id) === String(id) ? { ...i, ...payload, id: i.id } : i);
+            } else {
+                const localId = 'local_' + Date.now();
+                inventario = [{ id: localId, ...payload }, ...inventario];
+            }
+            inventarioALocal(inventario);
+            document.getElementById('formPiezaInv').style.display = 'none';
+            renderInventario();
+            alert('Guardado en este dispositivo (Supabase: ' + (err.message || 'error') + ').\nCrea la tabla inventario para sincronizar en tiempo real.');
+        }
+    }
+
+    async function ajustarStockInv(id, delta) {
+        if (!sesion) return;
+        if (sesion.area !== 'Compras' && sesion.area !== 'Gerencia' && sesion.area !== 'Mantenimiento') {
+            alert('No tienes permiso para ajustar stock.');
+            return;
+        }
+        const item = inventario.find(i => String(i.id) === String(id));
+        if (!item) return;
+        const nueva = Math.max(0, (parseFloat(item.cantidad) || 0) + delta);
+        try {
+            const { data, error } = await supabaseClient.from('inventario')
+                .update({ cantidad: nueva, updated_at: new Date().toISOString() })
+                .eq('id', id).select();
+            if (error) throw error;
+            if (data && data[0]) inventario = inventario.map(i => String(i.id) === String(id) ? data[0] : i);
+        } catch (err) {
+            inventario = inventario.map(i => String(i.id) === String(id) ? { ...i, cantidad: nueva } : i);
+            inventarioALocal(inventario);
+        }
+        inventarioALocal(inventario);
+        renderInventario();
+        actualizarNotificaciones();
+    }
+
+    async function eliminarPiezaInv(id) {
+        if (!sesion || (sesion.area !== 'Gerencia' && sesion.area !== 'Compras')) {
+            alert('Solo Compras o Gerencia pueden eliminar.');
+            return;
+        }
+        if (!confirm('¿Eliminar esta pieza del inventario?')) return;
+        try {
+            const { error } = await supabaseClient.from('inventario').delete().eq('id', id);
+            if (error) throw error;
+        } catch (err) {
+            /* local ok */
+        }
+        inventario = inventario.filter(i => String(i.id) !== String(id));
+        inventarioALocal(inventario);
+        renderInventario();
+    }
+
+    function renderInventario() {
+        const box = document.getElementById('inventarioLista');
+        const alerta = document.getElementById('inventarioAlerta');
+        const contador = document.getElementById('inventarioContador');
+        if (!box) return;
+        const q = ((document.getElementById('buscarInventario') || {}).value || '').toLowerCase().trim();
+        const filtro = ((document.getElementById('filtroInventario') || {}).value || 'todas');
+        let lista = inventario.slice();
+        if (q) {
+            lista = lista.filter(i =>
+                (i.nombre || '').toLowerCase().includes(q) ||
+                (i.codigo || '').toLowerCase().includes(q) ||
+                (i.ubicacion || '').toLowerCase().includes(q)
+            );
+        }
+        if (filtro === 'bajo') {
+            lista = lista.filter(i => (parseFloat(i.cantidad) || 0) <= (parseFloat(i.minimo) || 0));
+        } else if (filtro === 'agotado') {
+            lista = lista.filter(i => (parseFloat(i.cantidad) || 0) <= 0);
+        } else if (filtro === 'ok') {
+            lista = lista.filter(i => (parseFloat(i.cantidad) || 0) > (parseFloat(i.minimo) || 0));
+        }
+        // Todas: sin límite, orden alfabético; si filtro todas, priorizar bajos arriba
+        lista.sort((a, b) => {
+            if (filtro === 'todas') {
+                const ba = (parseFloat(a.cantidad) || 0) <= (parseFloat(a.minimo) || 0) ? 0 : 1;
+                const bb = (parseFloat(b.cantidad) || 0) <= (parseFloat(b.minimo) || 0) ? 0 : 1;
+                if (ba !== bb) return ba - bb;
+            }
+            return (a.nombre || '').localeCompare(b.nombre || '');
+        });
+        const bajos = inventario.filter(i => (parseFloat(i.cantidad) || 0) <= (parseFloat(i.minimo) || 0));
+        if (alerta) {
+            if (bajos.length) {
+                alerta.style.display = 'block';
+                alerta.innerHTML = `⚠️ <strong>${bajos.length}</strong> pieza(s) en o bajo mínimo: ${bajos.map(b => b.nombre).slice(0, 8).join(', ')}${bajos.length > 8 ? '…' : ''}`;
+            } else {
+                alerta.style.display = 'none';
+            }
+        }
+        if (contador) {
+            contador.textContent = `Mostrando ${lista.length} de ${inventario.length} pieza(s)` +
+                (filtro === 'todas' && !q ? ' · Catálogo completo' : '');
+        }
+        if (!lista.length) {
+            box.innerHTML = '<p style="color:#888; padding:12px;">No hay piezas con este filtro. Elige «Todas las piezas» o agrega productos.</p>';
+            return;
+        }
+        box.innerHTML = lista.map(i => {
+            const cant = parseFloat(i.cantidad) || 0;
+            const min = parseFloat(i.minimo) || 0;
+            const bajo = cant <= min;
+            return `<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; padding:10px; margin-bottom:6px; border-radius:10px; border-left:5px solid ${bajo ? '#dc3545' : '#28a745'}; background:var(--detalle-item,#f8f9fa);">
+                <div style="flex:1; min-width:140px;">
+                    <strong>${i.nombre || '—'}</strong>
+                    ${i.codigo ? ' <span style="color:#888;">(' + i.codigo + ')</span>' : ''}
+                    <div style="font-size:12px; color:#666;">📍 ${i.ubicacion || '—'} · Stock: <strong style="color:${bajo ? '#dc3545' : '#28a745'}">${cant}</strong> ${i.unidad_medida || 'pza'} (mín. ${min})</div>
+                </div>
+                <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+                    <button class="btn-accion" onclick="ajustarStockInv('${i.id}', -1)">−</button>
+                    <button class="btn-accion" onclick="ajustarStockInv('${i.id}', 1)">+</button>
+                    <button class="btn-accion" onclick="editarPiezaInvPorId('${i.id}')">✏️</button>
+                    <button class="btn-accion" onclick="eliminarPiezaInv('${i.id}')">🗑️</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderInvEnRefacciones() {
+        const box = document.getElementById('listaInvRefacciones');
+        if (!box) return;
+        if (!inventario.length) {
+            box.innerHTML = '<span style="color:#888;">Sin inventario cargado. Abre 📦 Inventario para agregar piezas.</span>';
+            return;
+        }
+        // Todas las piezas (con buscador local)
+        box.innerHTML = `
+            <input type="text" id="buscarInvRef" placeholder="Buscar pieza..." oninput="filtrarInvEnRefacciones()" style="width:100%; padding:6px 8px; border-radius:8px; margin-bottom:8px; box-sizing:border-box;">
+            <div id="listaInvRefaccionesItems"></div>
+        `;
+        filtrarInvEnRefacciones();
+    }
+
+    function filtrarInvEnRefacciones() {
+        const box = document.getElementById('listaInvRefaccionesItems');
+        if (!box) return;
+        const q = ((document.getElementById('buscarInvRef') || {}).value || '').toLowerCase().trim();
+        let lista = inventario.slice();
+        if (q) {
+            lista = lista.filter(i =>
+                (i.nombre || '').toLowerCase().includes(q) ||
+                (i.codigo || '').toLowerCase().includes(q)
+            );
+        }
+        if (!lista.length) {
+            box.innerHTML = '<span style="color:#888;">Sin coincidencias</span>';
+            return;
+        }
+        box.innerHTML = lista.map(i => {
+            const cant = parseFloat(i.cantidad) || 0;
+            return `<label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
+                <input type="checkbox" class="inv-ref-check" data-id="${i.id}" data-nombre="${(i.nombre || '').replace(/"/g, '&quot;')}">
+                <span style="flex:1;">${i.nombre} <small style="color:#666;">(stock ${cant})</small></span>
+                <input type="number" class="inv-ref-qty" data-id="${i.id}" min="1" max="${Math.max(1, cant)}" value="1" style="width:60px; padding:4px; border-radius:6px;" onclick="event.stopPropagation()">
+            </label>`;
+        }).join('');
+    }
+
+    async function descontarInventarioSeleccionado() {
+        const checks = document.querySelectorAll('.inv-ref-check:checked');
+        if (!checks.length) return [];
+        const movs = [];
+        for (const chk of checks) {
+            const id = chk.getAttribute('data-id');
+            const nombre = chk.getAttribute('data-nombre') || '';
+            const qtyInput = document.querySelector(`.inv-ref-qty[data-id="${id}"]`);
+            const qty = Math.max(1, parseFloat(qtyInput && qtyInput.value) || 1);
+            const item = inventario.find(i => String(i.id) === String(id));
+            if (!item) continue;
+            const actual = parseFloat(item.cantidad) || 0;
+            const nueva = Math.max(0, actual - qty);
+            try {
+                const { data, error } = await supabaseClient.from('inventario')
+                    .update({ cantidad: nueva, updated_at: new Date().toISOString() })
+                    .eq('id', id).select();
+                if (error) throw error;
+                if (data && data[0]) inventario = inventario.map(i => String(i.id) === String(id) ? data[0] : i);
+            } catch (e) {
+                inventario = inventario.map(i => String(i.id) === String(id) ? { ...i, cantidad: nueva } : i);
+            }
+            movs.push({ id, nombre, qty, nueva });
+        }
+        inventarioALocal(inventario);
+        return movs;
     }
 
     async function agregarUnidad(nuevaUnidad) {
@@ -2563,6 +2987,7 @@
         return {
             persona: nombre,
             area: area || '',
+            nivel: nivelTecnico(nombre) || '',
             diagnosticadas: 0,
             reparadas: 0,
             finalizadas: 0,
@@ -2570,7 +2995,10 @@
             ventasMov: 0,
             comprasMov: 0,
             esperaRefacciones: 0,
+            retrabajos: 0,
             msEsperaRefacciones: 0,
+            msDiagnostico: 0,
+            msReparacion: 0,
             msTotal: 0,
             unidades: new Set()
         };
@@ -2601,11 +3029,20 @@
                 const area = (h.area || '').trim();
                 const st = getStats(persona, area);
                 const est = h.estatus || '';
+                // Agenda no cuenta como tiempo de taller / producción
+                if (est === 'Agenda') return;
+
                 st.unidades.add(u.id);
                 st.msTotal += h.duracionMs || 0;
 
-                if (est === 'Diagnosticando') st.diagnosticadas++;
-                if (est === 'Reparando') st.reparadas++;
+                if (est === 'Diagnosticando') {
+                    st.diagnosticadas++;
+                    st.msDiagnostico += h.duracionMs || 0;
+                }
+                if (est === 'Reparando') {
+                    st.reparadas++;
+                    st.msReparacion += h.duracionMs || 0;
+                }
                 if (est === 'Finalizada') st.finalizadas++;
                 if (est === 'Cotizando') {
                     st.cotizadas++;
@@ -2616,18 +3053,15 @@
                     st.msEsperaRefacciones += h.duracionMs || 0;
                     if (area === 'Compras' || area === 'Gerencia') st.comprasMov++;
                 }
-                // Movimientos de ventas/compras también por área aunque el estatus sea otro
-                if (area === 'Ventas' && (est === 'Cotizando' || est === 'Espera de refacciones' || est === 'Finalizada' || est === 'Agenda')) {
-                    st.ventasMov = st.ventasMov; // ya contado en cotizando; contar paso genérico
-                }
-                if (area === 'Compras') {
-                    // cualquier paso de compras suma movimiento
-                    if (est !== 'Espera de refacciones') st.comprasMov++;
+                if (area === 'Compras' && est !== 'Espera de refacciones') st.comprasMov++;
+
+                // Retrabajo: paso a Cotizando desde Reparando
+                if (est === 'Cotizando' && i > 0 && tiempos[i - 1].estatus === 'Reparando') {
+                    st.retrabajos++;
                 }
             });
         });
 
-        // Ajuste: ventasMov = cotizadas + pasos a finalizada/agenda por Ventas (ya en contadores)
         Object.keys(porPersona).forEach(k => {
             const st = porPersona[k];
             if (st.area === 'Ventas') {
@@ -2636,18 +3070,219 @@
             st.unidadesCount = st.unidades.size;
             st.tiempoTexto = formatearDuracion(st.msTotal);
             st.tiempoEsperaTexto = formatearDuracion(st.msEsperaRefacciones);
+            st.tiempoDiagTexto = formatearDuracion(st.msDiagnostico);
+            st.tiempoRepTexto = formatearDuracion(st.msReparacion);
+            // Eficiencia simple: finalizadas / (finalizadas + retrabajos)
+            const base = st.finalizadas + st.retrabajos;
+            st.eficiencia = base > 0 ? Math.round((st.finalizadas / base) * 100) : null;
             delete st.unidades;
         });
 
-        return Object.values(porPersona).sort((a, b) => b.msTotal - a.msTotal);
+        return Object.values(porPersona).sort((a, b) => b.finalizadas - a.finalizadas || b.msTotal - a.msTotal);
+    }
+
+    // Ciclo recepción → entrega y % primera vez bien (por unidad)
+    function calcularMetricasCiclo(periodo) {
+        const rango = rangoPeriodoProduccion(periodo || '7');
+        let sumaCicloMs = 0;
+        let nCiclo = 0;
+        let finalizadasPeriodo = 0;
+        let primeraVezBien = 0;
+        const detalle = [];
+
+        unidades.forEach(u => {
+            const hist = u.historial || [];
+            if (!hist.length) return;
+            // ¿Se finalizó en el periodo?
+            const finIdx = [];
+            hist.forEach((h, i) => {
+                if (h.estatus !== 'Finalizada') return;
+                const d = parseFechaHistorial(h.fecha);
+                if (!d) return;
+                const t = d.getTime();
+                if (t >= rango.inicio && t <= rango.fin) finIdx.push(i);
+            });
+            if (!finIdx.length) return;
+
+            finIdx.forEach(idx => {
+                finalizadasPeriodo++;
+                // Inicio de taller: primera Recibida antes de este fin, o fechaInicioTaller
+                let inicio = null;
+                for (let i = 0; i <= idx; i++) {
+                    if (hist[i].estatus === 'Recibida') {
+                        const d = parseFechaHistorial(hist[i].fecha);
+                        if (d) { inicio = d; break; }
+                    }
+                }
+                if (!inicio) inicio = fechaInicioTaller(u);
+                const fin = parseFechaHistorial(hist[idx].fecha);
+                if (inicio && fin && fin >= inicio) {
+                    const ms = fin - inicio;
+                    sumaCicloMs += ms;
+                    nCiclo++;
+                    detalle.push({ unidad: u.no_unidad, cliente: u.cliente, ms, texto: formatearDuracion(ms) });
+                }
+                // Primera vez bien: entre recepción y este fin no hubo Reparando → Cotizando
+                let huboRetrabajo = false;
+                for (let i = 1; i <= idx; i++) {
+                    if (hist[i].estatus === 'Cotizando' && hist[i - 1].estatus === 'Reparando') {
+                        huboRetrabajo = true;
+                        break;
+                    }
+                }
+                if (!huboRetrabajo) primeraVezBien++;
+            });
+        });
+
+        return {
+            promedioCicloMs: nCiclo ? sumaCicloMs / nCiclo : 0,
+            promedioCicloTexto: nCiclo ? formatearDuracion(sumaCicloMs / nCiclo) : '—',
+            nCiclo,
+            finalizadasPeriodo,
+            primeraVezBien,
+            pctPrimeraVez: finalizadasPeriodo ? Math.round((primeraVezBien / finalizadasPeriodo) * 100) : null,
+            detalle
+        };
+    }
+
+    function calcularCuellosBotella(periodo) {
+        const rango = rangoPeriodoProduccion(periodo || '7');
+        const estatusLista = ['Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada'];
+        const porEstatus = {};
+        estatusLista.forEach(e => {
+            porEstatus[e] = { estatus: e, msTotal: 0, nPasos: 0, ahora: 0, tiempoMax: 0, unidadMasLarga: null };
+        });
+
+        const estancadas = [];
+        let refaccionesVencidas = 0;
+        let refaccionesProximas = 0;
+        let msEsperaRef = 0;
+        let nEsperaRef = 0;
+
+        unidades.forEach(u => {
+            if (u.eliminado) return;
+            const hist = u.historial || [];
+            const tiempos = calcularTiemposHistorial(hist);
+
+            tiempos.forEach(h => {
+                if (!h.estatus || h.estatus === 'Agenda') return;
+                if (!porEstatus[h.estatus]) return;
+                const d = parseFechaHistorial(h.fecha);
+                if (!d) return;
+                const t = d.getTime();
+                if (t > rango.fin) return;
+                if (!h.enCurso && t < rango.inicio) return;
+                const ms = h.duracionMs || 0;
+                porEstatus[h.estatus].msTotal += ms;
+                porEstatus[h.estatus].nPasos++;
+                if (ms > porEstatus[h.estatus].tiempoMax) {
+                    porEstatus[h.estatus].tiempoMax = ms;
+                    porEstatus[h.estatus].unidadMasLarga = u.no_unidad || '—';
+                }
+            });
+
+            if (u.estatus && u.estatus !== 'Finalizada' && u.estatus !== 'Agenda') {
+                const actual = tiempos.length ? tiempos[tiempos.length - 1] : null;
+                const diasEst = actual ? Math.floor((actual.duracionMs || 0) / (24 * 60 * 60 * 1000)) : diasEnTaller(u);
+                if (porEstatus[u.estatus]) porEstatus[u.estatus].ahora++;
+                estancadas.push({
+                    id: u.id,
+                    unidad: u.no_unidad || '—',
+                    cliente: u.cliente || '—',
+                    estatus: u.estatus,
+                    dias: diasEst,
+                    responsable: areaResponsableEstatus[u.estatus] || '—',
+                    refacciones: u.refacciones_esperadas || '',
+                    eta: u.fecha_estimada_refacciones || ''
+                });
+            }
+
+            if (u.estatus === 'Espera de refacciones') {
+                const eta = normalizarFechaISO(u.fecha_estimada_refacciones);
+                if (eta) {
+                    const hoy = fechaHoyISO();
+                    const diff = Math.round((new Date(eta + 'T12:00:00') - new Date(hoy + 'T12:00:00')) / (24 * 60 * 60 * 1000));
+                    if (diff < 0) refaccionesVencidas++;
+                    else if (diff <= 2) refaccionesProximas++;
+                }
+                const actual = tiempos.length ? tiempos[tiempos.length - 1] : null;
+                if (actual && actual.estatus === 'Espera de refacciones') {
+                    msEsperaRef += actual.duracionMs || 0;
+                    nEsperaRef++;
+                }
+            }
+        });
+
+        const ranking = estatusLista.map(e => {
+            const s = porEstatus[e];
+            const promedio = s.nPasos ? s.msTotal / s.nPasos : 0;
+            return {
+                ...s,
+                promedioMs: promedio,
+                promedioTexto: promedio ? formatearDuracion(promedio) : '—',
+                totalTexto: s.msTotal ? formatearDuracion(s.msTotal) : '—'
+            };
+        }).filter(s => s.nPasos > 0 || s.ahora > 0)
+          .sort((a, b) => b.promedioMs - a.promedioMs);
+
+        estancadas.sort((a, b) => b.dias - a.dias);
+        const sinFin = ranking.filter(r => r.estatus !== 'Finalizada');
+        const cuelloPrincipal = sinFin.length ? sinFin[0] : null;
+
+        return {
+            ranking,
+            estancadas: estancadas.slice(0, 12),
+            refaccionesVencidas,
+            refaccionesProximas,
+            msEsperaRef,
+            nEsperaRef,
+            cuelloPrincipal
+        };
+    }
+
+    function calcularPorJerarquia(lista) {
+        const niveles = { 'Máster': { finalizadas: 0, diagnosticadas: 0, reparadas: 0, retrabajos: 0, msTotal: 0, personas: 0 },
+            'Profesional': { finalizadas: 0, diagnosticadas: 0, reparadas: 0, retrabajos: 0, msTotal: 0, personas: 0 },
+            'Aprendiz': { finalizadas: 0, diagnosticadas: 0, reparadas: 0, retrabajos: 0, msTotal: 0, personas: 0 } };
+        lista.filter(st => st.area === 'Mantenimiento' && st.nivel).forEach(st => {
+            const n = niveles[st.nivel];
+            if (!n) return;
+            n.personas++;
+            n.finalizadas += st.finalizadas;
+            n.diagnosticadas += st.diagnosticadas;
+            n.reparadas += st.reparadas;
+            n.retrabajos += st.retrabajos;
+            n.msTotal += st.msTotal || 0;
+        });
+        Object.keys(niveles).forEach(k => {
+            const n = niveles[k];
+            const base = n.finalizadas + n.retrabajos;
+            n.eficiencia = base > 0 ? Math.round((n.finalizadas / base) * 100) : null;
+            n.tiempoTexto = formatearDuracion(n.msTotal);
+        });
+        return niveles;
+    }
+
+    const META_PROD_KEY = 'thermocontrol_meta_semanal';
+    function getMetaProduccion() {
+        const n = parseInt(localStorage.getItem(META_PROD_KEY) || '5', 10);
+        return isNaN(n) || n < 1 ? 5 : n;
+    }
+    function guardarMetaProduccion() {
+        const el = document.getElementById('prodMetaSemanal');
+        const n = parseInt(el && el.value, 10);
+        localStorage.setItem(META_PROD_KEY, String(isNaN(n) || n < 1 ? 5 : n));
     }
 
     let _ultimaProduccion = [];
+    let _ultimoCiclo = null;
 
     function abrirModalProduccion() {
         if (modoCliente) {
             alert('Vista de solo lectura: inicia sesión con un área para ver producción detallada.');
         }
+        const metaEl = document.getElementById('prodMetaSemanal');
+        if (metaEl) metaEl.value = String(getMetaProduccion());
         renderProduccion();
         document.getElementById('modalProduccion').style.display = 'flex';
     }
@@ -2656,10 +3291,14 @@
         const periodo = (document.getElementById('prodPeriodo') || {}).value || '7';
         const lista = calcularProduccionPorUsuario(periodo);
         _ultimaProduccion = lista;
+        const ciclo = calcularMetricasCiclo(periodo);
+        _ultimoCiclo = ciclo;
+        const cuellos = calcularCuellosBotella(periodo);
+        const jerarquia = calcularPorJerarquia(lista);
+        const meta = getMetaProduccion();
         const box = document.getElementById('produccionContenido');
         if (!box) return;
 
-        // Totales globales de tiempo en espera de refacciones (todas las unidades en periodo)
         const rango = rangoPeriodoProduccion(periodo);
         let msEsperaGlobal = 0;
         let unidadesEnEspera = 0;
@@ -2680,61 +3319,192 @@
             }
         });
 
-        if (!lista.length) {
-            box.innerHTML = '<p style="color:#888; padding:12px;">No hay movimientos en el periodo seleccionado.</p>';
-            return;
-        }
+        // Ranking (podio) por finalizadas — técnicos de mantenimiento primero, luego todos
+        const ranking = lista.slice().sort((a, b) => b.finalizadas - a.finalizadas || b.diagnosticadas - a.diagnosticadas);
+        const medallas = ['🥇', '🥈', '🥉'];
+        const podioHtml = ranking.slice(0, 5).map((st, i) => {
+            const med = medallas[i] || (i + 1) + '.';
+            const metaOk = st.area === 'Mantenimiento' && st.finalizadas >= meta;
+            return `<div style="display:flex; justify-content:space-between; gap:8px; padding:8px 10px; background:${i < 3 ? '#fff8e6' : 'var(--detalle-item,#f8f9fa)'}; border-radius:8px; margin-bottom:4px; font-size:13px;">
+                <span>${med} <strong>${st.persona}</strong> ${st.nivel ? '(' + st.nivel + ')' : ''} · ${st.area}</span>
+                <span>✅ ${st.finalizadas}${metaOk ? ' · 🎯 Meta' : ''}</span>
+            </div>`;
+        }).join('') || '<span style="color:#888;">Sin datos</span>';
 
-        const cards = lista.map(st => {
+        // Comparación por jerarquía
+        const jerHtml = ['Máster', 'Profesional', 'Aprendiz'].map(niv => {
+            const n = jerarquia[niv];
+            return `<tr>
+                <td style="padding:6px;"><strong>${niv}</strong></td>
+                <td style="padding:6px; text-align:center;">${n.personas}</td>
+                <td style="padding:6px; text-align:center;">${n.diagnosticadas}</td>
+                <td style="padding:6px; text-align:center;">${n.reparadas}</td>
+                <td style="padding:6px; text-align:center;">${n.finalizadas}</td>
+                <td style="padding:6px; text-align:center;">${n.retrabajos}</td>
+                <td style="padding:6px; text-align:center;">${n.eficiencia != null ? n.eficiencia + '%' : '—'}</td>
+            </tr>`;
+        }).join('');
+
+        const cards = lista.length ? lista.map(st => {
             const colorArea = st.area === 'Mantenimiento' ? '#17a2b8'
                 : st.area === 'Ventas' ? '#28a745'
                 : st.area === 'Compras' ? '#fd7e14'
                 : st.area === 'Gerencia' ? '#1a3a5c' : '#6c757d';
+            const progresoMeta = st.area === 'Mantenimiento'
+                ? Math.min(100, Math.round((st.finalizadas / meta) * 100))
+                : null;
+            const barraMeta = progresoMeta != null
+                ? `<div style="grid-column:1/-1; margin-top:4px;">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
+                        <span>🎯 Meta semanal (${meta})</span>
+                        <span>${st.finalizadas}/${meta} (${progresoMeta}%)</span>
+                    </div>
+                    <div style="height:8px; background:#e9ecef; border-radius:6px; overflow:hidden;">
+                        <div style="height:100%; width:${progresoMeta}%; background:${progresoMeta >= 100 ? '#28a745' : '#1a3a5c'};"></div>
+                    </div>
+                   </div>`
+                : '';
             return `
             <div style="border:1px solid var(--border,#e9ecef); border-radius:12px; padding:12px; margin-bottom:10px; border-left:5px solid ${colorArea};">
                 <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
-                    <strong style="font-size:15px;">👤 ${st.persona}</strong>
+                    <strong style="font-size:15px;">👤 ${st.persona}${st.nivel ? ' <span style="font-size:12px;color:#666;">(' + st.nivel + ')</span>' : ''}</strong>
                     <span style="font-size:12px; background:${colorArea}; color:#fff; padding:3px 10px; border-radius:12px;">${st.area || '—'}</span>
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:13px;">
                     <div>🔍 Diagnosticó: <strong>${st.diagnosticadas}</strong></div>
                     <div>🔧 Reparó: <strong>${st.reparadas}</strong></div>
                     <div>✅ Finalizó: <strong>${st.finalizadas}</strong></div>
+                    <div>↩️ Retrabajos: <strong>${st.retrabajos}</strong></div>
                     <div>💰 Cotizó: <strong>${st.cotizadas}</strong></div>
-                    <div>🛒 Compras / mov.: <strong>${st.comprasMov}</strong></div>
-                    <div>📦 Pasos espera refacc.: <strong>${st.esperaRefacciones}</strong></div>
-                    <div style="grid-column:1/-1;">⏱️ Tiempo total en sus pasos: <strong>${st.tiempoTexto}</strong></div>
-                    <div style="grid-column:1/-1;">⏳ Tiempo en espera de refacciones: <strong>${st.tiempoEsperaTexto}</strong></div>
+                    <div>🛒 Compras: <strong>${st.comprasMov}</strong></div>
+                    <div>📦 Espera refacc.: <strong>${st.esperaRefacciones}</strong></div>
+                    <div>📈 Eficiencia: <strong>${st.eficiencia != null ? st.eficiencia + '%' : '—'}</strong></div>
+                    <div style="grid-column:1/-1;">⏱️ Tiempo pasos: <strong>${st.tiempoTexto}</strong></div>
+                    <div style="grid-column:1/-1;">🔍 Diagnóstico: <strong>${st.tiempoDiagTexto || '—'}</strong> · 🛠️ Reparación: <strong>${st.tiempoRepTexto || '—'}</strong></div>
+                    <div style="grid-column:1/-1;">⏳ Espera refacciones: <strong>${st.tiempoEsperaTexto}</strong></div>
                     <div style="grid-column:1/-1; color:#666;">Unidades tocadas: <strong>${st.unidadesCount}</strong></div>
+                    ${barraMeta}
                 </div>
             </div>`;
-        }).join('');
+        }).join('') : '<p style="color:#888;">No hay movimientos de persona en este periodo.</p>';
+
+        const maxProm = Math.max(...(cuellos.ranking.map(r => r.promedioMs).concat([1])));
+        const barrasCuello = cuellos.ranking.filter(r => r.estatus !== 'Finalizada').map(r => {
+            const pct = Math.round((r.promedioMs / maxProm) * 100);
+            const color = r.estatus === 'Espera de refacciones' ? '#fd7e14'
+                : r.estatus === 'Cotizando' ? '#6f42c1'
+                : r.estatus === 'Diagnosticando' ? '#ffc107'
+                : r.estatus === 'Reparando' ? '#17a2b8' : '#1a3a5c';
+            return `<div style="margin-bottom:8px;">
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;">
+                    <span><strong>${r.estatus}</strong> · ahora: ${r.ahora} · pasos: ${r.nPasos}</span>
+                    <span>prom. <strong>${r.promedioTexto}</strong></span>
+                </div>
+                <div style="height:10px; background:#e9ecef; border-radius:6px; overflow:hidden;">
+                    <div style="height:100%; width:${pct}%; background:${color};"></div>
+                </div>
+                ${r.unidadMasLarga ? `<div style="font-size:11px; color:#888;">Caso más largo: ${r.unidadMasLarga} (${formatearDuracion(r.tiempoMax)})</div>` : ''}
+            </div>`;
+        }).join('') || '<span style="color:#888;">Sin datos de tiempos</span>';
+
+        const estancadasHtml = cuellos.estancadas.map(e => `
+            <div onclick="cerrarModal('modalProduccion'); abrirModalDetalle(${e.id})"
+                style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; padding:8px; background:#fff; border-radius:8px; margin-bottom:4px; cursor:pointer; border-left:4px solid ${e.dias >= 5 ? '#dc3545' : (e.dias >= 3 ? '#ffc107' : '#28a745')}; font-size:12px;">
+                <span><strong>${e.unidad}</strong> · ${e.cliente}<br>
+                <span style="color:#666;">${e.estatus} · ${e.responsable}</span>
+                ${e.estatus === 'Espera de refacciones' && e.refacciones ? '<br>🛒 ' + e.refacciones.substring(0, 50) : ''}
+                </span>
+                <span style="font-weight:700; color:${e.dias >= 5 ? '#dc3545' : '#333'};">${e.dias}d</span>
+            </div>
+        `).join('') || '<span style="color:#888;">No hay unidades estancadas</span>';
+
+        const alertaCuello = cuellos.cuelloPrincipal
+            ? `<div style="margin-bottom:10px; padding:10px; background:#f8d7da; border-radius:8px; font-size:13px;">
+                🚨 <strong>Principal cuello de botella:</strong> ${cuellos.cuelloPrincipal.estatus}
+                (promedio ${cuellos.cuelloPrincipal.promedioTexto}) ·
+                Responsable: <strong>${areaResponsableEstatus[cuellos.cuelloPrincipal.estatus] || '—'}</strong>
+                ${cuellos.refaccionesVencidas ? '<br>🛒 Refacciones con ETA vencida: <strong>' + cuellos.refaccionesVencidas + '</strong>' : ''}
+                ${cuellos.refaccionesProximas ? ' · Próximas (≤2d): <strong>' + cuellos.refaccionesProximas + '</strong>' : ''}
+               </div>`
+            : '';
 
         box.innerHTML = `
             <div style="margin-bottom:14px; padding:12px; background:#e7f1ff; border-radius:10px; font-size:13px;">
-                <strong>⏳ Espera de refacciones (periodo)</strong><br>
-                Unidades con espera: <strong>${unidadesEnEspera}</strong> ·
-                Tiempo acumulado: <strong>${formatearDuracion(msEsperaGlobal)}</strong>
-                ${unidadesEnEspera ? ' · Promedio: <strong>' + formatearDuracion(msEsperaGlobal / unidadesEnEspera) + '</strong>' : ''}
+                <strong>📊 Indicadores del periodo</strong><br>
+                🏁 Ciclo promedio recepción → entrega: <strong>${ciclo.promedioCicloTexto}</strong>
+                ${ciclo.nCiclo ? ' (' + ciclo.nCiclo + ' unidades)' : ''}<br>
+                ✅ Primera vez bien: <strong>${ciclo.pctPrimeraVez != null ? ciclo.pctPrimeraVez + '%' : '—'}</strong>
+                (${ciclo.primeraVezBien}/${ciclo.finalizadasPeriodo} finalizadas sin regresar a cotizar)<br>
+                ⏳ Espera refacciones: <strong>${unidadesEnEspera}</strong> und. ·
+                ${formatearDuracion(msEsperaGlobal)}
+                ${unidadesEnEspera ? ' · prom. ' + formatearDuracion(msEsperaGlobal / unidadesEnEspera) : ''}
             </div>
+
+            <div style="margin-bottom:14px; padding:12px; background:#fff5f5; border-radius:10px; border:1px solid #f5c2c7;">
+                <strong style="display:block; margin-bottom:8px;">🚧 Análisis de cuellos de botella</strong>
+                ${alertaCuello}
+                <div style="margin-bottom:12px;">
+                    <strong style="font-size:12px; display:block; margin-bottom:6px;">Tiempo promedio por estatus (mayor = más cuello)</strong>
+                    ${barrasCuello}
+                </div>
+                <div>
+                    <strong style="font-size:12px; display:block; margin-bottom:6px;">Unidades más estancadas (clic para abrir)</strong>
+                    ${estancadasHtml}
+                </div>
+            </div>
+
+            <div style="margin-bottom:14px; padding:12px; background:#fff8e6; border-radius:10px;">
+                <strong style="display:block; margin-bottom:8px;">🏆 Ranking (finalizadas)</strong>
+                ${podioHtml}
+            </div>
+
+            <div style="margin-bottom:14px; padding:12px; background:var(--detalle-item,#f8f9fa); border-radius:10px; overflow-x:auto;">
+                <strong style="display:block; margin-bottom:8px;">⭐ Comparación por jerarquía (Mantenimiento)</strong>
+                <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead>
+                        <tr style="border-bottom:1px solid #ddd;">
+                            <th style="text-align:left; padding:6px;">Nivel</th>
+                            <th style="padding:6px;">Pers.</th>
+                            <th style="padding:6px;">Diag.</th>
+                            <th style="padding:6px;">Rep.</th>
+                            <th style="padding:6px;">Fin.</th>
+                            <th style="padding:6px;">Retrab.</th>
+                            <th style="padding:6px;">Efic.</th>
+                        </tr>
+                    </thead>
+                    <tbody>${jerHtml}</tbody>
+                </table>
+            </div>
+
+            <strong style="display:block; margin-bottom:8px;">👤 Detalle por persona</strong>
             ${cards}
-            <p style="font-size:11px; color:#888; margin-top:8px;">Se basa en el historial (persona + estatus + fechas). Si falta nombre en un movimiento, aparece como «Sin nombre».</p>
+            <p style="font-size:11px; color:#888; margin-top:8px;">
+                Agenda no cuenta en tiempos. Ciclo = desde primera Recibida hasta Finalizada.
+                Primera vez bien = finalizó sin volver de Reparando a Cotizando.
+                Meta se guarda en este dispositivo.
+            </p>
         `;
     }
 
     function exportarProduccionCSV() {
         const periodo = (document.getElementById('prodPeriodo') || {}).value || '7';
         const lista = _ultimaProduccion.length ? _ultimaProduccion : calcularProduccionPorUsuario(periodo);
+        const ciclo = _ultimoCiclo || calcularMetricasCiclo(periodo);
         const lineas = [];
-        lineas.push('Produccion por usuario - Thermo King del Noroeste');
+        lineas.push('Produccion - Thermo King del Noroeste');
         lineas.push('Periodo,' + periodo);
+        lineas.push('Ciclo promedio recepcion-entrega,' + (ciclo.promedioCicloTexto || ''));
+        lineas.push('Primera vez bien %,' + (ciclo.pctPrimeraVez != null ? ciclo.pctPrimeraVez : ''));
+        lineas.push('Finalizadas periodo,' + (ciclo.finalizadasPeriodo || 0));
+        lineas.push('Meta semanal,' + getMetaProduccion());
         lineas.push('');
-        lineas.push('Persona,Area,Diagnosticadas,Reparadas,Finalizadas,Cotizadas,ComprasMov,EsperaRefacciones,TiempoTotal,TiempoEsperaRefacciones,Unidades');
+        lineas.push('Persona,Nivel,Area,Diagnosticadas,Reparadas,Finalizadas,Retrabajos,Eficiencia%,Cotizadas,ComprasMov,EsperaRefacciones,TiempoTotal,TiempoDiagnostico,TiempoReparacion,TiempoEsperaRefacciones,Unidades');
         lista.forEach(st => {
             lineas.push([
-                st.persona, st.area, st.diagnosticadas, st.reparadas, st.finalizadas,
+                st.persona, st.nivel || '', st.area, st.diagnosticadas, st.reparadas, st.finalizadas,
+                st.retrabajos, st.eficiencia != null ? st.eficiencia : '',
                 st.cotizadas, st.comprasMov, st.esperaRefacciones,
-                st.tiempoTexto, st.tiempoEsperaTexto, st.unidadesCount
+                st.tiempoTexto, st.tiempoDiagTexto || '', st.tiempoRepTexto || '', st.tiempoEsperaTexto, st.unidadesCount
             ].map(v => `"${(v ?? '').toString().replace(/"/g, '""')}"`).join(','));
         });
         const blob = new Blob(['\ufeff' + lineas.join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -2796,15 +3566,33 @@
         return Math.floor(diff);
     }
 
-    // Días en taller desde fecha de llegada (o historial)
-    function diasEnTaller(u) {
-        if (u.fecha_llegada) {
-            const llegada = new Date(u.fecha_llegada);
-            const ahora = new Date();
-            const diff = (ahora - llegada) / (1000 * 60 * 60 * 24);
-            return Math.max(0, Math.floor(diff));
+    // Días en taller: SOLO desde que está en Recibida (Agenda no cuenta)
+    function fechaInicioTaller(u) {
+        if (!u) return null;
+        if (u.estatus === 'Agenda') return null;
+        // Primera vez que pasó a Recibida en el historial
+        const hist = u.historial || [];
+        for (let i = 0; i < hist.length; i++) {
+            if (hist[i].estatus === 'Recibida' && hist[i].fecha) {
+                const d = parseFechaHistorial(hist[i].fecha);
+                if (d) return d;
+            }
         }
-        return diasEnEstatus(u.historial);
+        // Si ya no está en Agenda y tiene fecha_llegada (unidades viejas)
+        if (u.fecha_llegada && u.estatus !== 'Agenda') {
+            const d = new Date(u.fecha_llegada + (String(u.fecha_llegada).includes('T') ? '' : 'T12:00:00'));
+            if (!isNaN(d.getTime())) return d;
+        }
+        return null;
+    }
+
+    function diasEnTaller(u) {
+        if (!u || u.estatus === 'Agenda') return 0;
+        const llegada = fechaInicioTaller(u);
+        if (!llegada) return 0;
+        const ahora = new Date();
+        const diff = (ahora - llegada) / (1000 * 60 * 60 * 24);
+        return Math.max(0, Math.floor(diff));
     }
 
     // 0-2 verde | 3-4 amarillo | 5+ rojo
@@ -2831,6 +3619,13 @@
         if (diff === 1) return ` · <strong style="color:#b45309;">Llegan mañana</strong>`;
         if (diff === 0) return ` · <strong style="color:#28a745;">Llegan hoy</strong>`;
         return ` · <strong style="color:#dc3545;">Retraso ${Math.abs(diff)} día(s)</strong>`;
+    }
+
+    function etiquetaEstadoRefacciones(u) {
+        const e = (u.refacciones_estado || 'pendiente').toString().toLowerCase();
+        if (e === 'recibida' || e === 'completa') return '✅ Piezas completas';
+        if (e === 'parcial') return '📦 Llegada parcial';
+        return '⏳ Piezas pendientes';
     }
 
     // Formatea milisegundos a texto legible (ej: "2d 5h 30m")
@@ -2982,15 +3777,18 @@
                     <div class="meta">
                         ${esFinalizada
                             ? `<span class="tiempo" style="color:#28a745;">✅ Finalizada</span>`
-                            : `<span class="tiempo ${colorDias}">
+                            : (u.estatus === 'Agenda'
+                                ? `<span class="tiempo" style="color:#17a2b8;">📅 Agendada ${formatearFecha(u.fecha_agenda) || ''}</span>`
+                                : `<span class="tiempo ${colorDias}">
                                 ⏱️ ${textoDiasTaller(dias)} en taller
                                 ${dias >= 5 ? ' ⚠️' : ''}
-                               </span>`}
+                               </span>`)}
                         <span style="font-size:10px; color:#999;">${u.problema ? u.problema.substring(0,25)+'...' : ''}</span>
                     </div>
                     ${u.estatus === 'Espera de refacciones' ? `
                     <div style="margin-top:6px; padding:6px 8px; background:#fff4e5; border-radius:8px; font-size:11px; color:#7a3e00; line-height:1.35;">
-                        <strong>🛒 Refacciones:</strong> ${(u.refacciones_esperadas || 'Sin detalle').toString().substring(0,80)}${(u.refacciones_esperadas||'').length>80?'…':''}<br>
+                        <strong>🛒 ${etiquetaEstadoRefacciones(u)}</strong><br>
+                        ${(u.refacciones_esperadas || 'Sin detalle').toString().substring(0,80)}${(u.refacciones_esperadas||'').length>80?'…':''}<br>
                         📦 Pedido: ${formatearFecha(u.fecha_pedido_refacciones) || '—'} ·
                         🚚 ETA: ${formatearFecha(u.fecha_estimada_refacciones) || '—'}
                         ${textoDiasEtaRefacciones(u)}
@@ -3258,12 +4056,15 @@
             </div>
             ${u.estatus === 'Espera de refacciones' || u.refacciones_esperadas ? `
             <div class="detalle-item full" style="grid-column:1/-1; background:#fff4e5; border-radius:10px; padding:10px;">
-                <div class="label">🛒 Refacciones en espera</div>
+                <div class="label">🛒 Refacciones — ${etiquetaEstadoRefacciones(u)}</div>
                 <div class="valor" style="margin-top:4px;">
                     <div><strong>Piezas:</strong> ${u.refacciones_esperadas || '—'}</div>
                     <div style="margin-top:4px;"><strong>Pedido:</strong> ${formatearFecha(u.fecha_pedido_refacciones) || '—'}
                      · <strong>ETA:</strong> ${formatearFecha(u.fecha_estimada_refacciones) || '—'}
                      ${textoDiasEtaRefacciones(u).replace(/^ · /, ' · ')}</div>
+                    ${!modoCliente && u.estatus === 'Espera de refacciones' && sesion && (sesion.area === 'Compras' || sesion.area === 'Gerencia' || sesion.area === 'Ventas')
+                        ? `<button class="btn-accion" style="margin-top:8px;" onclick="abrirModalRefacciones(${u.id})">🛒 Actualizar / piezas llegaron</button>`
+                        : ''}
                 </div>
             </div>` : ''}
             <div class="detalle-item">
@@ -3383,6 +4184,9 @@
             let extraBtns = '';
             if (u.estatus === 'Agenda' && sesion && (sesion.area === 'Ventas' || sesion.area === 'Gerencia')) {
                 extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="confirmarLlegadaAgenda(${id})">📥 ¿Llegó? → Recibida</button>`;
+            }
+            if (u.estatus === 'Espera de refacciones' && sesion && (sesion.area === 'Compras' || sesion.area === 'Gerencia' || sesion.area === 'Ventas')) {
+                extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirModalRefacciones(${id})">🛒 Gestionar refacciones</button>`;
             }
             if (u.estatus === 'Diagnosticando' || u.estatus === 'Reparando') {
                 extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirTkDiag(${id})">🔍 Diagnóstico TK</button>`;
@@ -3775,6 +4579,7 @@
         let datosAsesor = '';
         let datosDiagnosticador = '';
         let datosReparador = '';
+        let datosFechaLlegadaRecibida = '';
 
         // Pregunta refacciones en handoffs clave
         const boxRefVisible = document.getElementById('boxRequiereRefacciones')?.style.display !== 'none';
@@ -3837,6 +4642,11 @@
                 return;
             }
             comentario = (comentario ? comentario + ' · ' : '') + 'Motivo: ' + motivoRetorno;
+        }
+
+        // Al recibir (desde Agenda u otro): inicia conteo de días en taller
+        if (nuevoEstatus === 'Recibida') {
+            datosFechaLlegadaRecibida = fechaHoyISO();
         }
 
         // Asesor obligatorio al pasar a Recibida (solo Ventas/Gerencia pueden asignarlo)
@@ -3936,11 +4746,15 @@
         if (datosReparador) {
             datos.reparador = datosReparador;
         }
+        if (datosFechaLlegadaRecibida) {
+            datos.fecha_llegada = datosFechaLlegadaRecibida;
+        }
         if (nuevoEstatus === 'Espera de refacciones') {
             datos.refacciones_esperadas = refaccionesEsperadas;
             datos.fecha_pedido_refacciones = fechaPedidoRef;
             datos.fecha_estimada_refacciones = fechaEstimadaRef;
             datos.requiere_refacciones = 'si';
+            datos.refacciones_estado = 'pendiente';
         }
 
         // Al pasar a Agenda: pedir fecha de llegada programada si falta
@@ -4059,6 +4873,120 @@
         } catch (e) {}
         mostrarToastApp(titulo, '#1a3a5c');
         mostrarNotifNavegador('Thermo King del Noroeste', titulo + ' — ' + detalle);
+    }
+
+    // ===== GESTIÓN RÁPIDA DE REFACCIONES =====
+    function abrirModalRefacciones(id) {
+        if (modoCliente) return;
+        if (!requerirSesion()) return;
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+        if (sesion.area !== 'Compras' && sesion.area !== 'Gerencia' && sesion.area !== 'Ventas') {
+            alert('Solo Compras, Ventas o Gerencia pueden gestionar refacciones.');
+            return;
+        }
+        unidadEnEdicion = id;
+        document.getElementById('infoRefacciones').textContent = `${u.no_unidad || '—'} · ${u.cliente || ''}`;
+        document.getElementById('listaRefaccionesModal').value = u.refacciones_esperadas || '';
+        document.getElementById('fechaPedidoRefModal').value = u.fecha_pedido_refacciones || '';
+        document.getElementById('fechaEtaRefModal').value = u.fecha_estimada_refacciones || '';
+        document.getElementById('notaRefModal').value = '';
+        const est = (u.refacciones_estado || 'pendiente').toLowerCase();
+        document.getElementById('estadoRefaccionesModal').value =
+            (est === 'recibida' || est === 'completa') ? 'recibida' : (est === 'parcial' ? 'parcial' : 'pendiente');
+        document.getElementById('chkPasarReparandoRef').checked = true;
+        document.getElementById('boxPasarReparandoRef').style.display =
+            document.getElementById('estadoRefaccionesModal').value === 'recibida' ? 'block' : 'none';
+        document.getElementById('estadoRefaccionesModal').onchange = function() {
+            document.getElementById('boxPasarReparandoRef').style.display =
+                this.value === 'recibida' ? 'block' : 'none';
+        };
+        renderInvEnRefacciones();
+        document.getElementById('modalRefacciones').style.display = 'flex';
+    }
+
+    async function guardarGestionRefacciones() {
+        const id = unidadEnEdicion;
+        const u = unidades.find(item => item.id === id);
+        if (!u || !sesion) return;
+
+        const lista = (document.getElementById('listaRefaccionesModal').value || '').trim();
+        const estado = document.getElementById('estadoRefaccionesModal').value || 'pendiente';
+        const fechaPedido = normalizarFechaISO(document.getElementById('fechaPedidoRefModal').value || '') || null;
+        const fechaEta = normalizarFechaISO(document.getElementById('fechaEtaRefModal').value || '') || null;
+        const nota = (document.getElementById('notaRefModal').value || '').trim();
+        const pasarRep = document.getElementById('chkPasarReparandoRef').checked && estado === 'recibida';
+
+        if (!lista) {
+            alert('⚠️ Indica las refacciones / notas de piezas.');
+            return;
+        }
+
+        const historial = (u.historial || []).slice();
+        const comentario =
+            `Refacciones ${estado}: ${lista}` +
+            (fechaEta ? ` · ETA ${fechaEta}` : '') +
+            (nota ? ` · ${nota}` : '') +
+            (pasarRep ? ' · → Reparando' : '');
+
+        historial.push({
+            fecha: new Date().toLocaleString(),
+            estatus: pasarRep ? 'Reparando' : u.estatus,
+            area: sesion.area,
+            persona: sesion.persona,
+            comentario
+        });
+
+        const datos = {
+            refacciones_esperadas: lista,
+            refacciones_estado: estado,
+            fecha_pedido_refacciones: fechaPedido,
+            fecha_estimada_refacciones: fechaEta,
+            historial
+        };
+        if (pasarRep) {
+            datos.estatus = 'Reparando';
+            datos.requiere_refacciones = 'si';
+        }
+
+        // Descontar inventario si hay piezas marcadas (al recibir/completar)
+        let movsInv = [];
+        if (estado === 'recibida' || estado === 'parcial' || pasarRep) {
+            movsInv = await descontarInventarioSeleccionado();
+            if (movsInv.length) {
+                historial[historial.length - 1].comentario +=
+                    ' · Inv: ' + movsInv.map(m => m.nombre + ' x' + m.qty).join(', ');
+                datos.historial = historial;
+            }
+        }
+
+        const resultado = await actualizarUnidad(id, datos);
+        if (resultado.success) {
+            cerrarModal('modalRefacciones');
+            cerrarModal('modalDetalle');
+            if (pasarRep) {
+                alertarHandoffArea(u, u.estatus, 'Reparando', sesion.area, sesion.persona, '', 'si');
+                mostrarToastApp('✅ Piezas listas → unidad en Reparando' + (movsInv.length ? ' · Stock actualizado' : ''), '#28a745');
+            } else {
+                mostrarToastApp('🛒 Seguimiento de refacciones actualizado' + (movsInv.length ? ' · Stock actualizado' : ''), '#fd7e14');
+                registrarNotificacionEvento({
+                    tipo: 'aviso',
+                    titulo: `🛒 Refacciones (${estado}): ${u.no_unidad || ''}`,
+                    detalle: lista.substring(0, 80) + (fechaEta ? ' · ETA ' + fechaEta : ''),
+                    unidadId: id,
+                    areaDestino: estado === 'recibida' ? 'Mantenimiento' : 'Compras',
+                    forzarNavegador: true
+                });
+            }
+            actualizarNotificaciones();
+        }
+    }
+
+    async function marcarPiezasLlegaron() {
+        document.getElementById('estadoRefaccionesModal').value = 'recibida';
+        document.getElementById('boxPasarReparandoRef').style.display = 'block';
+        document.getElementById('chkPasarReparandoRef').checked = true;
+        await guardarGestionRefacciones();
     }
 
     function validarCamposParaFinalizar(u) {
@@ -4974,6 +5902,22 @@
                     detalle: `${ult.area || ''} (${ult.persona || '—'}) · Para: ${dest || '—'} · ${ult.fecha}`,
                     unidadId: u.id
                 });
+            });
+        }
+
+        // Stock bajo / agotado (Compras y Gerencia)
+        if (!areaSesion || areaSesion === 'Compras' || areaSesion === 'Gerencia') {
+            (inventario || []).forEach(i => {
+                const cant = parseFloat(i.cantidad) || 0;
+                const min = parseFloat(i.minimo) || 0;
+                if (cant <= min) {
+                    notifs.push({
+                        tipo: cant <= 0 ? 'urgente' : 'aviso',
+                        titulo: cant <= 0 ? `📦 Sin stock: ${i.nombre}` : `📦 Stock bajo: ${i.nombre}`,
+                        detalle: `Quedan ${cant} ${i.unidad_medida || 'pza'} (mín. ${min})${i.codigo ? ' · ' + i.codigo : ''}`,
+                        unidadId: null
+                    });
+                }
             });
         }
 
