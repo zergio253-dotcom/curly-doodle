@@ -1082,27 +1082,28 @@
                 <label>Problema / Descripción</label>
                 <textarea id="problemaNueva" rows="2" placeholder="Describe el problema..."></textarea>
             </div>
-            <div class="grid-2">
-                <div class="form-group">
+            <div class="form-group" id="boxAsesorNueva">
+                <label>💰 Asesor de ventas *</label>
+                <select id="asesorVentasNueva" onchange="toggleCampoOtroPersona('asesorVentasNueva')"></select>
+                <input type="text" id="asesorVentasNuevaOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
+                <small style="color:#666; font-size:11px;">Obligatorio al recibir. Solo Ventas o Gerencia. No se puede cambiar después.</small>
+            </div>
+            <div class="grid-2" id="boxDiagRepNueva" style="display:none;">
+                <div class="form-group" id="boxDiagNueva" style="display:none;">
                     <label>🔧 Diagnosticador</label>
                     <select id="diagnosticadorNueva" onchange="toggleCampoOtroPersona('diagnosticadorNueva')"></select>
                     <input type="text" id="diagnosticadorNuevaOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="boxRepNueva" style="display:none;">
                     <label>🛠️ Reparador</label>
                     <select id="reparadorNueva" onchange="toggleCampoOtroPersona('reparadorNueva')"></select>
                     <input type="text" id="reparadorNuevaOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
                 </div>
             </div>
-            <div class="form-group">
-                <label>💰 Asesor de ventas</label>
-                <select id="asesorVentasNueva" onchange="toggleCampoOtroPersona('asesorVentasNueva')"></select>
-                <input type="text" id="asesorVentasNuevaOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
-            </div>
             <div class="grid-2">
                 <div class="form-group">
                     <label>Estatus inicial</label>
-                    <select id="estatusNueva" onchange="toggleCamposAgendaNueva()">
+                    <select id="estatusNueva" onchange="toggleCamposAgendaNueva(); actualizarCamposPersonasNueva();">
                         <option value="Agenda">📅 Agenda (llegada programada)</option>
                         <option value="Recibida" selected>📥 Recibida</option>
                         <option value="Diagnosticando">🔍 Diagnosticando</option>
@@ -1182,22 +1183,26 @@
                 <label>Problema / Descripción</label>
                 <textarea id="problemaEditar" rows="2"></textarea>
             </div>
-            <div class="grid-2">
-                <div class="form-group">
-                    <label>🔧 Diagnosticador</label>
-                    <select id="diagnosticadorEditar" onchange="toggleCampoOtroPersona('diagnosticadorEditar')"></select>
-                    <input type="text" id="diagnosticadorEditarOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
-                </div>
-                <div class="form-group">
-                    <label>🛠️ Reparador</label>
-                    <select id="reparadorEditar" onchange="toggleCampoOtroPersona('reparadorEditar')"></select>
-                    <input type="text" id="reparadorEditarOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
-                </div>
-            </div>
-            <div class="form-group">
+            <div class="form-group" id="boxAsesorEditar">
                 <label>💰 Asesor de ventas</label>
                 <select id="asesorVentasEditar" onchange="toggleCampoOtroPersona('asesorVentasEditar')"></select>
                 <input type="text" id="asesorVentasEditarOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
+                <div id="asesorVentasEditarLocked" style="display:none; padding:8px 10px; background:#e9ecef; border-radius:8px; font-size:13px;"></div>
+                <small id="hintAsesorEditar" style="color:#666; font-size:11px;"></small>
+            </div>
+            <div class="form-group" id="boxDiagEditar">
+                <label>🔧 Diagnosticador</label>
+                <select id="diagnosticadorEditar" onchange="toggleCampoOtroPersona('diagnosticadorEditar')"></select>
+                <input type="text" id="diagnosticadorEditarOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
+                <div id="diagnosticadorEditarLocked" style="display:none; padding:8px 10px; background:#e9ecef; border-radius:8px; font-size:13px;"></div>
+                <small id="hintDiagEditar" style="color:#666; font-size:11px;"></small>
+            </div>
+            <div class="form-group" id="boxRepEditar">
+                <label>🛠️ Reparador</label>
+                <select id="reparadorEditar" onchange="toggleCampoOtroPersona('reparadorEditar')"></select>
+                <input type="text" id="reparadorEditarOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
+                <div id="reparadorEditarLocked" style="display:none; padding:8px 10px; background:#e9ecef; border-radius:8px; font-size:13px;"></div>
+                <small id="hintRepEditar" style="color:#666; font-size:11px;"></small>
             </div>
             <div class="grid-2">
                 <div class="form-group">
@@ -1450,19 +1455,56 @@
     // ===== PERSONAS POR ÁREA =====
     const personasPorArea = {
         'Gerencia': ['Luis Solís'],
-        'Mantenimiento': ['Sergio Holguín', 'Marcos Sifuentes', 'Miguel Arredondo', 'Alfredo'],
+        // Orden: Máster → Profesional → Aprendiz
+        'Mantenimiento': ['Marcos Sifuentes', 'Sergio Holguín', 'Miguel Arredondo', 'Alfredo'],
         'Ventas': ['Romina', 'Jesús'],
         'Compras': ['Alfredo']
     };
 
+    // Jerarquía de técnicos de Mantenimiento
+    const jerarquiaTecnicos = {
+        'Marcos Sifuentes': 'Máster',
+        'Sergio Holguín': 'Profesional',
+        'Miguel Arredondo': 'Profesional',
+        'Alfredo': 'Aprendiz'
+    };
+    const ordenJerarquia = { 'Máster': 1, 'Profesional': 2, 'Aprendiz': 3 };
+
+    function nivelTecnico(nombre) {
+        return jerarquiaTecnicos[nombre] || '';
+    }
+
+    function etiquetaTecnico(nombre) {
+        const nivel = nivelTecnico(nombre);
+        if (!nivel) return nombre;
+        const icono = nivel === 'Máster' ? '⭐' : (nivel === 'Profesional' ? '🔹' : '🔸');
+        return `${icono} ${nombre} · ${nivel}`;
+    }
+
+    function listaTecnicosOrdenada() {
+        const lista = (personasPorArea['Mantenimiento'] || []).slice();
+        lista.sort((a, b) => {
+            const na = ordenJerarquia[nivelTecnico(a)] || 99;
+            const nb = ordenJerarquia[nivelTecnico(b)] || 99;
+            if (na !== nb) return na - nb;
+            return a.localeCompare(b);
+        });
+        return lista;
+    }
+
+    function textoListaTecnicosPrompt() {
+        return listaTecnicosOrdenada().map(p => etiquetaTecnico(p)).join('\n');
+    }
+
     function llenarSelectPersonas(selectId, area, valorActual) {
         const sel = document.getElementById(selectId);
         if (!sel) return;
-        const personas = personasPorArea[area] || [];
+        const personas = area === 'Mantenimiento' ? listaTecnicosOrdenada() : (personasPorArea[area] || []);
         const actual = (valorActual || '').trim();
         let html = '<option value="">Selecciona...</option>';
         personas.forEach(p => {
-            html += `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`;
+            const label = area === 'Mantenimiento' ? etiquetaTecnico(p) : p;
+            html += `<option value="${p.replace(/"/g, '&quot;')}">${label}</option>`;
         });
         html += '<option value="__OTRO__">Otro...</option>';
         sel.innerHTML = html;
@@ -1474,7 +1516,6 @@
             sel.value = '__OTRO__';
             if (otro) { otro.style.display = 'block'; otro.value = actual; }
         } else {
-            // Predeterminado: si la sesión es de esa área, usar esa persona
             if (sesion && sesion.area === area && personas.includes(sesion.persona)) {
                 sel.value = sesion.persona;
             }
@@ -1498,11 +1539,105 @@
     function valorPersonaSelect(selectId) {
         const sel = document.getElementById(selectId);
         if (!sel) return '';
+        if (sel.style.display === 'none' || sel.disabled) {
+            // Si está bloqueado, el valor real puede estar en el locked div vía data
+            const locked = document.getElementById(selectId + 'Locked');
+            if (locked && locked.dataset.value) return locked.dataset.value;
+        }
         if (sel.value === '__OTRO__') {
             const otro = document.getElementById(selectId + 'Otro');
             return (otro && otro.value || '').trim();
         }
         return (sel.value || '').trim();
+    }
+
+    function setCampoPersonaEditable(selectId, editable, valorFijo, hintId, hintText) {
+        const sel = document.getElementById(selectId);
+        const otro = document.getElementById(selectId + 'Otro');
+        const locked = document.getElementById(selectId + 'Locked');
+        const hint = hintId ? document.getElementById(hintId) : null;
+        if (!sel) return;
+        if (editable) {
+            sel.style.display = '';
+            sel.disabled = false;
+            if (locked) { locked.style.display = 'none'; locked.dataset.value = ''; }
+            if (hint) hint.textContent = hintText || '';
+        } else {
+            sel.style.display = 'none';
+            if (otro) { otro.style.display = 'none'; }
+            if (locked) {
+                locked.style.display = 'block';
+                locked.textContent = valorFijo ? ('🔒 ' + valorFijo) : '— Sin asignar';
+                locked.dataset.value = valorFijo || '';
+            }
+            if (hint) hint.textContent = hintText || '';
+        }
+    }
+
+    function actualizarCamposPersonasNueva() {
+        const est = document.getElementById('estatusNueva')?.value || 'Recibida';
+        const area = sesion ? sesion.area : '';
+        const boxAsesor = document.getElementById('boxAsesorNueva');
+        const boxDiag = document.getElementById('boxDiagNueva');
+        const boxRep = document.getElementById('boxRepNueva');
+        const boxDiagRep = document.getElementById('boxDiagRepNueva');
+
+        // Asesor: al recibir (Recibida o Agenda→luego se recibe). En alta: visible si Recibida y Ventas/Gerencia
+        const puedeAsesor = (area === 'Ventas' || area === 'Gerencia');
+        if (boxAsesor) {
+            boxAsesor.style.display = (est === 'Recibida' && puedeAsesor) ? 'block' : (est === 'Recibida' ? 'block' : 'none');
+        }
+
+        // Diagnosticador solo si nace en Diagnosticando y Mantenimiento/Gerencia
+        const puedeDiag = (area === 'Mantenimiento' || area === 'Gerencia');
+        if (boxDiag) boxDiag.style.display = (est === 'Diagnosticando' && puedeDiag) ? 'block' : 'none';
+
+        // Reparador solo si nace en Reparando y Mantenimiento/Gerencia
+        const puedeRep = (area === 'Mantenimiento' || area === 'Gerencia');
+        if (boxRep) boxRep.style.display = (est === 'Reparando' && puedeRep) ? 'block' : 'none';
+
+        if (boxDiagRep) {
+            const show = (boxDiag && boxDiag.style.display !== 'none') || (boxRep && boxRep.style.display !== 'none');
+            boxDiagRep.style.display = show ? 'grid' : 'none';
+        }
+    }
+
+    function aplicarReglasCamposEditar(u) {
+        const area = sesion ? sesion.area : '';
+        const est = u.estatus || '';
+
+        // Asesor: solo Ventas/Gerencia y solo si aún no está asignado
+        const asesorActual = (u.asesor_ventas || '').trim();
+        const puedeAsignarAsesor = !asesorActual && (area === 'Ventas' || area === 'Gerencia');
+        if (puedeAsignarAsesor) {
+            llenarSelectPersonas('asesorVentasEditar', 'Ventas', '');
+            setCampoPersonaEditable('asesorVentasEditar', true, '', 'hintAsesorEditar', 'Solo Ventas o Gerencia. Una vez guardado no se puede cambiar.');
+        } else {
+            setCampoPersonaEditable('asesorVentasEditar', false, asesorActual, 'hintAsesorEditar',
+                asesorActual ? 'Asignado al recibir. No se puede modificar.' : 'Solo Ventas o Gerencia pueden asignarlo al recibir la unidad.');
+        }
+
+        // Diagnosticador: solo en Diagnosticando, Mantenimiento o Gerencia
+        const diagActual = (u.diagnosticador || '').trim();
+        const puedeDiag = est === 'Diagnosticando' && (area === 'Mantenimiento' || area === 'Gerencia');
+        if (puedeDiag) {
+            llenarSelectPersonas('diagnosticadorEditar', 'Mantenimiento', diagActual);
+            setCampoPersonaEditable('diagnosticadorEditar', true, '', 'hintDiagEditar', 'Solo se elige o cambia en estatus Diagnosticando (Mantenimiento / Gerencia).');
+        } else {
+            setCampoPersonaEditable('diagnosticadorEditar', false, diagActual, 'hintDiagEditar',
+                est === 'Diagnosticando' ? 'Solo Mantenimiento o Gerencia pueden asignarlo aquí.' : 'Solo se asigna en Diagnosticando.');
+        }
+
+        // Reparador: solo en Reparando, Mantenimiento (o Gerencia por control)
+        const repActual = (u.reparador || '').trim();
+        const puedeRep = est === 'Reparando' && (area === 'Mantenimiento' || area === 'Gerencia');
+        if (puedeRep) {
+            llenarSelectPersonas('reparadorEditar', 'Mantenimiento', repActual);
+            setCampoPersonaEditable('reparadorEditar', true, '', 'hintRepEditar', 'Solo se elige o cambia en estatus Reparando (Mantenimiento).');
+        } else {
+            setCampoPersonaEditable('reparadorEditar', false, repActual, 'hintRepEditar',
+                est === 'Reparando' ? 'Solo Mantenimiento o Gerencia pueden asignarlo aquí.' : 'Solo se asigna en Reparando.');
+        }
     }
 
     // ===== CLAVES POR DEPARTAMENTO =====
@@ -1543,7 +1678,7 @@
             container.innerHTML = '';
             return;
         }
-        const personas = personasPorArea[area] || [];
+        const personas = area === 'Mantenimiento' ? listaTecnicosOrdenada() : (personasPorArea[area] || []);
         if (personas.length === 0) {
             container.innerHTML = '<span style="color:#888;font-size:13px;">Sin personas</span>';
             return;
@@ -1551,7 +1686,7 @@
         container.innerHTML = personas.map((p, i) => `
             <div class="persona-item">
                 <input type="radio" name="loginPersona" value="${p}" id="login_p_${i}" ${i === 0 ? 'checked' : ''}>
-                <label for="login_p_${i}">${p}</label>
+                <label for="login_p_${i}">${area === 'Mantenimiento' ? etiquetaTecnico(p) : p}</label>
             </div>
         `).join('');
     }
@@ -2993,6 +3128,7 @@
         llenarSelectPersonas('diagnosticadorNueva', 'Mantenimiento', '');
         llenarSelectPersonas('reparadorNueva', 'Mantenimiento', '');
         llenarSelectPersonas('asesorVentasNueva', 'Ventas', '');
+        actualizarCamposPersonasNueva();
         document.getElementById('modalNueva').style.display = 'flex';
     }
 
@@ -3045,11 +3181,11 @@
             </div>
             <div class="detalle-item">
                 <div class="label">Diagnosticador</div>
-                <div class="valor">${u.diagnosticador || '—'}</div>
+                <div class="valor">${u.diagnosticador ? etiquetaTecnico(u.diagnosticador) : '—'}</div>
             </div>
             <div class="detalle-item">
                 <div class="label">Reparador</div>
-                <div class="valor">${u.reparador || '—'}</div>
+                <div class="valor">${u.reparador ? etiquetaTecnico(u.reparador) : '—'}</div>
             </div>
             <div class="detalle-item">
                 <div class="label">Asesor de ventas</div>
@@ -3217,6 +3353,29 @@
         }
         const fotosLocales = await leerArchivosComoBase64(document.getElementById('fotosNueva'));
         const problemaBase = document.getElementById('problemaNueva').value.trim();
+
+        let asesor = '';
+        let diagnosticador = '';
+        let reparador = '';
+        if (estatusInicial === 'Recibida') {
+            if (sesion.area === 'Ventas' || sesion.area === 'Gerencia') {
+                asesor = valorPersonaSelect('asesorVentasNueva');
+                if (!asesor) {
+                    alert('⚠️ Al recibir la unidad debes elegir el Asesor de ventas.');
+                    return;
+                }
+            } else {
+                alert('⚠️ Solo Ventas o Gerencia pueden registrar una unidad en Recibida (asignando asesor).');
+                return;
+            }
+        }
+        if (estatusInicial === 'Diagnosticando' && (sesion.area === 'Mantenimiento' || sesion.area === 'Gerencia')) {
+            diagnosticador = valorPersonaSelect('diagnosticadorNueva');
+        }
+        if (estatusInicial === 'Reparando' && (sesion.area === 'Mantenimiento' || sesion.area === 'Gerencia')) {
+            reparador = valorPersonaSelect('reparadorNueva');
+        }
+
         const nueva = {
             no_unidad: document.getElementById('noUnidadNueva').value.trim(),
             cliente: document.getElementById('clienteNueva').value.trim(),
@@ -3227,9 +3386,9 @@
             hoja_servicio: document.getElementById('hojaServicioNueva').value.trim(),
             folio: document.getElementById('folioNueva').value.trim(),
             problema: fallaLlegada || problemaBase,
-            diagnosticador: valorPersonaSelect('diagnosticadorNueva'),
-            reparador: valorPersonaSelect('reparadorNueva'),
-            asesor_ventas: valorPersonaSelect('asesorVentasNueva'),
+            diagnosticador: diagnosticador,
+            reparador: reparador,
+            asesor_ventas: asesor,
             estatus: estatusInicial,
             // No enviar null en fechas (evita error "null value" en Supabase)
             fecha_llegada: estatusInicial === 'Agenda' ? (fechaAgenda || hoy) : hoy,
@@ -3275,9 +3434,7 @@
         document.getElementById('ordenCompraEditar').value = u.orden_compra || '';
         document.getElementById('hojaServicioEditar').value = u.hoja_servicio || '';
         document.getElementById('problemaEditar').value = u.problema || '';
-        llenarSelectPersonas('diagnosticadorEditar', 'Mantenimiento', u.diagnosticador || '');
-        llenarSelectPersonas('reparadorEditar', 'Mantenimiento', u.reparador || '');
-        llenarSelectPersonas('asesorVentasEditar', 'Ventas', u.asesor_ventas || '');
+        aplicarReglasCamposEditar(u);
         document.getElementById('fechaSalidaEditar').value = u.fecha_salida || '';
         document.getElementById('fotosEditar').value = '';
         document.getElementById('modalEditar').style.display = 'flex';
@@ -3287,6 +3444,9 @@
         e.preventDefault();
         const id = unidadEnEdicion;
         if (!id) return;
+        const u = unidades.find(item => item.id === id);
+        if (!u) return;
+        const area = sesion ? sesion.area : '';
 
         const datos = {
             no_unidad: document.getElementById('noUnidadEditar').value.trim(),
@@ -3298,13 +3458,35 @@
             orden_compra: document.getElementById('ordenCompraEditar').value.trim(),
             hoja_servicio: document.getElementById('hojaServicioEditar').value.trim(),
             problema: document.getElementById('problemaEditar').value.trim(),
-            diagnosticador: valorPersonaSelect('diagnosticadorEditar'),
-            reparador: valorPersonaSelect('reparadorEditar'),
-            asesor_ventas: valorPersonaSelect('asesorVentasEditar'),
             fecha_salida: document.getElementById('fechaSalidaEditar').value || null
         };
-        
-        const u = unidades.find(item => item.id === id);
+
+        // Asesor: solo si estaba vacío y Ventas/Gerencia
+        const asesorPrev = (u.asesor_ventas || '').trim();
+        if (!asesorPrev && (area === 'Ventas' || area === 'Gerencia')) {
+            const asesorNuevo = valorPersonaSelect('asesorVentasEditar');
+            if (asesorNuevo) datos.asesor_ventas = asesorNuevo;
+        }
+
+        // Diagnosticador: solo en Diagnosticando, Mantenimiento/Gerencia
+        if (u.estatus === 'Diagnosticando' && (area === 'Mantenimiento' || area === 'Gerencia')) {
+            const diag = valorPersonaSelect('diagnosticadorEditar');
+            if (!diag) {
+                alert('⚠️ En Diagnosticando debes elegir el diagnosticador.');
+                return;
+            }
+            datos.diagnosticador = diag;
+        }
+
+        // Reparador: solo en Reparando, Mantenimiento/Gerencia
+        if (u.estatus === 'Reparando' && (area === 'Mantenimiento' || area === 'Gerencia')) {
+            const rep = valorPersonaSelect('reparadorEditar');
+            if (!rep) {
+                alert('⚠️ En Reparando debes elegir el reparador.');
+                return;
+            }
+            datos.reparador = rep;
+        }
         // Fotos solo en este dispositivo
         const nuevasFotosLocales = await leerArchivosComoBase64(document.getElementById('fotosEditar'));
 
@@ -3511,6 +3693,9 @@
         let comentario = document.getElementById('comentarioCambio').value.trim();
         const estatusAnterior = u.estatus;
         let requiereRef = (u.requiere_refacciones || '').toString();
+        let datosAsesor = '';
+        let datosDiagnosticador = '';
+        let datosReparador = '';
 
         // Pregunta refacciones en handoffs clave
         const boxRefVisible = document.getElementById('boxRequiereRefacciones')?.style.display !== 'none';
@@ -3551,15 +3736,54 @@
             comentario = (comentario ? comentario + ' · ' : '') + 'Motivo: ' + motivoRetorno;
         }
 
-        // Checklist Diagnosticando → Cotizando
-        if (estatusAnterior === 'Diagnosticando' && nuevoEstatus === 'Cotizando') {
-            if (!tieneDiagnosticoCompleto(u)) {
-                alert('⚠️ Antes de cotizar se necesita diagnóstico (texto o PDF) y diagnosticador.\nÁbrelo en Diagnóstico TK o completa el diagnóstico.');
+        // Asesor obligatorio al pasar a Recibida (solo Ventas/Gerencia pueden asignarlo)
+        if (nuevoEstatus === 'Recibida' && !(u.asesor_ventas || '').toString().trim()) {
+            if (area !== 'Ventas' && area !== 'Gerencia') {
+                alert('⚠️ Solo Ventas o Gerencia pueden recibir la unidad y asignar el Asesor de ventas.');
                 return;
             }
-            if (!(u.diagnosticador || '').toString().trim()) {
-                alert('⚠️ Falta el nombre del diagnosticador. Complétalo en Editar.');
+            const nombres = (personasPorArea['Ventas'] || []).join('\n');
+            const elegido = prompt('💰 Elige el Asesor de ventas (escribe el nombre exacto):\n\n' + nombres, sesion.persona || '');
+            if (!elegido || !elegido.trim()) {
+                alert('⚠️ Debes asignar el Asesor de ventas al recibir.');
                 return;
+            }
+            datosAsesor = elegido.trim();
+        }
+
+        // Diagnosticador: solo se asigna en Diagnosticando (Mantenimiento/Gerencia)
+        if (nuevoEstatus === 'Diagnosticando' && (area === 'Mantenimiento' || area === 'Gerencia')) {
+            if (!(u.diagnosticador || '').toString().trim()) {
+                const nombres = textoListaTecnicosPrompt();
+                const elegido = prompt('🔧 Elige el Diagnosticador:\n\n' + nombres + '\n\n(Escribe solo el nombre, sin estrellas)', sesion.persona || '');
+                if (!elegido || !elegido.trim()) {
+                    alert('⚠️ Debes asignar el diagnosticador al pasar a Diagnosticando.');
+                    return;
+                }
+                datosDiagnosticador = elegido.trim();
+            }
+        }
+        if (estatusAnterior === 'Diagnosticando' && nuevoEstatus === 'Cotizando') {
+            if (!tieneDiagnosticoCompleto(u)) {
+                alert('⚠️ Antes de cotizar se necesita diagnóstico (texto o PDF).\nÁbrelo en Diagnóstico TK o completa el diagnóstico.');
+                return;
+            }
+            if (!(u.diagnosticador || '').toString().trim() && !datosDiagnosticador) {
+                alert('⚠️ Falta el diagnosticador. Asígnolo en Editar estando en Diagnosticando.');
+                return;
+            }
+        }
+
+        // Reparador: solo en Reparando (Mantenimiento)
+        if (nuevoEstatus === 'Reparando' && (area === 'Mantenimiento' || area === 'Gerencia')) {
+            if (!(u.reparador || '').toString().trim()) {
+                const nombres = textoListaTecnicosPrompt();
+                const elegido = prompt('🛠️ Elige el Reparador:\n\n' + nombres + '\n\n(Escribe solo el nombre, sin estrellas)', sesion.persona || '');
+                if (!elegido || !elegido.trim()) {
+                    alert('⚠️ Debes asignar el reparador al pasar a Reparando.');
+                    return;
+                }
+                datosReparador = elegido.trim();
             }
         }
 
@@ -3598,6 +3822,16 @@
         }
         if (motivoRetorno) {
             datos.motivo_retorno = motivoRetorno;
+        }
+        // Asignaciones de persona (solo en el momento permitido)
+        if (datosAsesor && !(u.asesor_ventas || '').toString().trim()) {
+            datos.asesor_ventas = datosAsesor;
+        }
+        if (datosDiagnosticador) {
+            datos.diagnosticador = datosDiagnosticador;
+        }
+        if (datosReparador) {
+            datos.reparador = datosReparador;
         }
 
         // Al pasar a Agenda: pedir fecha de llegada programada si falta
