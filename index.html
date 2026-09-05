@@ -881,6 +881,7 @@
 
                     <button type="button" class="menu-item" id="btnThermoDiagPRO" onclick="window.open('https://cosmic-zabaione-7bd9cc.netlify.app/', '_blank'); cerrarMenuPrincipal();" style="display:none;">🔬 ThermoDiagPRO</button>
                     <div class="menu-sep"></div>
+                    <button type="button" class="menu-item" id="btnAdmin" onclick="abrirModalAdmin(); cerrarMenuPrincipal();">⚙️ Administración</button>
                     <button type="button" class="menu-item" id="btnDarkMode" onclick="toggleDarkMode(); cerrarMenuPrincipal();">🌙 Modo oscuro</button>
                     <button type="button" class="menu-item" onclick="cargarDatos(); cerrarMenuPrincipal();">🔄 Recargar datos</button>
                 </div>
@@ -1072,47 +1073,140 @@
 <div id="historialContainer" class="lista-container"></div>
 
 <!-- ===== MODAL NUEVA ===== -->
+<!-- ===== MODAL ADMINISTRACIÓN ===== -->
+<div class="modal" id="modalAdmin">
+    <div class="modal-content wide">
+        <h3>⚙️ Administración del sistema</h3>
+        <div id="adminLoginBox">
+            <p style="font-size:13px; color:#666; margin-bottom:12px;">Ingresa la clave de administrador para gestionar usuarios y permisos.</p>
+            <div class="form-group">
+                <label>Clave de administrador</label>
+                <input type="password" id="adminClaveInput" maxlength="8" inputmode="numeric" placeholder="••••" autocomplete="off">
+            </div>
+            <p id="adminLoginError" style="display:none; color:#dc3545; font-size:13px; margin-bottom:8px;"></p>
+            <button class="btn-modal primary" onclick="validarClaveAdmin()">🔓 Entrar</button>
+            <button class="btn-modal danger" onclick="cerrarModal('modalAdmin')">Cancelar</button>
+        </div>
+        <div id="adminPanelBox" style="display:none;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                <button type="button" class="btn-modal secondary" id="tabAdminUsuarios" onclick="mostrarTabAdmin('usuarios')">👥 Usuarios</button>
+                <button type="button" class="btn-modal secondary" id="tabAdminPermisos" onclick="mostrarTabAdmin('permisos')">🔑 Permisos de estatus</button>
+                <button type="button" class="btn-modal secondary" id="tabAdminClaves" onclick="mostrarTabAdmin('claves')">🔢 Claves de área</button>
+            </div>
+            <!-- Usuarios -->
+            <div id="adminTabUsuarios">
+                <p style="font-size:12px; color:#666; margin-bottom:8px;">Agrega, edita o elimina usuarios por taller y departamento. Los cambios aplican al iniciar sesión.</p>
+                <div style="padding:10px; background:var(--detalle-item,#f8f9fa); border-radius:10px; margin-bottom:12px;">
+                    <input type="hidden" id="adminUserId">
+                    <div class="grid-2">
+                        <div class="form-group"><label>Nombre *</label><input type="text" id="adminUserNombre" placeholder="Nombre completo"></div>
+                        <div class="form-group"><label>Área *</label>
+                            <select id="adminUserArea">
+                                <option value="Gerencia">Gerencia</option>
+                                <option value="Mantenimiento">Mantenimiento</option>
+                                <option value="Ventas">Ventas</option>
+                                <option value="Compras">Compras</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Taller *</label>
+                            <select id="adminUserTaller">
+                                <option value="Noroeste">Noroeste</option>
+                                <option value="Juarez">Juárez</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Nivel (técnicos)</label>
+                            <select id="adminUserNivel">
+                                <option value="">—</option>
+                                <option value="Máster">Máster</option>
+                                <option value="Profesional">Profesional</option>
+                                <option value="Aprendiz">Aprendiz</option>
+                            </select>
+                        </div>
+                    </div>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:10px; cursor:pointer;">
+                        <input type="checkbox" id="adminUserPermisoTotal"> Permiso total (puede mover a cualquier estatus, como Gerencia)
+                    </label>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn-modal primary" onclick="guardarUsuarioAdmin()">💾 Guardar usuario</button>
+                        <button class="btn-modal secondary" onclick="limpiarFormUsuarioAdmin()">Limpiar</button>
+                    </div>
+                </div>
+                <div id="adminListaUsuarios" style="max-height:40vh; overflow-y:auto;"></div>
+            </div>
+            <!-- Permisos -->
+            <div id="adminTabPermisos" style="display:none;">
+                <p style="font-size:12px; color:#666; margin-bottom:8px;">Define a qué estatus puede pasar cada área desde cada estatus actual. Gerencia siempre puede todo.</p>
+                <div class="form-group">
+                    <label>Área a editar</label>
+                    <select id="adminPermArea" onchange="renderEditorPermisos()">
+                        <option value="Mantenimiento">Mantenimiento</option>
+                        <option value="Ventas">Ventas</option>
+                        <option value="Compras">Compras</option>
+                    </select>
+                </div>
+                <div id="adminPermEditor" style="max-height:45vh; overflow-y:auto;"></div>
+                <button class="btn-modal primary" style="margin-top:10px;" onclick="guardarPermisosAdmin()">💾 Guardar permisos</button>
+            </div>
+            <!-- Claves -->
+            <div id="adminTabClaves" style="display:none;">
+                <p style="font-size:12px; color:#666; margin-bottom:8px;">Claves de 3 dígitos por departamento (login y cambios de estatus).</p>
+                <div class="grid-2">
+                    <div class="form-group"><label>Gerencia</label><input type="text" id="claveAdminGerencia" maxlength="3" inputmode="numeric"></div>
+                    <div class="form-group"><label>Mantenimiento</label><input type="text" id="claveAdminMant" maxlength="3" inputmode="numeric"></div>
+                    <div class="form-group"><label>Ventas</label><input type="text" id="claveAdminVentas" maxlength="3" inputmode="numeric"></div>
+                    <div class="form-group"><label>Compras</label><input type="text" id="claveAdminCompras" maxlength="3" inputmode="numeric"></div>
+                </div>
+                <div class="form-group">
+                    <label>Clave de administrador (panel ⚙️)</label>
+                    <input type="text" id="claveAdminMaster" maxlength="8" inputmode="numeric" placeholder="0310">
+                </div>
+                <button class="btn-modal primary" onclick="guardarClavesAdmin()">💾 Guardar claves</button>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+                <button class="btn-modal success" onclick="guardarConfigAdminCompleta()">☁️ Guardar todo</button>
+                <button class="btn-modal danger" onclick="cerrarModal('modalAdmin'); adminDesbloqueado=false;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal" id="modalNueva">
     <div class="modal-content">
         <h3>➕ Nueva Unidad</h3>
         <form id="formNueva">
-            <div class="grid-2">
-                <div class="form-group">
-                    <label>Número de Unidad *</label>
-                    <input type="text" id="noUnidadNueva" placeholder="Ej: TK-2026-001" required>
-                </div>
-                <div class="form-group">
-                    <label>Orden de trabajo</label>
-                    <input type="text" id="folioNueva" placeholder="Número de orden de trabajo">
-                </div>
-            </div>
             <div class="form-group">
                 <label>Cliente *</label>
                 <input type="text" id="clienteNueva" placeholder="Nombre del cliente" required>
             </div>
-            <div class="grid-2">
-                <div class="form-group">
-                    <label>Modelo</label>
-                    <input type="text" id="modeloNueva" placeholder="Ej: ThermoKing T-800">
-                </div>
-                <div class="form-group">
-                    <label>No. de Placas</label>
-                    <input type="text" id="placasNueva" placeholder="Placas del vehículo">
-                </div>
+            <div class="form-group">
+                <label>Modelo</label>
+                <input type="text" id="modeloNueva" placeholder="Ej: ThermoKing T-800">
             </div>
-            <div class="grid-2">
-                <div class="form-group">
-                    <label>No. de Serie del Equipo</label>
-                    <input type="text" id="noSerieNueva" placeholder="Número de serie">
-                </div>
-                <div class="form-group">
-                    <label>Orden de Compra</label>
-                    <input type="text" id="ordenCompraNueva" placeholder="OC-XXXX">
-                </div>
+            <div class="form-group">
+                <label>Número de Unidad *</label>
+                <input type="text" id="noUnidadNueva" placeholder="Ej: TK-2026-001" required>
+            </div>
+            <div class="form-group">
+                <label>No. de Placas</label>
+                <input type="text" id="placasNueva" placeholder="Placas del vehículo">
+            </div>
+            <div class="form-group">
+                <label>No. de Serie del Equipo</label>
+                <input type="text" id="noSerieNueva" placeholder="Número de serie">
+            </div>
+            <div class="form-group">
+                <label>Orden de trabajo</label>
+                <input type="text" id="folioNueva" placeholder="Número de orden de trabajo">
             </div>
             <div class="form-group">
                 <label>Hoja de Servicio</label>
                 <input type="text" id="hojaServicioNueva" placeholder="Número de hoja de servicio">
+            </div>
+            <div class="form-group">
+                <label>Orden de Compra</label>
+                <input type="text" id="ordenCompraNueva" placeholder="OC-XXXX">
             </div>
             <div class="form-group">
                 <label>Problema / Descripción</label>
@@ -1434,9 +1528,10 @@
                 <option value="agotado">Solo agotadas</option>
                 <option value="ok">Solo con stock OK</option>
             </select>
-            <button class="btn-modal primary" onclick="abrirFormPiezaInv()">➕ Nueva pieza</button>
+            <button class="btn-modal primary" id="btnNuevaPiezaInv" onclick="abrirFormPiezaInv()" style="display:none;">➕ Nueva pieza</button>
             <button class="btn-modal secondary" onclick="cargarInventario(true).then(function(){renderInventario();})">🔄 Actualizar</button>
         </div>
+        <p id="invSoloLecturaHint" style="display:none; font-size:12px; color:#666; margin-bottom:8px;">👁️ Solo consulta de existencias. Solo <strong>Compras</strong> y <strong>Gerencia</strong> pueden agregar o quitar piezas.</p>
         <div id="inventarioContador" style="font-size:12px; color:#666; margin-bottom:8px;"></div>
         <div id="formPiezaInv" style="display:none; padding:12px; background:var(--detalle-item,#f8f9fa); border-radius:10px; margin-bottom:12px;">
             <input type="hidden" id="invEditId">
@@ -1606,8 +1701,8 @@
         'Juarez': 'Thermo King Juárez'
     };
 
-    // Personas por taller y área
-    const personasPorTaller = {
+    // Personas por taller y área (se reconstruye desde listaUsuarios)
+    let personasPorTaller = {
         'Noroeste': {
             'Gerencia': ['Luis Solís'],
             'Mantenimiento': ['Marcos Sifuentes', 'Sergio Holguín', 'Miguel Arredondo', 'Alfredo'],
@@ -1615,7 +1710,6 @@
             'Compras': ['Alfredo']
         },
         'Juarez': {
-            // Luis Solís gerente de ambas; Abel lleva el taller con todos los permisos
             'Gerencia': ['Luis Solís'],
             'Mantenimiento': ['Abel'],
             'Ventas': ['Romina', 'Jesús'],
@@ -1623,24 +1717,88 @@
         }
     };
 
+    // Lista editable de usuarios (fuente de verdad)
+    let listaUsuarios = [
+        { id: 'u_luis_n', nombre: 'Luis Solís', area: 'Gerencia', taller: 'Noroeste', nivel: '', permiso_total: true },
+        { id: 'u_marcos', nombre: 'Marcos Sifuentes', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Máster', permiso_total: false },
+        { id: 'u_sergio', nombre: 'Sergio Holguín', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Profesional', permiso_total: false },
+        { id: 'u_miguel', nombre: 'Miguel Arredondo', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Profesional', permiso_total: false },
+        { id: 'u_alfredo_m', nombre: 'Alfredo', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Aprendiz', permiso_total: false },
+        { id: 'u_romina_n', nombre: 'Romina', area: 'Ventas', taller: 'Noroeste', nivel: '', permiso_total: false },
+        { id: 'u_jesus_n', nombre: 'Jesús', area: 'Ventas', taller: 'Noroeste', nivel: '', permiso_total: false },
+        { id: 'u_alfredo_c', nombre: 'Alfredo', area: 'Compras', taller: 'Noroeste', nivel: '', permiso_total: false },
+        { id: 'u_luis_j', nombre: 'Luis Solís', area: 'Gerencia', taller: 'Juarez', nivel: '', permiso_total: true },
+        { id: 'u_abel', nombre: 'Abel', area: 'Mantenimiento', taller: 'Juarez', nivel: 'Profesional', permiso_total: true },
+        { id: 'u_romina_j', nombre: 'Romina', area: 'Ventas', taller: 'Juarez', nivel: '', permiso_total: false },
+        { id: 'u_jesus_j', nombre: 'Jesús', area: 'Ventas', taller: 'Juarez', nivel: '', permiso_total: false },
+        { id: 'u_abel_c', nombre: 'Abel', area: 'Compras', taller: 'Juarez', nivel: '', permiso_total: true }
+    ];
+
     // Compatibilidad: personasPorArea del taller de la sesión
     function getPersonasPorArea(taller) {
         const t = taller || (sesion && sesion.taller) || TALLER_DEFAULT;
-        return personasPorTaller[t] || personasPorTaller[TALLER_DEFAULT];
+        return personasPorTaller[t] || personasPorTaller[TALLER_DEFAULT] || {
+            'Gerencia': [], 'Mantenimiento': [], 'Ventas': [], 'Compras': []
+        };
     }
-    // Alias dinámico usado en muchas partes del código
     Object.defineProperty(window, 'personasPorAreaProxy', { get: () => getPersonasPorArea() });
 
-    // Gerencia y Abel (Juárez) tienen control total del flujo
+    function rebuildPersonasDesdeUsuarios() {
+        const base = () => ({ 'Gerencia': [], 'Mantenimiento': [], 'Ventas': [], 'Compras': [] });
+        personasPorTaller = { 'Noroeste': base(), 'Juarez': base() };
+        jerarquiaTecnicos = {};
+        (listaUsuarios || []).forEach(u => {
+            const t = u.taller || TALLER_DEFAULT;
+            const a = u.area || 'Mantenimiento';
+            if (!personasPorTaller[t]) personasPorTaller[t] = base();
+            if (!personasPorTaller[t][a]) personasPorTaller[t][a] = [];
+            if (u.nombre && !personasPorTaller[t][a].includes(u.nombre)) {
+                personasPorTaller[t][a].push(u.nombre);
+            }
+            if (u.nivel) jerarquiaTecnicos[u.nombre] = u.nivel;
+        });
+    }
+
+    // Gerencia y usuarios con permiso_total
     function tienePermisoTotal() {
         if (!sesion) return false;
         if (sesion.area === 'Gerencia') return true;
+        const u = (listaUsuarios || []).find(x =>
+            x.nombre === sesion.persona &&
+            (x.taller === sesion.taller || !sesion.taller) &&
+            x.permiso_total
+        );
+        if (u) return true;
+        // Compatibilidad
         if (sesion.persona === 'Abel') return true;
         return false;
     }
 
-    // Jerarquía de técnicos (todos los talleres)
-    const jerarquiaTecnicos = {
+    // Cada depto solo modifica si el estatus actual es de su área (según permisos).
+    // Fuera de su área → solo lectura. Gerencia y Abel siempre pueden.
+    function puedeModificarUnidad(u) {
+        if (!sesion || !u || modoCliente) return false;
+        if (tienePermisoTotal()) return true;
+        const permisos = typeof permisosCambio !== 'undefined' ? permisosCambio[sesion.area] : null;
+        if (!permisos) return false;
+        const destinos = permisos[u.estatus];
+        return Array.isArray(destinos) && destinos.length > 0;
+    }
+
+    function avisoSoloLecturaArea(u) {
+        const resp = (typeof areaResponsableEstatus !== 'undefined' && u)
+            ? (areaResponsableEstatus[u.estatus] || 'otro departamento')
+            : 'otro departamento';
+        alert('👁️ Solo lectura\n\nEsta unidad está en «' + ((u && u.estatus) || '') + '».\nTu área (' + sesion.area + ') no puede modificarla en este estatus.\nResponsable: ' + resp + '.\n\nGerencia puede intervenir en cualquier estatus.');
+    }
+
+    // Agenda solo visible para Ventas y Gerencia
+    function puedeVerAgenda() {
+        return !!(sesion && (sesion.area === 'Ventas' || sesion.area === 'Gerencia'));
+    }
+
+    // Jerarquía de técnicos (se actualiza desde usuarios)
+    let jerarquiaTecnicos = {
         'Marcos Sifuentes': 'Máster',
         'Sergio Holguín': 'Profesional',
         'Miguel Arredondo': 'Profesional',
@@ -1828,12 +1986,14 @@
     }
 
     // ===== CLAVES POR DEPARTAMENTO =====
-    const clavesPorArea = {
+    let clavesPorArea = {
         'Gerencia': '210',
         'Mantenimiento': '117',
         'Ventas': '321',
         'Compras': '456'
     };
+    let CLAVE_ADMIN = '0310';
+    let adminDesbloqueado = false;
 
     // ===== SESIÓN (departamento + persona) =====
     let sesion = null; // { area, persona }
@@ -2054,11 +2214,9 @@
         return true;
     }
 
-    // ===== PERMISOS DE CAMBIO DE ESTATUS =====
-    // Gerencia puede mover a cualquier estatus.
-    // Los demás solo pueden hacer las transiciones indicadas.
-    const permisosCambio = {
-        'Gerencia': null, // null = puede todo
+    // ===== PERMISOS DE CAMBIO DE ESTATUS (editables en Admin) =====
+    let permisosCambio = {
+        'Gerencia': null,
         'Mantenimiento': {
             'Recibida': ['Diagnosticando'],
             'Diagnosticando': ['Cotizando', 'Reparando'],
@@ -2068,12 +2226,270 @@
             'Agenda': ['Recibida'],
             'Recibida': ['Diagnosticando', 'Agenda'],
             'Cotizando': ['Espera de refacciones', 'Reparando', 'Finalizada'],
-            'Reparando': ['Cotizando'] // regreso si hay otra falla / más piezas
+            'Reparando': ['Cotizando']
         },
         'Compras': {
             'Espera de refacciones': ['Reparando', 'Cotizando']
         }
     };
+
+    const ESTATUS_TODOS_ADMIN = ['Agenda', 'Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada'];
+    const CONFIG_ADMIN_KEY = 'thermocontrol_admin_config';
+
+    function aplicarConfigAdmin(cfg) {
+        if (!cfg || typeof cfg !== 'object') return;
+        if (Array.isArray(cfg.usuarios) && cfg.usuarios.length) {
+            listaUsuarios = cfg.usuarios;
+            rebuildPersonasDesdeUsuarios();
+        }
+        if (cfg.permisosCambio && typeof cfg.permisosCambio === 'object') {
+            permisosCambio = cfg.permisosCambio;
+            if (permisosCambio.Gerencia === undefined) permisosCambio.Gerencia = null;
+        }
+        if (cfg.clavesPorArea && typeof cfg.clavesPorArea === 'object') {
+            clavesPorArea = { ...clavesPorArea, ...cfg.clavesPorArea };
+        }
+        if (cfg.claveAdmin) CLAVE_ADMIN = String(cfg.claveAdmin);
+    }
+
+    function obtenerConfigAdminActual() {
+        return {
+            usuarios: listaUsuarios,
+            permisosCambio: permisosCambio,
+            clavesPorArea: clavesPorArea,
+            claveAdmin: CLAVE_ADMIN,
+            updated_at: new Date().toISOString()
+        };
+    }
+
+    async function cargarConfigAdmin() {
+        // 1) Local
+        try {
+            const raw = localStorage.getItem(CONFIG_ADMIN_KEY);
+            if (raw) aplicarConfigAdmin(JSON.parse(raw));
+        } catch (e) {}
+        // 2) Supabase (si existe tabla app_config)
+        try {
+            const { data, error } = await supabaseClient
+                .from('app_config')
+                .select('data')
+                .eq('id', 'main')
+                .maybeSingle();
+            if (!error && data && data.data) {
+                aplicarConfigAdmin(data.data);
+                try { localStorage.setItem(CONFIG_ADMIN_KEY, JSON.stringify(data.data)); } catch (e) {}
+            }
+        } catch (e) {
+            console.warn('app_config no disponible, usando local/defaults', e);
+        }
+        rebuildPersonasDesdeUsuarios();
+    }
+
+    async function persistirConfigAdmin() {
+        const cfg = obtenerConfigAdminActual();
+        try { localStorage.setItem(CONFIG_ADMIN_KEY, JSON.stringify(cfg)); } catch (e) {}
+        try {
+            const { error } = await supabaseClient
+                .from('app_config')
+                .upsert({ id: 'main', data: cfg, updated_at: new Date().toISOString() });
+            if (error) throw error;
+            return { ok: true, cloud: true };
+        } catch (e) {
+            return { ok: true, cloud: false, msg: e.message || String(e) };
+        }
+    }
+
+    function abrirModalAdmin() {
+        adminDesbloqueado = false;
+        document.getElementById('adminLoginBox').style.display = 'block';
+        document.getElementById('adminPanelBox').style.display = 'none';
+        document.getElementById('adminClaveInput').value = '';
+        document.getElementById('adminLoginError').style.display = 'none';
+        document.getElementById('modalAdmin').style.display = 'flex';
+        setTimeout(() => {
+            const el = document.getElementById('adminClaveInput');
+            if (el) el.focus();
+        }, 100);
+    }
+
+    function validarClaveAdmin() {
+        const c = (document.getElementById('adminClaveInput').value || '').trim();
+        const err = document.getElementById('adminLoginError');
+        if (c !== String(CLAVE_ADMIN)) {
+            err.textContent = 'Clave de administrador incorrecta';
+            err.style.display = 'block';
+            return;
+        }
+        adminDesbloqueado = true;
+        document.getElementById('adminLoginBox').style.display = 'none';
+        document.getElementById('adminPanelBox').style.display = 'block';
+        mostrarTabAdmin('usuarios');
+        renderListaUsuariosAdmin();
+        renderEditorPermisos();
+        cargarFormClavesAdmin();
+    }
+
+    function mostrarTabAdmin(tab) {
+        document.getElementById('adminTabUsuarios').style.display = tab === 'usuarios' ? 'block' : 'none';
+        document.getElementById('adminTabPermisos').style.display = tab === 'permisos' ? 'block' : 'none';
+        document.getElementById('adminTabClaves').style.display = tab === 'claves' ? 'block' : 'none';
+    }
+
+    function limpiarFormUsuarioAdmin() {
+        document.getElementById('adminUserId').value = '';
+        document.getElementById('adminUserNombre').value = '';
+        document.getElementById('adminUserArea').value = 'Mantenimiento';
+        document.getElementById('adminUserTaller').value = 'Noroeste';
+        document.getElementById('adminUserNivel').value = '';
+        document.getElementById('adminUserPermisoTotal').checked = false;
+    }
+
+    function renderListaUsuariosAdmin() {
+        const box = document.getElementById('adminListaUsuarios');
+        if (!box) return;
+        const lista = (listaUsuarios || []).slice().sort((a, b) =>
+            (a.taller || '').localeCompare(b.taller || '') ||
+            (a.area || '').localeCompare(b.area || '') ||
+            (a.nombre || '').localeCompare(b.nombre || '')
+        );
+        if (!lista.length) {
+            box.innerHTML = '<p style="color:#888;">Sin usuarios. Agrega el primero.</p>';
+            return;
+        }
+        box.innerHTML = lista.map(u => `
+            <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; padding:10px; margin-bottom:6px; border-radius:10px; border-left:4px solid #1a3a5c; background:var(--detalle-item,#f8f9fa);">
+                <div style="flex:1; min-width:140px;">
+                    <strong>${u.nombre || '—'}</strong>
+                    ${u.permiso_total ? ' <span style="font-size:11px; background:#d4edda; color:#155724; padding:2px 6px; border-radius:8px;">Permiso total</span>' : ''}
+                    <div style="font-size:12px; color:#666;">${u.area || ''} · ${u.taller === 'Juarez' ? 'Juárez' : (u.taller || '')}${u.nivel ? ' · ' + u.nivel : ''}</div>
+                </div>
+                <div style="display:flex; gap:4px;">
+                    <button class="btn-accion" onclick="editarUsuarioAdmin('${u.id}')">✏️</button>
+                    <button class="btn-accion" style="color:#dc3545;" onclick="eliminarUsuarioAdmin('${u.id}')">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function editarUsuarioAdmin(id) {
+        const u = listaUsuarios.find(x => String(x.id) === String(id));
+        if (!u) return;
+        document.getElementById('adminUserId').value = u.id;
+        document.getElementById('adminUserNombre').value = u.nombre || '';
+        document.getElementById('adminUserArea').value = u.area || 'Mantenimiento';
+        document.getElementById('adminUserTaller').value = u.taller || 'Noroeste';
+        document.getElementById('adminUserNivel').value = u.nivel || '';
+        document.getElementById('adminUserPermisoTotal').checked = !!u.permiso_total;
+    }
+
+    function guardarUsuarioAdmin() {
+        if (!adminDesbloqueado) return;
+        const id = document.getElementById('adminUserId').value;
+        const nombre = (document.getElementById('adminUserNombre').value || '').trim();
+        const area = document.getElementById('adminUserArea').value;
+        const taller = document.getElementById('adminUserTaller').value;
+        const nivel = document.getElementById('adminUserNivel').value || '';
+        const permiso_total = document.getElementById('adminUserPermisoTotal').checked;
+        if (!nombre) {
+            alert('El nombre es obligatorio.');
+            return;
+        }
+        if (id) {
+            listaUsuarios = listaUsuarios.map(u => String(u.id) === String(id)
+                ? { ...u, nombre, area, taller, nivel, permiso_total }
+                : u);
+        } else {
+            listaUsuarios.push({
+                id: 'u_' + Date.now(),
+                nombre, area, taller, nivel, permiso_total
+            });
+        }
+        rebuildPersonasDesdeUsuarios();
+        limpiarFormUsuarioAdmin();
+        renderListaUsuariosAdmin();
+        mostrarToastApp('Usuario guardado (pulsa «Guardar todo» para persistir)', '#28a745');
+    }
+
+    function eliminarUsuarioAdmin(id) {
+        if (!adminDesbloqueado) return;
+        if (!confirm('¿Eliminar este usuario?')) return;
+        listaUsuarios = listaUsuarios.filter(u => String(u.id) !== String(id));
+        rebuildPersonasDesdeUsuarios();
+        renderListaUsuariosAdmin();
+        mostrarToastApp('Usuario eliminado (pulsa «Guardar todo»)', '#dc3545');
+    }
+
+    function renderEditorPermisos() {
+        const area = document.getElementById('adminPermArea')?.value || 'Mantenimiento';
+        const box = document.getElementById('adminPermEditor');
+        if (!box) return;
+        if (!permisosCambio[area] || typeof permisosCambio[area] !== 'object') {
+            permisosCambio[area] = {};
+        }
+        const mapa = permisosCambio[area];
+        box.innerHTML = ESTATUS_TODOS_ADMIN.map(desde => {
+            const actual = mapa[desde] || [];
+            const checks = ESTATUS_TODOS_ADMIN.map(hacia => {
+                if (hacia === desde) return '';
+                const checked = actual.includes(hacia) ? 'checked' : '';
+                return `<label style="display:inline-flex; align-items:center; gap:4px; margin:2px 8px 2px 0; font-size:12px; cursor:pointer;">
+                    <input type="checkbox" class="perm-check" data-desde="${desde}" data-hacia="${hacia}" ${checked}> ${hacia}
+                </label>`;
+            }).join('');
+            return `<div style="margin-bottom:10px; padding:8px; border-radius:8px; background:var(--detalle-item,#f8f9fa);">
+                <strong style="font-size:13px;">Desde «${desde}» puede ir a:</strong>
+                <div style="margin-top:6px;">${checks || '<span style="color:#888;">—</span>'}</div>
+            </div>`;
+        }).join('');
+    }
+
+    function guardarPermisosAdmin() {
+        if (!adminDesbloqueado) return;
+        const area = document.getElementById('adminPermArea').value;
+        const mapa = {};
+        document.querySelectorAll('#adminPermEditor .perm-check:checked').forEach(chk => {
+            const desde = chk.getAttribute('data-desde');
+            const hacia = chk.getAttribute('data-hacia');
+            if (!mapa[desde]) mapa[desde] = [];
+            mapa[desde].push(hacia);
+        });
+        permisosCambio[area] = mapa;
+        permisosCambio.Gerencia = null;
+        mostrarToastApp('Permisos de ' + area + ' actualizados (pulsa «Guardar todo»)', '#28a745');
+    }
+
+    function cargarFormClavesAdmin() {
+        document.getElementById('claveAdminGerencia').value = clavesPorArea.Gerencia || '';
+        document.getElementById('claveAdminMant').value = clavesPorArea.Mantenimiento || '';
+        document.getElementById('claveAdminVentas').value = clavesPorArea.Ventas || '';
+        document.getElementById('claveAdminCompras').value = clavesPorArea.Compras || '';
+        document.getElementById('claveAdminMaster').value = CLAVE_ADMIN || '0310';
+    }
+
+    function guardarClavesAdmin() {
+        if (!adminDesbloqueado) return;
+        clavesPorArea.Gerencia = (document.getElementById('claveAdminGerencia').value || '').trim() || '210';
+        clavesPorArea.Mantenimiento = (document.getElementById('claveAdminMant').value || '').trim() || '117';
+        clavesPorArea.Ventas = (document.getElementById('claveAdminVentas').value || '').trim() || '321';
+        clavesPorArea.Compras = (document.getElementById('claveAdminCompras').value || '').trim() || '456';
+        const master = (document.getElementById('claveAdminMaster').value || '').trim();
+        if (master) CLAVE_ADMIN = master;
+        mostrarToastApp('Claves actualizadas (pulsa «Guardar todo»)', '#28a745');
+    }
+
+    async function guardarConfigAdminCompleta() {
+        if (!adminDesbloqueado) return;
+        // Sincronizar formularios abiertos
+        try { guardarPermisosAdmin(); } catch (e) {}
+        try { guardarClavesAdmin(); } catch (e) {}
+        rebuildPersonasDesdeUsuarios();
+        const r = await persistirConfigAdmin();
+        if (r.cloud) {
+            alert('✅ Configuración guardada en este dispositivo y en la nube (Supabase).');
+        } else {
+            alert('✅ Guardado en este dispositivo.\n\nPara sincronizar entre equipos, crea la tabla app_config en Supabase (SQL al final del mensaje del chat).\nDetalle: ' + (r.msg || ''));
+        }
+    }
 
     // ===== FLUJO AVANZADO: campos obligatorios al cambiar a un estatus =====
     const camposRequeridosPorEstatus = {
@@ -2393,12 +2809,27 @@
         }
         if (!requerirSesion()) return;
         cargarInventario(true).then(() => {
+            const edita = puedeEditarInventario();
+            const btnNueva = document.getElementById('btnNuevaPiezaInv');
+            const hint = document.getElementById('invSoloLecturaHint');
+            if (btnNueva) btnNueva.style.display = edita ? '' : 'none';
+            if (hint) hint.style.display = edita ? 'none' : 'block';
+            const form = document.getElementById('formPiezaInv');
+            if (form && !edita) form.style.display = 'none';
             renderInventario();
             document.getElementById('modalInventario').style.display = 'flex';
         });
     }
 
+    function puedeEditarInventario() {
+        return !!(sesion && (sesion.area === 'Compras' || sesion.area === 'Gerencia'));
+    }
+
     function abrirFormPiezaInv(item) {
+        if (!puedeEditarInventario()) {
+            alert('👁️ Solo Compras y Gerencia pueden agregar o editar piezas del inventario.');
+            return;
+        }
         document.getElementById('formPiezaInv').style.display = 'block';
         document.getElementById('invEditId').value = item ? item.id : '';
         document.getElementById('invCodigo').value = item ? (item.codigo || '') : '';
@@ -2410,14 +2841,18 @@
     }
 
     function editarPiezaInvPorId(id) {
+        if (!puedeEditarInventario()) {
+            alert('👁️ Solo Compras y Gerencia pueden editar el inventario.');
+            return;
+        }
         const item = inventario.find(i => String(i.id) === String(id));
         if (item) abrirFormPiezaInv(item);
     }
 
     async function guardarPiezaInv() {
         if (!sesion) return;
-        if (sesion.area !== 'Compras' && sesion.area !== 'Gerencia' && sesion.persona !== 'Abel') {
-            alert('Solo Compras, Gerencia o encargado (Abel) pueden crear/editar el catálogo.');
+        if (!puedeEditarInventario()) {
+            alert('Solo Compras y Gerencia pueden crear o editar el catálogo de inventario.');
             return;
         }
         const id = document.getElementById('invEditId').value;
@@ -2465,8 +2900,8 @@
 
     async function ajustarStockInv(id, delta) {
         if (!sesion) return;
-        if (sesion.area !== 'Compras' && sesion.area !== 'Gerencia' && sesion.area !== 'Mantenimiento') {
-            alert('No tienes permiso para ajustar stock.');
+        if (!puedeEditarInventario()) {
+            alert('👁️ Solo Compras y Gerencia pueden agregar o quitar piezas del inventario.');
             return;
         }
         const item = inventario.find(i => String(i.id) === String(id));
@@ -2488,8 +2923,8 @@
     }
 
     async function eliminarPiezaInv(id) {
-        if (!sesion || (sesion.area !== 'Gerencia' && sesion.area !== 'Compras')) {
-            alert('Solo Compras o Gerencia pueden eliminar.');
+        if (!puedeEditarInventario()) {
+            alert('Solo Compras o Gerencia pueden eliminar piezas del inventario.');
             return;
         }
         if (!confirm('¿Eliminar esta pieza del inventario?')) return;
@@ -2563,10 +2998,12 @@
                     <div style="font-size:12px; color:#666;">📍 ${i.ubicacion || '—'} · Stock: <strong style="color:${bajo ? '#dc3545' : '#28a745'}">${cant}</strong> ${i.unidad_medida || 'pza'} (mín. ${min})</div>
                 </div>
                 <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+                    ${puedeEditarInventario() ? `
                     <button class="btn-accion" onclick="ajustarStockInv('${i.id}', -1)">−</button>
                     <button class="btn-accion" onclick="ajustarStockInv('${i.id}', 1)">+</button>
                     <button class="btn-accion" onclick="editarPiezaInvPorId('${i.id}')">✏️</button>
                     <button class="btn-accion" onclick="eliminarPiezaInv('${i.id}')">🗑️</button>
+                    ` : `<span style="font-size:11px; color:#888;">Solo consulta</span>`}
                 </div>
             </div>`;
         }).join('');
@@ -2613,6 +3050,7 @@
     }
 
     async function descontarInventarioSeleccionado() {
+        if (!puedeEditarInventario()) return [];
         const checks = document.querySelectorAll('.inv-ref-check:checked');
         if (!checks.length) return [];
         const movs = [];
@@ -2688,6 +3126,11 @@
     // Soft-delete: marca como eliminado pero guarda el registro en historial
     async function eliminarUnidadBD(id) {
         if (!requerirSesion()) return;
+        const uArch = unidades.find(item => item.id === id);
+        if (uArch && !puedeModificarUnidad(uArch)) {
+            avisoSoloLecturaArea(uArch);
+            return;
+        }
         if (!confirm('¿Archivar / quitar esta unidad del tablero?\n\nEl registro se conservará en el Historial.\n\nArchiva: ' + sesion.area + ' (' + sesion.persona + ')')) return;
 
         const area = sesion.area;
@@ -3775,16 +4218,27 @@
             )
         );
 
+        // Agenda: solo Ventas y Gerencia
+        if (!puedeVerAgenda()) {
+            filtered = filtered.filter(u => u.estatus !== 'Agenda');
+        }
+
         // Filtro por estatus (al tocar etiqueta)
         if (filtroEstatus) {
-            filtered = filtered.filter(u => u.estatus === filtroEstatus);
+            if (filtroEstatus === 'Agenda' && !puedeVerAgenda()) {
+                filtroEstatus = null;
+            } else {
+                filtered = filtered.filter(u => u.estatus === filtroEstatus);
+            }
         }
 
         // Kanban (solo activas)
         const container = document.getElementById('kanbanContainer');
         container.innerHTML = '';
         container.style.gridTemplateColumns = filtroEstatus ? '1fr' : '';
-        const estatusOrden = ['Agenda', 'Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada'];
+        const estatusOrden = (puedeVerAgenda()
+            ? ['Agenda', 'Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada']
+            : ['Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada']);
         // Si hay filtro, solo mostrar esa columna; si no, todas
         const columnas = filtroEstatus ? [filtroEstatus] : estatusOrden;
         columnas.forEach(status => {
@@ -3809,9 +4263,11 @@
                 const card = document.createElement('div');
                 card.className = 'card-compact' + (colorDias ? ' ' + colorDias : '');
                 card.style.borderLeftColor = getColor(u.estatus);
-                card.draggable = !modoCliente;
+                const puedeMod = !modoCliente && puedeModificarUnidad(u);
+                card.draggable = puedeMod;
                 card.dataset.id = u.id;
                 card.ondragstart = (e) => {
+                    if (!puedeModificarUnidad(u)) { e.preventDefault(); return; }
                     e.dataTransfer.setData('text/plain', u.id);
                     card.classList.add('dragging');
                 };
@@ -3856,13 +4312,15 @@
                         🚚 ETA: ${formatearFecha(u.fecha_estimada_refacciones) || '—'}
                         ${textoDiasEtaRefacciones(u)}
                     </div>` : ''}
-                    ${!modoCliente ? `
-                        <div style="margin-top:4px; display:flex; gap:4px; flex-wrap:wrap;" onclick="event.stopPropagation()">
+                    ${!modoCliente ? (
+                        puedeModificarUnidad(u)
+                        ? `<div style="margin-top:4px; display:flex; gap:4px; flex-wrap:wrap;" onclick="event.stopPropagation()">
                             <button onclick="abrirModalEditar(${u.id})" class="btn-accion" style="flex:1;">✏️ Editar</button>
                             <button onclick="abrirModalCambio(${u.id})" class="btn-accion" style="flex:1;">🔄 Estatus</button>
                             <button onclick="eliminarUnidadBD(${u.id})" class="btn-accion" style="flex:0.5; color:#dc3545; border-color:#dc3545;">🗑️</button>
-                        </div>
-                    ` : ''}
+                        </div>`
+                        : `<div style="margin-top:4px; font-size:11px; color:#888;" onclick="event.stopPropagation()">👁️ Solo lectura · ${areaResponsableEstatus[u.estatus] || 'otra área'}</div>`
+                    ) : ''}
                 `;
                 wrap.appendChild(card);
             });
@@ -4046,6 +4504,19 @@
 
     function abrirModalNueva() {
         if (!requerirSesion()) return;
+        // Opción Agenda solo para Ventas y Gerencia
+        const selEst = document.getElementById('estatusNueva');
+        if (selEst) {
+            Array.from(selEst.options).forEach(opt => {
+                if (opt.value === 'Agenda') {
+                    opt.hidden = !puedeVerAgenda();
+                    opt.disabled = !puedeVerAgenda();
+                }
+            });
+            if (!puedeVerAgenda() && selEst.value === 'Agenda') {
+                selEst.value = 'Recibida';
+            }
+        }
         toggleCamposAgendaNueva();
         llenarSelectPersonas('diagnosticadorNueva', 'Mantenimiento', '');
         llenarSelectPersonas('reparadorNueva', 'Mantenimiento', '');
@@ -4244,29 +4715,43 @@
                 <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>
             `;
         } else {
+            const puede = puedeModificarUnidad(u);
             let extraBtns = '';
-            if (u.estatus === 'Agenda' && sesion && (sesion.area === 'Ventas' || sesion.area === 'Gerencia')) {
+            if (puede && u.estatus === 'Agenda' && sesion && (sesion.area === 'Ventas' || sesion.area === 'Gerencia' || tienePermisoTotal())) {
                 extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="confirmarLlegadaAgenda(${id})">📥 ¿Llegó? → Recibida</button>`;
             }
-            if (u.estatus === 'Espera de refacciones' && sesion && (sesion.area === 'Compras' || sesion.area === 'Gerencia' || sesion.area === 'Ventas')) {
+            if (puede && u.estatus === 'Espera de refacciones' && sesion && (sesion.area === 'Compras' || sesion.area === 'Gerencia' || sesion.area === 'Ventas' || tienePermisoTotal())) {
                 extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirModalRefacciones(${id})">🛒 Gestionar refacciones</button>`;
             }
+            // Ver diagnóstico / PDF: lectura permitida; editar diagnóstico solo si puede modificar
             if (u.estatus === 'Diagnosticando' || u.estatus === 'Reparando') {
-                extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirTkDiag(${id})">🔍 Diagnóstico TK</button>`;
+                if (puede) extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirTkDiag(${id})">🔍 Diagnóstico TK</button>`;
             } else if (u.estatus === 'Cotizando' || u.diagnostico_detalle) {
-                extraBtns += `<button class="btn-modal secondary" style="flex:1;" onclick="abrirModalDiagnostico(${id})">🔍 Diagnóstico</button>`;
+                extraBtns += `<button class="btn-modal secondary" style="flex:1;" onclick="abrirModalDiagnostico(${id})">🔍 Ver diagnóstico</button>`;
             }
             if (u.estatus === 'Finalizada' || u.estatus === 'Espera de refacciones') {
                 const labelPdf = u.estatus === 'Finalizada' ? '📄 PDF entrega' : '📄 PDF cotización / espera';
                 extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirModalPDF(${id})">${labelPdf}</button>`;
             }
-            botones.innerHTML = `
-                <button class="btn-modal primary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalEditar(${id})">✏️ Editar</button>
-                <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalCambio(${id})">🔄 Cambiar estatus</button>
-                <button class="btn-modal secondary" style="flex:1;" onclick="abrirModalNota(${id})">📝 Nota</button>
-                ${extraBtns}
-                <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>
-            `;
+            if (puede) {
+                botones.innerHTML = `
+                    <button class="btn-modal primary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalEditar(${id})">✏️ Editar</button>
+                    <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalCambio(${id})">🔄 Cambiar estatus</button>
+                    <button class="btn-modal secondary" style="flex:1;" onclick="abrirModalNota(${id})">📝 Nota</button>
+                    ${extraBtns}
+                    <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>
+                `;
+            } else {
+                botones.innerHTML = `
+                    <div style="width:100%; padding:8px; background:#e9ecef; border-radius:8px; font-size:12px; margin-bottom:8px;">
+                        👁️ Solo lectura — esta unidad está en <strong>${u.estatus}</strong>.
+                        Responsable: <strong>${areaResponsableEstatus[u.estatus] || '—'}</strong>.
+                        Tu área (${sesion ? sesion.area : '—'}) no puede modificar aquí.
+                    </div>
+                    ${extraBtns}
+                    <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>
+                `;
+            }
         }
 
         document.getElementById('modalDetalle').style.display = 'flex';
@@ -4359,6 +4844,11 @@
     function abrirModalEditar(id) {
         if (modoCliente) return;
         if (!requerirSesion()) return;
+        const uCheck = unidades.find(item => item.id === id);
+        if (uCheck && !puedeModificarUnidad(uCheck)) {
+            avisoSoloLecturaArea(uCheck);
+            return;
+        }
         const u = unidades.find(item => item.id === id);
         if (!u) return;
         unidadEnEdicion = id;
@@ -4539,6 +5029,11 @@
             }
         }
 
+        // Agenda solo Ventas / Gerencia (ocultar para el resto aunque Gerencia/Abel sí ven)
+        if (!puedeVerAgenda()) {
+            opcionesPermitidas = opcionesPermitidas.filter(est => est !== 'Agenda');
+        }
+
         opcionesPermitidas.forEach(est => {
             const opt = document.createElement('option');
             opt.value = est;
@@ -4561,6 +5056,11 @@
     function abrirModalCambio(id) {
         if (modoCliente) return;
         if (!requerirSesion()) return;
+        const uCheck = unidades.find(item => item.id === id);
+        if (uCheck && !puedeModificarUnidad(uCheck)) {
+            avisoSoloLecturaArea(uCheck);
+            return;
+        }
         const u = unidades.find(item => item.id === id);
         if (!u) return;
         unidadEnEdicion = id;
@@ -4946,7 +5446,11 @@
         if (!requerirSesion()) return;
         const u = unidades.find(item => item.id === id);
         if (!u) return;
-        if (sesion.area !== 'Compras' && sesion.area !== 'Gerencia' && sesion.area !== 'Ventas') {
+        if (!puedeModificarUnidad(u) && !tienePermisoTotal()) {
+            avisoSoloLecturaArea(u);
+            return;
+        }
+        if (sesion.area !== 'Compras' && sesion.area !== 'Gerencia' && sesion.area !== 'Ventas' && !tienePermisoTotal()) {
             alert('Solo Compras, Ventas o Gerencia pueden gestionar refacciones.');
             return;
         }
@@ -4967,6 +5471,8 @@
                 this.value === 'recibida' ? 'block' : 'none';
         };
         renderInvEnRefacciones();
+        const boxInv = document.getElementById('boxInventarioRef');
+        if (boxInv) boxInv.style.display = puedeEditarInventario() ? 'block' : 'none';
         document.getElementById('modalRefacciones').style.display = 'flex';
     }
 
@@ -6134,6 +6640,10 @@
         if (!requerirSesion()) return;
         const u = unidades.find(item => item.id === id);
         if (!u) return;
+        if (!puedeModificarUnidad(u)) {
+            avisoSoloLecturaArea(u);
+            return;
+        }
         unidadEnEdicion = id;
         document.getElementById('infoNota').textContent = `${u.no_unidad} - ${u.cliente} · Estatus: ${u.estatus} · ${sesion.area} (${sesion.persona})`;
         document.getElementById('areaNota').value = sesion.area;
@@ -6763,19 +7273,21 @@
         }
     });
     
-    // Sesión: si ya hay login, entrar; si no, esperar al login
-    sesion = getSesionGuardada();
-    if (sesion && !sesion.taller) sesion.taller = TALLER_DEFAULT;
-    const sesionValida = sesion && sesion.area && sesion.persona &&
-        (sesion.area === 'Cliente' || clavesPorArea[sesion.area]);
-    if (sesionValida) {
-        document.getElementById('loginOverlay').classList.add('oculto');
-        mostrarInfoSesion();
-        cargarDatos();
-    } else {
-        sesion = null;
-        // No cargar datos hasta que inicie sesión
-    }
+    // Config admin (usuarios / permisos) + sesión
+    rebuildPersonasDesdeUsuarios();
+    cargarConfigAdmin().then(function() {
+        sesion = getSesionGuardada();
+        if (sesion && !sesion.taller) sesion.taller = TALLER_DEFAULT;
+        const sesionValida = sesion && sesion.area && sesion.persona &&
+            (sesion.area === 'Cliente' || clavesPorArea[sesion.area]);
+        if (sesionValida) {
+            document.getElementById('loginOverlay').classList.add('oculto');
+            mostrarInfoSesion();
+            cargarDatos();
+        } else {
+            sesion = null;
+        }
+    });
 
     // Service Worker para notificaciones push del navegador
     if ('serviceWorker' in navigator) {
