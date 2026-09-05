@@ -917,9 +917,17 @@
             <input type="checkbox" id="cfgNotifCambios" onchange="guardarConfigNotif()" checked> Cambios de estatus / notas
         </label>
         <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px; cursor:pointer;">
-            <input type="checkbox" id="cfgNotifNavegador" onchange="toggleNotifNavegador()"> Avisos del sistema (navegador)
+            <input type="checkbox" id="cfgNotifNavegador" onchange="toggleNotifNavegador()"> Notificaciones push (navegador)
         </label>
-        <button class="btn-accion" style="width:100%;" onclick="probarNotifNavegador()">🔔 Probar aviso del navegador</button>
+        <div id="estadoPushNotif" style="font-size:12px; color:#555; margin-bottom:8px; padding:8px; background:rgba(26,58,92,0.06); border-radius:8px;">
+            Estado: comprobando…
+        </div>
+        <button class="btn-accion" style="width:100%; margin-bottom:6px;" onclick="activarPushNotificaciones()">🔔 Activar notificaciones push</button>
+        <button class="btn-accion" style="width:100%;" onclick="probarNotifNavegador()">🧪 Probar notificación</button>
+        <p style="font-size:11px; color:#888; margin-top:8px; line-height:1.4;">
+            En el celular usa <strong>Chrome</strong> o <strong>Edge</strong>. En iPhone: agregar la página al inicio y luego activar.
+            Las alertas salen al cambiar estatus, notas y retrasos de tu área.
+        </p>
     </div>
     <p style="font-size:12px; color:#888; margin-bottom:8px;">Alertas activas</p>
     <div id="listaNotificaciones"></div>
@@ -1302,8 +1310,12 @@
             <input type="password" id="claveNota" maxlength="3" placeholder="•••" inputmode="numeric">
         </div>
         <div class="form-group">
+            <label>Plantillas rápidas</label>
+            <div id="plantillasNota" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+        <div class="form-group">
             <label>Nota *</label>
-            <textarea id="textoNota" rows="4" placeholder="Escribe el comentario..."></textarea>
+            <textarea id="textoNota" rows="4" placeholder="Escribe el comentario o elige una plantilla..."></textarea>
         </div>
         <button class="btn-modal primary" onclick="guardarNotaLibre()">💾 Guardar nota</button>
         <button class="btn-modal danger" onclick="cerrarModal('modalNota')">❌ Cancelar</button>
@@ -2328,7 +2340,8 @@
         return historial.map((h, i) => {
             const inicio = new Date(h.fecha);
             const fin = (i < historial.length - 1) ? new Date(historial[i + 1].fecha) : ahora;
-            const ms = fin - inicio;
+            let ms = fin - inicio;
+            if (isNaN(ms) || ms < 0) ms = 0;
             return {
                 ...h,
                 duracionMs: ms,
@@ -2336,6 +2349,24 @@
                 enCurso: i === historial.length - 1
             };
         });
+    }
+
+    // Suma de tiempo acumulado por cada estatus
+    function resumenTiempoPorEstatus(historial) {
+        const tiempos = calcularTiemposHistorial(historial);
+        const map = {};
+        tiempos.forEach(h => {
+            const k = h.estatus || 'Sin estatus';
+            if (!map[k]) map[k] = { ms: 0, enCurso: false };
+            map[k].ms += h.duracionMs || 0;
+            if (h.enCurso) map[k].enCurso = true;
+        });
+        return Object.keys(map).map(estatus => ({
+            estatus,
+            ms: map[estatus].ms,
+            texto: formatearDuracion(map[estatus].ms),
+            enCurso: map[estatus].enCurso
+        }));
     }
 
     function actualizarStats() {
@@ -2752,15 +2783,23 @@
             }
         });
 
-        // Historial con tiempos (no se muestra tiempo en taller si está Finalizada)
+        // Historial con tiempos por estatus
         const histBox = document.getElementById('detalleHistorial');
         if (u.historial && u.historial.length > 0) {
             const esFin = u.estatus === 'Finalizada';
             const conTiempos = calcularTiemposHistorial(u.historial);
             const totalMs = conTiempos.reduce((acc, h) => acc + (h.duracionMs || 0), 0);
+            const resumen = resumenTiempoPorEstatus(u.historial);
+            const resumenHtml = resumen.map(r => {
+                const color = getColor(r.estatus) || '#6c757d';
+                return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 8px; background:#fff; border-radius:8px; border-left:4px solid ${color}; margin-bottom:4px; font-size:12px;">
+                    <span><strong>${nombresEstatus[r.estatus] || r.estatus}</strong>${r.enCurso ? ' <em style="color:#1a3a5c;">(actual)</em>' : ''}</span>
+                    <span style="font-weight:700; color:#1a3a5c;">⏱️ ${r.texto}</span>
+                </div>`;
+            }).join('');
             const filas = conTiempos.slice().reverse().map(h => {
                 const alerta = !esFin && h.duracionMs >= 3 * 24 * 60 * 60 * 1000;
-                const tiempoBadge = esFin ? '' : `
+                const tiempoBadge = `
                         <span class="depto" style="background:${alerta ? '#f8d7da' : '#d4edda'}; color:${alerta ? '#721c24' : '#155724'}; margin-left:6px;">
                             ⏱️ ${h.duracionTexto}${h.enCurso ? ' (en curso)' : ''}
                         </span>`;
@@ -2777,10 +2816,11 @@
                 </div>`;
             }).join('');
             histBox.innerHTML = `
-                ${esFin ? '' : `
-                <div style="margin-bottom:10px; padding:8px 10px; background:#e7f1ff; border-radius:8px; font-size:13px;">
-                    <strong>⏳ Tiempo total en taller:</strong> ${formatearDuracion(totalMs)}
-                </div>`}
+                <div style="margin-bottom:12px; padding:10px; background:#e7f1ff; border-radius:10px; font-size:13px;">
+                    ${esFin ? '' : `<div style="margin-bottom:8px;"><strong>⏳ Tiempo total en taller:</strong> ${formatearDuracion(totalMs)}</div>`}
+                    <strong style="display:block; margin-bottom:6px;">📊 Tiempo por estatus</strong>
+                    ${resumenHtml || '<span style="color:#888;">Sin datos</span>'}
+                </div>
                 ${filas}
             `;
         } else {
@@ -3192,13 +3232,15 @@
 
     function alertarMovimientoUnidad(u, desde, hacia, area, persona) {
         const unidad = u.no_unidad || 'Unidad';
+        const areaDestino = areaResponsableEstatus[hacia] || null;
         const titulo = `🚚 ${unidad}: ${desde || '—'} → ${hacia}`;
-        const detalle = `${area || 'Sistema'} (${persona || '—'}) · ${u.cliente || ''} · Responsable: ${areaResponsableEstatus[hacia] || '—'}`;
+        const detalle = `${area || 'Sistema'} (${persona || '—'}) · ${u.cliente || ''} · Responsable: ${areaDestino || '—'}`;
         registrarNotificacionEvento({
             tipo: (hacia === 'Finalizada' || hacia === 'Espera de refacciones') ? 'urgente' : 'aviso',
             titulo: titulo,
             detalle: detalle,
             unidadId: u.id,
+            areaDestino: areaDestino,
             forzarNavegador: true
         });
         // Quitar de descartadas para que vuelva a verse
@@ -3281,54 +3323,118 @@
         el('cfgDiasAviso').value = String(cfg.diasAviso || 3);
         el('cfgNotifDiagnostico').checked = cfg.diagnostico !== false;
         el('cfgNotifCambios').checked = cfg.cambios !== false;
-        el('cfgNotifNavegador').checked = !!cfg.navegador;
+        el('cfgNotifNavegador').checked = !!cfg.navegador || (typeof Notification !== 'undefined' && Notification.permission === 'granted');
+        actualizarEstadoPushUI();
+    }
+
+    function actualizarEstadoPushUI() {
+        const el = document.getElementById('estadoPushNotif');
+        if (!el) return;
+        if (!('Notification' in window)) {
+            el.innerHTML = '❌ Este navegador no soporta notificaciones.';
+            return;
+        }
+        const perm = Notification.permission;
+        const sw = navigator.serviceWorker ? 'Service Worker disponible' : 'Sin Service Worker';
+        if (perm === 'granted') {
+            el.innerHTML = '✅ Push activado · Permiso concedido<br><span style="color:#888;">' + sw + '</span>';
+        } else if (perm === 'denied') {
+            el.innerHTML = '🚫 Permiso bloqueado. Actívalo en Ajustes del navegador / sitio.';
+        } else {
+            el.innerHTML = '⚠️ Aún no activadas. Pulsa «Activar notificaciones push».';
+        }
+    }
+
+    async function registrarServiceWorkerNotif() {
+        if (!('serviceWorker' in navigator)) return null;
+        try {
+            const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+            await navigator.serviceWorker.ready;
+            return reg;
+        } catch (e) {
+            console.warn('SW register:', e);
+            return null;
+        }
+    }
+
+    async function activarPushNotificaciones() {
+        if (!('Notification' in window)) {
+            alert('Este navegador no soporta notificaciones.');
+            return;
+        }
+        try {
+            await registrarServiceWorkerNotif();
+            const perm = await Notification.requestPermission();
+            if (perm !== 'granted') {
+                alert('No se concedió el permiso.\n\nEn Android: menú del sitio → Permisos → Notificaciones → Permitir.\nEn iPhone: agrega la web al inicio y vuelve a intentar.');
+                document.getElementById('cfgNotifNavegador').checked = false;
+                guardarConfigNotif();
+                actualizarEstadoPushUI();
+                return;
+            }
+            document.getElementById('cfgNotifNavegador').checked = true;
+            guardarConfigNotif();
+            actualizarEstadoPushUI();
+            await mostrarNotifNavegador('Thermo King del Noroeste', 'Notificaciones push activadas. Te avisaremos de movimientos de tu área.');
+            alert('✅ Notificaciones activadas');
+        } catch (e) {
+            console.error(e);
+            alert('Error al activar: ' + (e.message || e));
+        }
     }
 
     async function toggleNotifNavegador() {
         const activar = document.getElementById('cfgNotifNavegador').checked;
         if (activar) {
-            if (!('Notification' in window)) {
-                alert('Este navegador no soporta avisos del sistema.');
-                document.getElementById('cfgNotifNavegador').checked = false;
-                return;
-            }
-            const perm = await Notification.requestPermission();
-            if (perm !== 'granted') {
-                alert('No se concedió permiso para avisos del navegador.');
-                document.getElementById('cfgNotifNavegador').checked = false;
-            }
+            await activarPushNotificaciones();
+            return;
         }
         guardarConfigNotif();
+        actualizarEstadoPushUI();
     }
 
-    function mostrarNotifNavegador(titulo, cuerpo) {
+    async function mostrarNotifNavegador(titulo, cuerpo) {
         const cfg = getConfigNotif();
         if (!cfg.navegador || !('Notification' in window) || Notification.permission !== 'granted') return;
+        const opts = {
+            body: cuerpo || '',
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%23003057"/><text x="50" y="62" text-anchor="middle" font-size="48" fill="white">TK</text></svg>',
+            badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔔</text></svg>',
+            tag: 'tk-noroeste-' + (titulo || '').substring(0, 40),
+            renotify: true,
+            requireInteraction: false,
+            data: { url: self.location ? self.location.href : '/' }
+        };
         try {
-            new Notification(titulo, {
-                body: cuerpo,
-                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔧</text></svg>',
-                tag: 'thermocontrol-' + Date.now()
-            });
+            if (navigator.serviceWorker) {
+                const reg = await navigator.serviceWorker.ready.catch(() => null);
+                if (reg && reg.showNotification) {
+                    await reg.showNotification(titulo, opts);
+                    return;
+                }
+            }
+            new Notification(titulo, opts);
         } catch (e) {
-            console.warn('Notificación navegador:', e);
+            try { new Notification(titulo, opts); } catch (e2) { console.warn('Notificación:', e2); }
         }
     }
 
-    function probarNotifNavegador() {
+    async function probarNotifNavegador() {
         if (!('Notification' in window)) {
             alert('Este navegador no soporta notificaciones.');
             return;
         }
-        Notification.requestPermission().then(perm => {
-            if (perm !== 'granted') {
-                alert('Activa el permiso de notificaciones en el navegador.');
-                return;
-            }
-            document.getElementById('cfgNotifNavegador').checked = true;
-            guardarConfigNotif();
-            mostrarNotifNavegador('Thermo King del Noroeste', 'Avisos del sistema activados correctamente ✅');
-        });
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') {
+            alert('Activa el permiso de notificaciones en el navegador.');
+            actualizarEstadoPushUI();
+            return;
+        }
+        document.getElementById('cfgNotifNavegador').checked = true;
+        guardarConfigNotif();
+        await registrarServiceWorkerNotif();
+        await mostrarNotifNavegador('Thermo King del Noroeste', 'Prueba OK — las notificaciones funcionan en este dispositivo.');
+        actualizarEstadoPushUI();
     }
 
     function togglePanelNotif() {
@@ -3870,11 +3976,16 @@
             // Cada área solo ve unidades de las que es responsable (Gerencia ve todo)
             if (!notifRelevanteParaArea(responsable, areaSesion)) return;
 
-            if (cfg.retraso !== false && dias >= umbral) {
+            // Tiempo en el estatus actual (más útil que solo días totales)
+            const tiempos = calcularTiemposHistorial(u.historial || []);
+            const actual = tiempos.length ? tiempos[tiempos.length - 1] : null;
+            const diasEnEstatusActual = actual ? Math.floor((actual.duracionMs || 0) / (24 * 60 * 60 * 1000)) : dias;
+
+            if (cfg.retraso !== false && (dias >= umbral || diasEnEstatusActual >= umbral)) {
                 notifs.push({
-                    tipo: dias >= 5 ? 'urgente' : 'aviso',
-                    titulo: `⏱️ ${u.no_unidad || 'Sin número'} — ${dias} días en taller (${u.estatus})`,
-                    detalle: `${u.cliente || '—'} · Tu área: ${responsable}`,
+                    tipo: (dias >= 5 || diasEnEstatusActual >= 5) ? 'urgente' : 'aviso',
+                    titulo: `⏱️ ${u.no_unidad || 'Sin número'} — ${diasEnEstatusActual}d en ${u.estatus}`,
+                    detalle: `${u.cliente || '—'} · Total taller: ${dias}d · Tu área: ${responsable}`,
                     unidadId: u.id
                 });
             }
@@ -3893,8 +4004,10 @@
         });
 
         if (cfg.cambios !== false) {
-            // Eventos guardados en este dispositivo
+            // Eventos guardados en este dispositivo (filtrados por área responsable)
             obtenerEventosNotif().forEach(ev => {
+                const dest = ev.areaDestino || null;
+                if (dest && !notifRelevanteParaArea(dest, areaSesion)) return;
                 notifs.push({
                     tipo: ev.tipo || 'info',
                     titulo: ev.titulo,
@@ -3902,7 +4015,7 @@
                     unidadId: ev.unidadId
                 });
             });
-            // Movimientos recientes desde historial (todas las áreas / dispositivos)
+            // Movimientos recientes desde historial — solo al área responsable del estatus destino
             const hace24h = Date.now() - 24 * 60 * 60 * 1000;
             unidades.filter(u => !u.eliminado).forEach(u => {
                 const hist = u.historial || [];
@@ -3911,17 +4024,17 @@
                 if (!ult || !ult.fecha) return;
                 let t = Date.parse(ult.fecha);
                 if (isNaN(t)) {
-                    // formato local es-MX u otros
                     try { t = new Date(ult.fecha).getTime(); } catch (e) { t = 0; }
                 }
                 if (!t || t < hace24h) return;
-                // Solo si hubo cambio de estatus real
                 const prev = hist[hist.length - 2];
                 if (prev && prev.estatus === ult.estatus) return;
+                const dest = areaResponsableEstatus[ult.estatus] || null;
+                if (dest && !notifRelevanteParaArea(dest, areaSesion)) return;
                 notifs.push({
                     tipo: ult.estatus === 'Finalizada' ? 'urgente' : 'aviso',
                     titulo: `🚚 ${u.no_unidad || 'Unidad'}: ${(prev && prev.estatus) || '—'} → ${ult.estatus}`,
-                    detalle: `${ult.area || ''} (${ult.persona || '—'}) · ${ult.fecha}`,
+                    detalle: `${ult.area || ''} (${ult.persona || '—'}) · Para: ${dest || '—'} · ${ult.fecha}`,
                     unidadId: u.id
                 });
             });
@@ -4016,6 +4129,59 @@
     }
 
     // ===== NOTA LIBRE (sin cambiar estatus) =====
+    const PLANTILLAS_NOTA = {
+        'Mantenimiento': [
+            'Diagnóstico en proceso',
+            'Esperando autorización del cliente',
+            'Falta refacción para continuar',
+            'Prueba en frío OK',
+            'Unidad lista para entrega',
+            'Requiere servicio mayor'
+        ],
+        'Ventas': [
+            'Cotización enviada al cliente',
+            'Esperando autorización',
+            'Cliente autorizó reparación',
+            'Cliente no autorizó',
+            'Listo para facturar / entregar'
+        ],
+        'Compras': [
+            'Refacción solicitada a proveedor',
+            'Refacción en tránsito',
+            'Refacción recibida en taller',
+            'Sin existencia — buscar alternativa'
+        ],
+        'Gerencia': [
+            'Revisar prioridad de esta unidad',
+            'Autorizado por gerencia',
+            'Seguimiento especial con cliente'
+        ]
+    };
+
+    function renderPlantillasNota() {
+        const box = document.getElementById('plantillasNota');
+        if (!box) return;
+        const area = (sesion && sesion.area) ? sesion.area : 'Mantenimiento';
+        const lista = PLANTILLAS_NOTA[area] || PLANTILLAS_NOTA['Mantenimiento'];
+        const generales = ['Llamar al cliente', 'Pendiente de información', 'En seguimiento'];
+        const todas = lista.concat(generales.filter(g => !lista.includes(g)));
+        box.innerHTML = todas.map(t =>
+            `<button type="button" class="btn-accion" style="background:#e7f1ff; border:1px solid #b6d0f0; border-radius:16px; padding:6px 10px; font-size:12px;"
+                onclick="aplicarPlantillaNota(${JSON.stringify(t)})">${t}</button>`
+        ).join('');
+    }
+
+    function aplicarPlantillaNota(texto) {
+        const ta = document.getElementById('textoNota');
+        if (!ta) return;
+        if (ta.value.trim()) {
+            ta.value = ta.value.trim() + '\n' + texto;
+        } else {
+            ta.value = texto;
+        }
+        ta.focus();
+    }
+
     function abrirModalNota(id) {
         if (modoCliente) return;
         if (!requerirSesion()) return;
@@ -4034,6 +4200,7 @@
         const claveG = document.getElementById('claveNota').closest('.form-group');
         if (claveG) claveG.style.display = 'none';
         document.getElementById('textoNota').value = '';
+        renderPlantillasNota();
         document.getElementById('modalNota').style.display = 'flex';
         setTimeout(() => document.getElementById('textoNota').focus(), 100);
     }
@@ -4660,6 +4827,15 @@
     } else {
         sesion = null;
         // No cargar datos hasta que inicie sesión
+    }
+
+    // Service Worker para notificaciones push del navegador
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            registrarServiceWorkerNotif().then(function() {
+                actualizarEstadoPushUI();
+            });
+        });
     }
 </script>
 </body>
