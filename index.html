@@ -867,8 +867,10 @@
                     <button type="button" class="menu-item" id="btnVistaHistorial" onclick="cambiarVista('historial'); cerrarMenuPrincipal();">📜 Historial</button>
                     <button type="button" class="menu-item" id="btnTrabajoHoy" onclick="abrirModalTrabajoHoy(); cerrarMenuPrincipal();" style="display:none;">📋 Trabajar hoy</button>
                     <button type="button" class="menu-item" id="btnMensaje" onclick="abrirModalMensaje(); cerrarMenuPrincipal();" style="display:none;">💬 Mensaje</button>
+                    <button type="button" class="menu-item" id="btnProduccion" onclick="abrirModalProduccion(); cerrarMenuPrincipal();">📈 Producción</button>
                     <button type="button" class="menu-item" id="btnReporteDiario" onclick="abrirReporteDiario(); cerrarMenuPrincipal();" style="display:none;">📊 Reporte diario</button>
                     <button type="button" class="menu-item" id="btnDiagnosticosExt" onclick="window.open('https://insert-code-067286.onhercules.app/', '_blank'); cerrarMenuPrincipal();" style="display:none;">🔧 Diagnósticos</button>
+
                     <button type="button" class="menu-item" id="btnThermoDiagPRO" onclick="window.open('https://cosmic-zabaione-7bd9cc.netlify.app/', '_blank'); cerrarMenuPrincipal();" style="display:none;">🔬 ThermoDiagPRO</button>
                     <div class="menu-sep"></div>
                     <button type="button" class="menu-item" id="btnDarkMode" onclick="toggleDarkMode(); cerrarMenuPrincipal();">🌙 Modo oscuro</button>
@@ -942,6 +944,27 @@
         <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
             <button class="btn-modal success" style="flex:1;" onclick="exportarReporteDiarioExcel()">📥 Exportar CSV</button>
             <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalReporteDiario')">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL PRODUCCIÓN POR USUARIO ===== -->
+<div class="modal" id="modalProduccion">
+    <div class="modal-content wide">
+        <h3>📈 Producción por usuario</h3>
+        <div class="form-group" style="margin-bottom:10px;">
+            <label>Periodo</label>
+            <select id="prodPeriodo" onchange="renderProduccion()">
+                <option value="hoy">Hoy</option>
+                <option value="7" selected>Últimos 7 días</option>
+                <option value="30">Últimos 30 días</option>
+                <option value="todo">Todo el historial</option>
+            </select>
+        </div>
+        <div id="produccionContenido" style="font-size:14px; max-height:60vh; overflow-y:auto;"></div>
+        <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+            <button class="btn-modal success" style="flex:1;" onclick="exportarProduccionCSV()">📥 Exportar CSV</button>
+            <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalProduccion')">Cerrar</button>
         </div>
     </div>
 </div>
@@ -1062,12 +1085,19 @@
             <div class="grid-2">
                 <div class="form-group">
                     <label>🔧 Diagnosticador</label>
-                    <input type="text" id="diagnosticadorNueva" placeholder="Nombre">
+                    <select id="diagnosticadorNueva" onchange="toggleCampoOtroPersona('diagnosticadorNueva')"></select>
+                    <input type="text" id="diagnosticadorNuevaOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
                 </div>
                 <div class="form-group">
                     <label>🛠️ Reparador</label>
-                    <input type="text" id="reparadorNueva" placeholder="Nombre">
+                    <select id="reparadorNueva" onchange="toggleCampoOtroPersona('reparadorNueva')"></select>
+                    <input type="text" id="reparadorNuevaOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
                 </div>
+            </div>
+            <div class="form-group">
+                <label>💰 Asesor de ventas</label>
+                <select id="asesorVentasNueva" onchange="toggleCampoOtroPersona('asesorVentasNueva')"></select>
+                <input type="text" id="asesorVentasNuevaOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
             </div>
             <div class="grid-2">
                 <div class="form-group">
@@ -1155,12 +1185,19 @@
             <div class="grid-2">
                 <div class="form-group">
                     <label>🔧 Diagnosticador</label>
-                    <input type="text" id="diagnosticadorEditar" placeholder="Nombre">
+                    <select id="diagnosticadorEditar" onchange="toggleCampoOtroPersona('diagnosticadorEditar')"></select>
+                    <input type="text" id="diagnosticadorEditarOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
                 </div>
                 <div class="form-group">
                     <label>🛠️ Reparador</label>
-                    <input type="text" id="reparadorEditar" placeholder="Nombre">
+                    <select id="reparadorEditar" onchange="toggleCampoOtroPersona('reparadorEditar')"></select>
+                    <input type="text" id="reparadorEditarOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
                 </div>
+            </div>
+            <div class="form-group">
+                <label>💰 Asesor de ventas</label>
+                <select id="asesorVentasEditar" onchange="toggleCampoOtroPersona('asesorVentasEditar')"></select>
+                <input type="text" id="asesorVentasEditarOtro" placeholder="Otro nombre..." style="display:none; margin-top:6px;">
             </div>
             <div class="grid-2">
                 <div class="form-group">
@@ -1230,12 +1267,36 @@
             <input type="text" id="nombrePersonalizado" placeholder="Ingresa el nombre">
         </div>
 
+        <div id="resumenCambioUnidad" style="display:none; margin-bottom:12px; padding:10px; background:#e7f1ff; border-radius:10px; font-size:12px; line-height:1.45;"></div>
+
         <div class="form-group">
             <label>Nuevo estatus *</label>
-            <select id="estatusCambio">
+            <select id="estatusCambio" onchange="onEstatusCambioChange()">
                 <option value="">Primero selecciona un área...</option>
             </select>
             <small id="ayudaPermisos" style="color:#666; font-size:12px; display:block; margin-top:4px;"></small>
+        </div>
+
+        <div id="boxRequiereRefacciones" style="display:none; margin-bottom:12px; padding:12px; background:#fff3cd; border-radius:10px;">
+            <label style="font-weight:700; display:block; margin-bottom:6px;">🔧 ¿Requiere refacciones / piezas?</label>
+            <select id="requiereRefaccionesCambio" style="width:100%; padding:8px; border-radius:8px;">
+                <option value="">Selecciona...</option>
+                <option value="si">Sí — pasar a Espera de refacciones</option>
+                <option value="no">No — puede ir a Reparando</option>
+            </select>
+            <small style="color:#666; font-size:11px;">Define el camino: con piezas o solo mano de obra.</small>
+        </div>
+
+        <div id="boxMotivoRetorno" style="display:none; margin-bottom:12px; padding:12px; background:#f8d7da; border-radius:10px;">
+            <label style="font-weight:700; display:block; margin-bottom:6px;">↩️ Motivo de regreso a Cotizando *</label>
+            <select id="motivoRetornoCambio" style="width:100%; padding:8px; border-radius:8px;">
+                <option value="">Selecciona el motivo...</option>
+                <option value="Otra falla detectada">Otra falla detectada</option>
+                <option value="Faltan más piezas">Faltan más piezas</option>
+                <option value="Cliente no autorizó / cambió alcance">Cliente no autorizó / cambió alcance</option>
+                <option value="Requiere recotizar">Requiere recotizar</option>
+                <option value="Otro">Otro</option>
+            </select>
         </div>
 
         <div class="form-group">
@@ -1394,6 +1455,56 @@
         'Compras': ['Alfredo']
     };
 
+    function llenarSelectPersonas(selectId, area, valorActual) {
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        const personas = personasPorArea[area] || [];
+        const actual = (valorActual || '').trim();
+        let html = '<option value="">Selecciona...</option>';
+        personas.forEach(p => {
+            html += `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`;
+        });
+        html += '<option value="__OTRO__">Otro...</option>';
+        sel.innerHTML = html;
+        const otro = document.getElementById(selectId + 'Otro');
+        if (actual && personas.includes(actual)) {
+            sel.value = actual;
+            if (otro) { otro.style.display = 'none'; otro.value = ''; }
+        } else if (actual) {
+            sel.value = '__OTRO__';
+            if (otro) { otro.style.display = 'block'; otro.value = actual; }
+        } else {
+            // Predeterminado: si la sesión es de esa área, usar esa persona
+            if (sesion && sesion.area === area && personas.includes(sesion.persona)) {
+                sel.value = sesion.persona;
+            }
+            if (otro) { otro.style.display = 'none'; otro.value = ''; }
+        }
+    }
+
+    function toggleCampoOtroPersona(selectId) {
+        const sel = document.getElementById(selectId);
+        const otro = document.getElementById(selectId + 'Otro');
+        if (!sel || !otro) return;
+        if (sel.value === '__OTRO__') {
+            otro.style.display = 'block';
+            otro.focus();
+        } else {
+            otro.style.display = 'none';
+            otro.value = '';
+        }
+    }
+
+    function valorPersonaSelect(selectId) {
+        const sel = document.getElementById(selectId);
+        if (!sel) return '';
+        if (sel.value === '__OTRO__') {
+            const otro = document.getElementById(selectId + 'Otro');
+            return (otro && otro.value || '').trim();
+        }
+        return (sel.value || '').trim();
+    }
+
     // ===== CLAVES POR DEPARTAMENTO =====
     const clavesPorArea = {
         'Gerencia': '210',
@@ -1470,6 +1581,7 @@
             show('btnVistaLista', true);
             show('btnVistaHistorial', true);
             show('btnTrabajoHoy', true);
+            show('btnProduccion', true);
             show('btnReporteDiario', sesion.area === 'Gerencia');
             show('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
             show('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
@@ -1588,6 +1700,7 @@
             if (el) el.style.display = visible ? 'block' : 'none';
         };
         showMenu('btnReporteDiario', sesion.area === 'Gerencia');
+        showMenu('btnProduccion', true);
         showMenu('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
         showMenu('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
         showMenu('btnMensaje', sesion.area !== 'Cliente');
@@ -1620,7 +1733,8 @@
         'Ventas': {
             'Agenda': ['Recibida'],
             'Recibida': ['Diagnosticando', 'Agenda'],
-            'Cotizando': ['Reparando', 'Finalizada', 'Espera de refacciones']
+            'Cotizando': ['Espera de refacciones', 'Reparando', 'Finalizada'],
+            'Reparando': ['Cotizando'] // regreso si hay otra falla / más piezas
         },
         'Compras': {
             'Espera de refacciones': ['Reparando', 'Cotizando']
@@ -1637,10 +1751,12 @@
         ],
         'Cotizando': [
             { campo: 'problema', nombre: 'Problema / descripción' },
-            { campo: 'diagnostico_detalle', nombre: 'Diagnóstico detallado' }
+            { campo: 'diagnostico_detalle', nombre: 'Diagnóstico detallado (o PDF)' },
+            { campo: 'diagnosticador', nombre: 'Diagnosticador' }
         ],
         'Espera de refacciones': [
-            { campo: 'problema', nombre: 'Problema / descripción' }
+            { campo: 'problema', nombre: 'Problema / descripción' },
+            { campo: 'diagnostico_detalle', nombre: 'Diagnóstico detallado (o PDF)' }
         ],
         'Reparando': [
             { campo: 'problema', nombre: 'Problema / descripción' },
@@ -2243,6 +2359,215 @@
         link.click();
     }
 
+    // ===== PRODUCCIÓN POR USUARIO =====
+    function parseFechaHistorial(fechaStr) {
+        if (!fechaStr) return null;
+        let t = Date.parse(fechaStr);
+        if (!isNaN(t)) return new Date(t);
+        try {
+            const d = new Date(fechaStr);
+            if (!isNaN(d.getTime())) return d;
+        } catch (e) {}
+        return null;
+    }
+
+    function rangoPeriodoProduccion(periodo) {
+        const ahora = new Date();
+        const fin = ahora.getTime();
+        if (periodo === 'todo') return { inicio: 0, fin: fin };
+        if (periodo === 'hoy') {
+            const ini = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).getTime();
+            return { inicio: ini, fin: fin };
+        }
+        const dias = parseInt(periodo, 10) || 7;
+        return { inicio: fin - dias * 24 * 60 * 60 * 1000, fin: fin };
+    }
+
+    function vacioStatsPersona(nombre, area) {
+        return {
+            persona: nombre,
+            area: area || '',
+            diagnosticadas: 0,
+            reparadas: 0,
+            finalizadas: 0,
+            cotizadas: 0,
+            ventasMov: 0,
+            comprasMov: 0,
+            esperaRefacciones: 0,
+            msEsperaRefacciones: 0,
+            msTotal: 0,
+            unidades: new Set()
+        };
+    }
+
+    function calcularProduccionPorUsuario(periodo) {
+        const rango = rangoPeriodoProduccion(periodo || '7');
+        const porPersona = {};
+
+        function getStats(persona, area) {
+            const key = (persona || 'Sin nombre') + '|' + (area || '');
+            if (!porPersona[key]) porPersona[key] = vacioStatsPersona(persona || 'Sin nombre', area || '');
+            return porPersona[key];
+        }
+
+        unidades.forEach(u => {
+            const hist = u.historial || [];
+            if (!hist.length) return;
+            const tiempos = calcularTiemposHistorial(hist);
+
+            tiempos.forEach((h, i) => {
+                const d = parseFechaHistorial(h.fecha);
+                if (!d) return;
+                const t = d.getTime();
+                if (t < rango.inicio || t > rango.fin) return;
+
+                const persona = (h.persona || '').trim() || 'Sin nombre';
+                const area = (h.area || '').trim();
+                const st = getStats(persona, area);
+                const est = h.estatus || '';
+                st.unidades.add(u.id);
+                st.msTotal += h.duracionMs || 0;
+
+                if (est === 'Diagnosticando') st.diagnosticadas++;
+                if (est === 'Reparando') st.reparadas++;
+                if (est === 'Finalizada') st.finalizadas++;
+                if (est === 'Cotizando') {
+                    st.cotizadas++;
+                    if (area === 'Ventas' || area === 'Gerencia') st.ventasMov++;
+                }
+                if (est === 'Espera de refacciones') {
+                    st.esperaRefacciones++;
+                    st.msEsperaRefacciones += h.duracionMs || 0;
+                    if (area === 'Compras' || area === 'Gerencia') st.comprasMov++;
+                }
+                // Movimientos de ventas/compras también por área aunque el estatus sea otro
+                if (area === 'Ventas' && (est === 'Cotizando' || est === 'Espera de refacciones' || est === 'Finalizada' || est === 'Agenda')) {
+                    st.ventasMov = st.ventasMov; // ya contado en cotizando; contar paso genérico
+                }
+                if (area === 'Compras') {
+                    // cualquier paso de compras suma movimiento
+                    if (est !== 'Espera de refacciones') st.comprasMov++;
+                }
+            });
+        });
+
+        // Ajuste: ventasMov = cotizadas + pasos a finalizada/agenda por Ventas (ya en contadores)
+        Object.keys(porPersona).forEach(k => {
+            const st = porPersona[k];
+            if (st.area === 'Ventas') {
+                st.ventasMov = st.cotizadas + st.finalizadas + st.esperaRefacciones;
+            }
+            st.unidadesCount = st.unidades.size;
+            st.tiempoTexto = formatearDuracion(st.msTotal);
+            st.tiempoEsperaTexto = formatearDuracion(st.msEsperaRefacciones);
+            delete st.unidades;
+        });
+
+        return Object.values(porPersona).sort((a, b) => b.msTotal - a.msTotal);
+    }
+
+    let _ultimaProduccion = [];
+
+    function abrirModalProduccion() {
+        if (modoCliente) {
+            alert('Vista de solo lectura: inicia sesión con un área para ver producción detallada.');
+        }
+        renderProduccion();
+        document.getElementById('modalProduccion').style.display = 'flex';
+    }
+
+    function renderProduccion() {
+        const periodo = (document.getElementById('prodPeriodo') || {}).value || '7';
+        const lista = calcularProduccionPorUsuario(periodo);
+        _ultimaProduccion = lista;
+        const box = document.getElementById('produccionContenido');
+        if (!box) return;
+
+        // Totales globales de tiempo en espera de refacciones (todas las unidades en periodo)
+        const rango = rangoPeriodoProduccion(periodo);
+        let msEsperaGlobal = 0;
+        let unidadesEnEspera = 0;
+        unidades.forEach(u => {
+            const tiempos = calcularTiemposHistorial(u.historial || []);
+            let sum = 0;
+            tiempos.forEach(h => {
+                if (h.estatus !== 'Espera de refacciones') return;
+                const d = parseFechaHistorial(h.fecha);
+                if (!d) return;
+                const t = d.getTime();
+                if (t < rango.inicio || t > rango.fin) return;
+                sum += h.duracionMs || 0;
+            });
+            if (sum > 0) {
+                msEsperaGlobal += sum;
+                unidadesEnEspera++;
+            }
+        });
+
+        if (!lista.length) {
+            box.innerHTML = '<p style="color:#888; padding:12px;">No hay movimientos en el periodo seleccionado.</p>';
+            return;
+        }
+
+        const cards = lista.map(st => {
+            const colorArea = st.area === 'Mantenimiento' ? '#17a2b8'
+                : st.area === 'Ventas' ? '#28a745'
+                : st.area === 'Compras' ? '#fd7e14'
+                : st.area === 'Gerencia' ? '#1a3a5c' : '#6c757d';
+            return `
+            <div style="border:1px solid var(--border,#e9ecef); border-radius:12px; padding:12px; margin-bottom:10px; border-left:5px solid ${colorArea};">
+                <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                    <strong style="font-size:15px;">👤 ${st.persona}</strong>
+                    <span style="font-size:12px; background:${colorArea}; color:#fff; padding:3px 10px; border-radius:12px;">${st.area || '—'}</span>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:13px;">
+                    <div>🔍 Diagnosticó: <strong>${st.diagnosticadas}</strong></div>
+                    <div>🔧 Reparó: <strong>${st.reparadas}</strong></div>
+                    <div>✅ Finalizó: <strong>${st.finalizadas}</strong></div>
+                    <div>💰 Cotizó: <strong>${st.cotizadas}</strong></div>
+                    <div>🛒 Compras / mov.: <strong>${st.comprasMov}</strong></div>
+                    <div>📦 Pasos espera refacc.: <strong>${st.esperaRefacciones}</strong></div>
+                    <div style="grid-column:1/-1;">⏱️ Tiempo total en sus pasos: <strong>${st.tiempoTexto}</strong></div>
+                    <div style="grid-column:1/-1;">⏳ Tiempo en espera de refacciones: <strong>${st.tiempoEsperaTexto}</strong></div>
+                    <div style="grid-column:1/-1; color:#666;">Unidades tocadas: <strong>${st.unidadesCount}</strong></div>
+                </div>
+            </div>`;
+        }).join('');
+
+        box.innerHTML = `
+            <div style="margin-bottom:14px; padding:12px; background:#e7f1ff; border-radius:10px; font-size:13px;">
+                <strong>⏳ Espera de refacciones (periodo)</strong><br>
+                Unidades con espera: <strong>${unidadesEnEspera}</strong> ·
+                Tiempo acumulado: <strong>${formatearDuracion(msEsperaGlobal)}</strong>
+                ${unidadesEnEspera ? ' · Promedio: <strong>' + formatearDuracion(msEsperaGlobal / unidadesEnEspera) + '</strong>' : ''}
+            </div>
+            ${cards}
+            <p style="font-size:11px; color:#888; margin-top:8px;">Se basa en el historial (persona + estatus + fechas). Si falta nombre en un movimiento, aparece como «Sin nombre».</p>
+        `;
+    }
+
+    function exportarProduccionCSV() {
+        const periodo = (document.getElementById('prodPeriodo') || {}).value || '7';
+        const lista = _ultimaProduccion.length ? _ultimaProduccion : calcularProduccionPorUsuario(periodo);
+        const lineas = [];
+        lineas.push('Produccion por usuario - Thermo King del Noroeste');
+        lineas.push('Periodo,' + periodo);
+        lineas.push('');
+        lineas.push('Persona,Area,Diagnosticadas,Reparadas,Finalizadas,Cotizadas,ComprasMov,EsperaRefacciones,TiempoTotal,TiempoEsperaRefacciones,Unidades');
+        lista.forEach(st => {
+            lineas.push([
+                st.persona, st.area, st.diagnosticadas, st.reparadas, st.finalizadas,
+                st.cotizadas, st.comprasMov, st.esperaRefacciones,
+                st.tiempoTexto, st.tiempoEsperaTexto, st.unidadesCount
+            ].map(v => `"${(v ?? '').toString().replace(/"/g, '""')}"`).join(','));
+        });
+        const blob = new Blob(['\ufeff' + lineas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `produccion_${periodo}_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+    }
+
     // Eliminación permanente: solo Gerencia con clave 210
     async function eliminarPermanente(id) {
         const u = unidades.find(item => item.id === id);
@@ -2665,6 +2990,9 @@
     function abrirModalNueva() {
         if (!requerirSesion()) return;
         toggleCamposAgendaNueva();
+        llenarSelectPersonas('diagnosticadorNueva', 'Mantenimiento', '');
+        llenarSelectPersonas('reparadorNueva', 'Mantenimiento', '');
+        llenarSelectPersonas('asesorVentasNueva', 'Ventas', '');
         document.getElementById('modalNueva').style.display = 'flex';
     }
 
@@ -2722,6 +3050,14 @@
             <div class="detalle-item">
                 <div class="label">Reparador</div>
                 <div class="valor">${u.reparador || '—'}</div>
+            </div>
+            <div class="detalle-item">
+                <div class="label">Asesor de ventas</div>
+                <div class="valor">${u.asesor_ventas || '—'}</div>
+            </div>
+            <div class="detalle-item">
+                <div class="label">¿Requiere refacciones?</div>
+                <div class="valor">${u.requiere_refacciones === 'si' ? 'Sí' : (u.requiere_refacciones === 'no' ? 'No' : '—')}</div>
             </div>
             <div class="detalle-item">
                 <div class="label">Fecha de Llegada</div>
@@ -2891,8 +3227,9 @@
             hoja_servicio: document.getElementById('hojaServicioNueva').value.trim(),
             folio: document.getElementById('folioNueva').value.trim(),
             problema: fallaLlegada || problemaBase,
-            diagnosticador: document.getElementById('diagnosticadorNueva').value.trim(),
-            reparador: document.getElementById('reparadorNueva').value.trim(),
+            diagnosticador: valorPersonaSelect('diagnosticadorNueva'),
+            reparador: valorPersonaSelect('reparadorNueva'),
+            asesor_ventas: valorPersonaSelect('asesorVentasNueva'),
             estatus: estatusInicial,
             // No enviar null en fechas (evita error "null value" en Supabase)
             fecha_llegada: estatusInicial === 'Agenda' ? (fechaAgenda || hoy) : hoy,
@@ -2938,8 +3275,9 @@
         document.getElementById('ordenCompraEditar').value = u.orden_compra || '';
         document.getElementById('hojaServicioEditar').value = u.hoja_servicio || '';
         document.getElementById('problemaEditar').value = u.problema || '';
-        document.getElementById('diagnosticadorEditar').value = u.diagnosticador || '';
-        document.getElementById('reparadorEditar').value = u.reparador || '';
+        llenarSelectPersonas('diagnosticadorEditar', 'Mantenimiento', u.diagnosticador || '');
+        llenarSelectPersonas('reparadorEditar', 'Mantenimiento', u.reparador || '');
+        llenarSelectPersonas('asesorVentasEditar', 'Ventas', u.asesor_ventas || '');
         document.getElementById('fechaSalidaEditar').value = u.fecha_salida || '';
         document.getElementById('fotosEditar').value = '';
         document.getElementById('modalEditar').style.display = 'flex';
@@ -2960,8 +3298,9 @@
             orden_compra: document.getElementById('ordenCompraEditar').value.trim(),
             hoja_servicio: document.getElementById('hojaServicioEditar').value.trim(),
             problema: document.getElementById('problemaEditar').value.trim(),
-            diagnosticador: document.getElementById('diagnosticadorEditar').value.trim(),
-            reparador: document.getElementById('reparadorEditar').value.trim(),
+            diagnosticador: valorPersonaSelect('diagnosticadorEditar'),
+            reparador: valorPersonaSelect('reparadorEditar'),
+            asesor_ventas: valorPersonaSelect('asesorVentasEditar'),
             fecha_salida: document.getElementById('fechaSalidaEditar').value || null
         };
         
@@ -3109,6 +3448,14 @@
         document.getElementById('comentarioCambio').value = '';
         document.getElementById('nombrePersonalizado').value = '';
         document.getElementById('nombrePersonalizadoContainer').style.display = 'none';
+        const boxRef = document.getElementById('boxRequiereRefacciones');
+        const boxMot = document.getElementById('boxMotivoRetorno');
+        if (boxRef) boxRef.style.display = 'none';
+        if (boxMot) boxMot.style.display = 'none';
+        const selRef = document.getElementById('requiereRefaccionesCambio');
+        const selMot = document.getElementById('motivoRetornoCambio');
+        if (selRef) selRef.value = '';
+        if (selMot) selMot.value = '';
 
         // Área fija de la sesión (ya no pide clave cada vez)
         const selArea = document.getElementById('areaCambio');
@@ -3121,7 +3468,9 @@
             r.checked = (r.value === sesion.persona);
             r.disabled = true;
         });
+        actualizarResumenCambio(u);
         actualizarEstatusPermitidos();
+        onEstatusCambioChange();
 
         // Ocultar campo de clave (sesión ya validada)
         const claveGroup = document.getElementById('claveCambio').closest('.form-group');
@@ -3159,17 +3508,72 @@
             }
         }
         
-        const comentario = document.getElementById('comentarioCambio').value.trim();
-        
-        const historial = u.historial || [];
+        let comentario = document.getElementById('comentarioCambio').value.trim();
+        const estatusAnterior = u.estatus;
+        let requiereRef = (u.requiere_refacciones || '').toString();
+
+        // Pregunta refacciones en handoffs clave
+        const boxRefVisible = document.getElementById('boxRequiereRefacciones')?.style.display !== 'none';
+        if (boxRefVisible) {
+            const v = document.getElementById('requiereRefaccionesCambio')?.value || '';
+            if (!v) {
+                alert('⚠️ Indica si la unidad requiere refacciones (Sí / No).');
+                return;
+            }
+            requiereRef = v;
+        }
+
+        // Bifurcación Cotizando → destino coherente con refacciones
+        if (estatusAnterior === 'Cotizando' && nuevoEstatus === 'Espera de refacciones') {
+            if (requiereRef === 'no') {
+                alert('Indicaste que NO requiere refacciones. Usa «Reparando» en lugar de «Espera de refacciones».');
+                return;
+            }
+            requiereRef = 'si';
+        }
+        if (estatusAnterior === 'Cotizando' && nuevoEstatus === 'Reparando') {
+            if (requiereRef === 'si') {
+                if (!confirm('Marcado con refacciones. ¿Confirmas pasar a Reparando porque ya hay piezas o no aplican?')) return;
+            } else {
+                requiereRef = 'no';
+            }
+        }
+
+        // Motivo obligatorio Reparando → Cotizando
+        let motivoRetorno = '';
+        const boxMotVisible = document.getElementById('boxMotivoRetorno')?.style.display !== 'none';
+        if (boxMotVisible || (estatusAnterior === 'Reparando' && nuevoEstatus === 'Cotizando')) {
+            motivoRetorno = document.getElementById('motivoRetornoCambio')?.value || '';
+            if (!motivoRetorno) {
+                alert('⚠️ Selecciona el motivo de regreso a Cotizando.');
+                return;
+            }
+            comentario = (comentario ? comentario + ' · ' : '') + 'Motivo: ' + motivoRetorno;
+        }
+
+        // Checklist Diagnosticando → Cotizando
+        if (estatusAnterior === 'Diagnosticando' && nuevoEstatus === 'Cotizando') {
+            if (!tieneDiagnosticoCompleto(u)) {
+                alert('⚠️ Antes de cotizar se necesita diagnóstico (texto o PDF) y diagnosticador.\nÁbrelo en Diagnóstico TK o completa el diagnóstico.');
+                return;
+            }
+            if (!(u.diagnosticador || '').toString().trim()) {
+                alert('⚠️ Falta el nombre del diagnosticador. Complétalo en Editar.');
+                return;
+            }
+        }
+
+        const historial = (u.historial || []).slice();
         historial.push({
             fecha: new Date().toLocaleString(),
             estatus: nuevoEstatus,
             area: area,
             persona: persona,
-            comentario: comentario || `Cambio autorizado con clave de ${area}`
+            comentario: comentario || `Cambio de ${estatusAnterior} a ${nuevoEstatus}`,
+            motivo_retorno: motivoRetorno || undefined,
+            requiere_refacciones: requiereRef || undefined
         });
-        
+
         // Flujo avanzado: campos obligatorios según estatus destino
         if (nuevoEstatus === 'Finalizada') {
             const faltantes = validarCamposParaFinalizar(u);
@@ -3189,6 +3593,12 @@
             estatus: nuevoEstatus,
             historial: historial
         };
+        if (requiereRef === 'si' || requiereRef === 'no') {
+            datos.requiere_refacciones = requiereRef;
+        }
+        if (motivoRetorno) {
+            datos.motivo_retorno = motivoRetorno;
+        }
 
         // Al pasar a Agenda: pedir fecha de llegada programada si falta
         if (nuevoEstatus === 'Agenda') {
@@ -3206,19 +3616,74 @@
             historial[historial.length - 1].comentario =
                 (comentario || 'Pasó a Agenda') + ' · Llegada programada: ' + fechaAg;
         }
-        
+
         if (nuevoEstatus === 'Finalizada' && !u.fecha_salida) {
             datos.fecha_salida = new Date().toISOString().split('T')[0];
         }
-        
+
         const resultado = await actualizarUnidad(id, datos);
         if (resultado.success) {
             localStorage.setItem(ULTIMA_AREA_KEY, area);
             localStorage.setItem(ULTIMA_PERSONA_KEY, persona);
-            const estatusAnterior = u.estatus;
             alertarMovimientoUnidad(u, estatusAnterior, nuevoEstatus, area, persona);
+            alertarHandoffArea(u, estatusAnterior, nuevoEstatus, area, persona, motivoRetorno, requiereRef);
             cerrarModal('modalCambio');
             actualizarNotificaciones();
+        }
+    }
+
+    function alertarHandoffArea(u, desde, hacia, area, persona, motivo, requiereRef) {
+        const unidad = u.no_unidad || 'Unidad';
+        const base = { unidadId: u.id, forzarNavegador: true };
+        // Diagnóstico listo → Ventas cotiza
+        if (desde === 'Diagnosticando' && hacia === 'Cotizando') {
+            registrarNotificacionEvento({
+                ...base,
+                tipo: 'urgente',
+                titulo: `🔍 Diagnóstico listo: ${unidad}`,
+                detalle: `${persona} · Listo para cotizar · ${u.cliente || ''} · Refacciones: ${requiereRef === 'si' ? 'Sí' : (requiereRef === 'no' ? 'No' : '?')}`,
+                areaDestino: 'Ventas'
+            });
+        }
+        // Cotizando → Espera refacciones → Compras
+        if (hacia === 'Espera de refacciones') {
+            registrarNotificacionEvento({
+                ...base,
+                tipo: 'urgente',
+                titulo: `🛒 Piezas pendientes: ${unidad}`,
+                detalle: `${area} (${persona}) · ${u.cliente || ''} · Gestionar refacciones`,
+                areaDestino: 'Compras'
+            });
+        }
+        // Piezas listas / a reparar → Mantenimiento
+        if ((desde === 'Espera de refacciones' || desde === 'Cotizando') && hacia === 'Reparando') {
+            registrarNotificacionEvento({
+                ...base,
+                tipo: 'aviso',
+                titulo: `🔧 Lista para reparar: ${unidad}`,
+                detalle: `${area} (${persona}) · ${u.cliente || ''}`,
+                areaDestino: 'Mantenimiento'
+            });
+        }
+        // Regreso a cotizar
+        if (desde === 'Reparando' && hacia === 'Cotizando') {
+            registrarNotificacionEvento({
+                ...base,
+                tipo: 'urgente',
+                titulo: `↩️ Regresa a cotizar: ${unidad}`,
+                detalle: `Motivo: ${motivo || '—'} · ${persona}`,
+                areaDestino: 'Ventas'
+            });
+        }
+        // Finalizada → Ventas
+        if (hacia === 'Finalizada') {
+            registrarNotificacionEvento({
+                ...base,
+                tipo: 'aviso',
+                titulo: `✅ Lista / finalizada: ${unidad}`,
+                detalle: `${area} (${persona}) · ${u.cliente || ''}`,
+                areaDestino: 'Ventas'
+            });
         }
     }
 
@@ -3279,10 +3744,73 @@
         if (!req) return [];
         const faltantes = [];
         req.forEach(r => {
-            const val = (u[r.campo] || '').toString().trim();
+            let val = (u[r.campo] || '').toString().trim();
+            // Diagnóstico: texto o PDF cuentan
+            if (r.campo === 'diagnostico_detalle') {
+                val = val || (u.diagnostico_pdf_url || u.diagnostico_pdf || '').toString().trim();
+            }
             if (!val) faltantes.push(r.nombre);
         });
         return faltantes;
+    }
+
+    function tieneDiagnosticoCompleto(u) {
+        return !!(
+            (u.diagnostico_detalle || '').toString().trim() ||
+            u.diagnostico_pdf_url ||
+            u.diagnostico_pdf
+        );
+    }
+
+    function onEstatusCambioChange() {
+        const u = unidades.find(item => item.id === unidadEnEdicion);
+        const nuevo = document.getElementById('estatusCambio').value;
+        const boxRef = document.getElementById('boxRequiereRefacciones');
+        const boxMot = document.getElementById('boxMotivoRetorno');
+        if (!u || !boxRef || !boxMot) return;
+
+        // Refacciones: al salir de Cotizando hacia espera/reparando, o al pasar a Cotizando desde diagnóstico
+        const preguntaRef =
+            (u.estatus === 'Cotizando' && (nuevo === 'Espera de refacciones' || nuevo === 'Reparando')) ||
+            (u.estatus === 'Diagnosticando' && nuevo === 'Cotizando');
+        boxRef.style.display = preguntaRef ? 'block' : 'none';
+        if (preguntaRef) {
+            const sel = document.getElementById('requiereRefaccionesCambio');
+            if (sel && u.requiere_refacciones) {
+                sel.value = u.requiere_refacciones === 'si' || u.requiere_refacciones === true ? 'si' : (u.requiere_refacciones === 'no' ? 'no' : '');
+            }
+        }
+
+        // Motivo al regresar de Reparando → Cotizando
+        const preguntaMot = (u.estatus === 'Reparando' && nuevo === 'Cotizando');
+        boxMot.style.display = preguntaMot ? 'block' : 'none';
+
+        // Actualizar ayuda de permisos/faltantes
+        const ayuda = document.getElementById('ayudaPermisos');
+        if (ayuda && nuevo) {
+            const falt = nuevo === 'Finalizada' ? validarCamposParaFinalizar(u) : validarCamposParaEstatus(u, nuevo);
+            let extra = ` · Responsable: ${areaResponsableEstatus[nuevo] || '—'}`;
+            if (falt.length) extra = ` · ⚠️ Faltan: ${falt.join(', ')}`;
+            // Mantener primera parte de ayuda si existe
+            const base = ayuda.textContent.split(' · ')[0] || ayuda.textContent;
+            ayuda.textContent = base + extra;
+        }
+    }
+
+    function actualizarResumenCambio(u) {
+        const box = document.getElementById('resumenCambioUnidad');
+        if (!box || !u) return;
+        const diag = (u.diagnostico_detalle || '').toString().trim();
+        const diagShort = diag ? (diag.length > 160 ? diag.slice(0, 160) + '…' : diag) : (u.diagnostico_pdf_url ? '📎 PDF de diagnóstico adjunto' : 'Sin diagnóstico');
+        box.style.display = 'block';
+        box.innerHTML = `
+            <strong>📋 Resumen de la unidad</strong><br>
+            <span>Cliente: <strong>${u.cliente || '—'}</strong> · Modelo: <strong>${u.modelo || '—'}</strong></span><br>
+            <span>Problema: ${u.problema || '—'}</span><br>
+            <span>Diagnóstico: ${diagShort}</span><br>
+            <span>Diagnosticador: <strong>${u.diagnosticador || '—'}</strong> · Reparador: <strong>${u.reparador || '—'}</strong></span><br>
+            <span>Asesor ventas: <strong>${u.asesor_ventas || '—'}</strong> · Refacciones: <strong>${u.requiere_refacciones === 'si' ? 'Sí' : (u.requiere_refacciones === 'no' ? 'No' : 'No definido')}</strong></span>
+        `;
     }
 
     // ===== NOTIFICACIONES AUTOMÁTICAS =====
