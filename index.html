@@ -899,17 +899,39 @@
         <button class="btn-accion" onclick="cerrarPanelNotif()">✕</button>
     </h3>
     <div style="background:var(--detalle-item,#f8f9fa); border-radius:10px; padding:12px; margin-bottom:14px; font-size:13px;">
-        <strong style="display:block; margin-bottom:8px;">⚙️ Configuración automática</strong>
+        <strong style="display:block; margin-bottom:8px;">⚙️ Alertas de retraso</strong>
         <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
-            <input type="checkbox" id="cfgNotifRetraso" onchange="guardarConfigNotif()"> Alertas por días en taller
+            <input type="checkbox" id="cfgNotifRetraso" onchange="guardarConfigNotif()" checked> Activar alertas de retraso
         </label>
         <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-            Días para avisar:
+            Días en taller para avisar:
             <select id="cfgDiasAviso" onchange="guardarConfigNotif()" style="padding:4px 8px; border-radius:6px;">
                 <option value="2">2 días</option>
                 <option value="3" selected>3 días</option>
                 <option value="4">4 días</option>
                 <option value="5">5 días</option>
+                <option value="7">7 días</option>
+            </select>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            Días en el mismo estatus:
+            <select id="cfgDiasEstatus" onchange="guardarConfigNotif()" style="padding:4px 8px; border-radius:6px;">
+                <option value="2">2 días</option>
+                <option value="3" selected>3 días</option>
+                <option value="4">4 días</option>
+                <option value="5">5 días</option>
+            </select>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
+            <input type="checkbox" id="cfgNotifRefacciones" onchange="guardarConfigNotif()" checked> Retraso de refacciones (ETA vencida)
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            Avisar refacciones X días antes:
+            <select id="cfgDiasAntesEta" onchange="guardarConfigNotif()" style="padding:4px 8px; border-radius:6px;">
+                <option value="0">Solo si ya venció</option>
+                <option value="1" selected>1 día antes</option>
+                <option value="2">2 días antes</option>
+                <option value="3">3 días antes</option>
             </select>
         </label>
         <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
@@ -1302,6 +1324,25 @@
                 <option value="Requiere recotizar">Requiere recotizar</option>
                 <option value="Otro">Otro</option>
             </select>
+        </div>
+
+        <div id="boxDetalleRefacciones" style="display:none; margin-bottom:12px; padding:12px; background:#fff4e5; border-radius:10px; border:1px solid #fd7e14;">
+            <label style="font-weight:700; display:block; margin-bottom:8px;">🛒 Detalle de refacciones en espera *</label>
+            <div class="form-group" style="margin-bottom:8px;">
+                <label>¿Qué refacciones se esperan? *</label>
+                <textarea id="refaccionesEsperadasCambio" rows="2" placeholder="Ej. Compresor TK, filtro secador, kit de sellos..." style="width:100%; padding:8px; border-radius:8px;"></textarea>
+            </div>
+            <div class="grid-2">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>Fecha en que se pidieron *</label>
+                    <input type="date" id="fechaPedidoRefaccionesCambio" style="width:100%; padding:8px; border-radius:8px;">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>Fecha prevista de llegada *</label>
+                    <input type="date" id="fechaEstimadaRefaccionesCambio" style="width:100%; padding:8px; border-radius:8px;">
+                </div>
+            </div>
+            <small style="color:#666; font-size:11px; display:block; margin-top:6px;">Visible para todos en el Kanban y en el detalle de la unidad.</small>
         </div>
 
         <div class="form-group">
@@ -2779,6 +2820,19 @@
         return dias + ' días';
     }
 
+    function textoDiasEtaRefacciones(u) {
+        const eta = normalizarFechaISO(u.fecha_estimada_refacciones);
+        if (!eta) return '';
+        const hoy = fechaHoyISO();
+        const d0 = new Date(hoy + 'T12:00:00');
+        const d1 = new Date(eta + 'T12:00:00');
+        const diff = Math.round((d1 - d0) / (24 * 60 * 60 * 1000));
+        if (diff > 1) return ` · <strong style="color:#b45309;">Llegan en ${diff} días</strong>`;
+        if (diff === 1) return ` · <strong style="color:#b45309;">Llegan mañana</strong>`;
+        if (diff === 0) return ` · <strong style="color:#28a745;">Llegan hoy</strong>`;
+        return ` · <strong style="color:#dc3545;">Retraso ${Math.abs(diff)} día(s)</strong>`;
+    }
+
     // Formatea milisegundos a texto legible (ej: "2d 5h 30m")
     function formatearDuracion(ms) {
         if (ms < 0 || isNaN(ms)) return '—';
@@ -2934,6 +2988,13 @@
                                </span>`}
                         <span style="font-size:10px; color:#999;">${u.problema ? u.problema.substring(0,25)+'...' : ''}</span>
                     </div>
+                    ${u.estatus === 'Espera de refacciones' ? `
+                    <div style="margin-top:6px; padding:6px 8px; background:#fff4e5; border-radius:8px; font-size:11px; color:#7a3e00; line-height:1.35;">
+                        <strong>🛒 Refacciones:</strong> ${(u.refacciones_esperadas || 'Sin detalle').toString().substring(0,80)}${(u.refacciones_esperadas||'').length>80?'…':''}<br>
+                        📦 Pedido: ${formatearFecha(u.fecha_pedido_refacciones) || '—'} ·
+                        🚚 ETA: ${formatearFecha(u.fecha_estimada_refacciones) || '—'}
+                        ${textoDiasEtaRefacciones(u)}
+                    </div>` : ''}
                     ${!modoCliente ? `
                         <div style="margin-top:4px; display:flex; gap:4px; flex-wrap:wrap;" onclick="event.stopPropagation()">
                             <button onclick="abrirModalEditar(${u.id})" class="btn-accion" style="flex:1;">✏️ Editar</button>
@@ -3195,6 +3256,16 @@
                 <div class="label">¿Requiere refacciones?</div>
                 <div class="valor">${u.requiere_refacciones === 'si' ? 'Sí' : (u.requiere_refacciones === 'no' ? 'No' : '—')}</div>
             </div>
+            ${u.estatus === 'Espera de refacciones' || u.refacciones_esperadas ? `
+            <div class="detalle-item full" style="grid-column:1/-1; background:#fff4e5; border-radius:10px; padding:10px;">
+                <div class="label">🛒 Refacciones en espera</div>
+                <div class="valor" style="margin-top:4px;">
+                    <div><strong>Piezas:</strong> ${u.refacciones_esperadas || '—'}</div>
+                    <div style="margin-top:4px;"><strong>Pedido:</strong> ${formatearFecha(u.fecha_pedido_refacciones) || '—'}
+                     · <strong>ETA:</strong> ${formatearFecha(u.fecha_estimada_refacciones) || '—'}
+                     ${textoDiasEtaRefacciones(u).replace(/^ · /, ' · ')}</div>
+                </div>
+            </div>` : ''}
             <div class="detalle-item">
                 <div class="label">Fecha de Llegada</div>
                 <div class="valor">${formatearFecha(u.fecha_llegada)}</div>
@@ -3632,12 +3703,20 @@
         document.getElementById('nombrePersonalizadoContainer').style.display = 'none';
         const boxRef = document.getElementById('boxRequiereRefacciones');
         const boxMot = document.getElementById('boxMotivoRetorno');
+        const boxDet = document.getElementById('boxDetalleRefacciones');
         if (boxRef) boxRef.style.display = 'none';
         if (boxMot) boxMot.style.display = 'none';
+        if (boxDet) boxDet.style.display = 'none';
         const selRef = document.getElementById('requiereRefaccionesCambio');
         const selMot = document.getElementById('motivoRetornoCambio');
         if (selRef) selRef.value = '';
         if (selMot) selMot.value = '';
+        const taRef = document.getElementById('refaccionesEsperadasCambio');
+        const fpRef = document.getElementById('fechaPedidoRefaccionesCambio');
+        const feRef = document.getElementById('fechaEstimadaRefaccionesCambio');
+        if (taRef) taRef.value = '';
+        if (fpRef) fpRef.value = '';
+        if (feRef) feRef.value = '';
 
         // Área fija de la sesión (ya no pide clave cada vez)
         const selArea = document.getElementById('areaCambio');
@@ -3715,6 +3794,30 @@
                 return;
             }
             requiereRef = 'si';
+        }
+
+        // Datos de refacciones obligatorios al pasar a Espera de refacciones
+        let refaccionesEsperadas = '';
+        let fechaPedidoRef = '';
+        let fechaEstimadaRef = '';
+        if (nuevoEstatus === 'Espera de refacciones') {
+            refaccionesEsperadas = (document.getElementById('refaccionesEsperadasCambio')?.value || '').trim();
+            fechaPedidoRef = normalizarFechaISO(document.getElementById('fechaPedidoRefaccionesCambio')?.value || '') || '';
+            fechaEstimadaRef = normalizarFechaISO(document.getElementById('fechaEstimadaRefaccionesCambio')?.value || '') || '';
+            if (!refaccionesEsperadas) {
+                alert('⚠️ Indica qué refacciones se están esperando.');
+                return;
+            }
+            if (!fechaPedidoRef) {
+                alert('⚠️ Indica la fecha en que se pidieron las piezas.');
+                return;
+            }
+            if (!fechaEstimadaRef) {
+                alert('⚠️ Indica la fecha prevista de llegada de las piezas.');
+                return;
+            }
+            comentario = (comentario ? comentario + ' · ' : '') + 'Refacciones: ' + refaccionesEsperadas +
+                ' · Pedido: ' + fechaPedidoRef + ' · ETA: ' + fechaEstimadaRef;
         }
         if (estatusAnterior === 'Cotizando' && nuevoEstatus === 'Reparando') {
             if (requiereRef === 'si') {
@@ -3832,6 +3935,12 @@
         }
         if (datosReparador) {
             datos.reparador = datosReparador;
+        }
+        if (nuevoEstatus === 'Espera de refacciones') {
+            datos.refacciones_esperadas = refaccionesEsperadas;
+            datos.fecha_pedido_refacciones = fechaPedidoRef;
+            datos.fecha_estimada_refacciones = fechaEstimadaRef;
+            datos.requiere_refacciones = 'si';
         }
 
         // Al pasar a Agenda: pedir fecha de llegada programada si falta
@@ -4019,6 +4128,21 @@
         const preguntaMot = (u.estatus === 'Reparando' && nuevo === 'Cotizando');
         boxMot.style.display = preguntaMot ? 'block' : 'none';
 
+        // Detalle de refacciones al pasar a Espera de refacciones
+        const boxDet = document.getElementById('boxDetalleRefacciones');
+        if (boxDet) {
+            const esEspera = (nuevo === 'Espera de refacciones');
+            boxDet.style.display = esEspera ? 'block' : 'none';
+            if (esEspera) {
+                const ta = document.getElementById('refaccionesEsperadasCambio');
+                const fp = document.getElementById('fechaPedidoRefaccionesCambio');
+                const fe = document.getElementById('fechaEstimadaRefaccionesCambio');
+                if (ta && !ta.value) ta.value = u.refacciones_esperadas || '';
+                if (fp && !fp.value) fp.value = u.fecha_pedido_refacciones || fechaHoyISO();
+                if (fe && !fe.value) fe.value = u.fecha_estimada_refacciones || '';
+            }
+        }
+
         // Actualizar ayuda de permisos/faltantes
         const ayuda = document.getElementById('ayudaPermisos');
         if (ayuda && nuevo) {
@@ -4054,6 +4178,9 @@
         const def = {
             retraso: true,
             diasAviso: 3,
+            diasEstatus: 3,
+            refacciones: true,
+            diasAntesEta: 1,
             diagnostico: true,
             cambios: true,
             navegador: false
@@ -4069,6 +4196,9 @@
         const cfg = {
             retraso: document.getElementById('cfgNotifRetraso').checked,
             diasAviso: parseInt(document.getElementById('cfgDiasAviso').value, 10) || 3,
+            diasEstatus: parseInt((document.getElementById('cfgDiasEstatus') || {}).value, 10) || 3,
+            refacciones: document.getElementById('cfgNotifRefacciones') ? document.getElementById('cfgNotifRefacciones').checked : true,
+            diasAntesEta: parseInt((document.getElementById('cfgDiasAntesEta') || {}).value, 10) || 0,
             diagnostico: document.getElementById('cfgNotifDiagnostico').checked,
             cambios: document.getElementById('cfgNotifCambios').checked,
             navegador: document.getElementById('cfgNotifNavegador').checked
@@ -4083,6 +4213,9 @@
         if (!el('cfgNotifRetraso')) return;
         el('cfgNotifRetraso').checked = cfg.retraso !== false;
         el('cfgDiasAviso').value = String(cfg.diasAviso || 3);
+        if (el('cfgDiasEstatus')) el('cfgDiasEstatus').value = String(cfg.diasEstatus || 3);
+        if (el('cfgNotifRefacciones')) el('cfgNotifRefacciones').checked = cfg.refacciones !== false;
+        if (el('cfgDiasAntesEta')) el('cfgDiasAntesEta').value = String(cfg.diasAntesEta ?? 1);
         el('cfgNotifDiagnostico').checked = cfg.diagnostico !== false;
         el('cfgNotifCambios').checked = cfg.cambios !== false;
         el('cfgNotifNavegador').checked = !!cfg.navegador || (typeof Notification !== 'undefined' && Notification.permission === 'granted');
@@ -4731,6 +4864,9 @@
             });
         }
 
+        const umbralEstatus = cfg.diasEstatus || umbral;
+        const diasAntesEta = cfg.diasAntesEta ?? 1;
+
         activas.forEach(u => {
             if (u.estatus === 'Agenda') return; // no cuentan días en taller
             const dias = diasEnTaller(u);
@@ -4738,22 +4874,61 @@
             // Cada área solo ve unidades de las que es responsable (Gerencia ve todo)
             if (!notifRelevanteParaArea(responsable, areaSesion)) return;
 
-            // Tiempo en el estatus actual (más útil que solo días totales)
+            // Tiempo en el estatus actual
             const tiempos = calcularTiemposHistorial(u.historial || []);
             const actual = tiempos.length ? tiempos[tiempos.length - 1] : null;
             const diasEnEstatusActual = actual ? Math.floor((actual.duracionMs || 0) / (24 * 60 * 60 * 1000)) : dias;
 
-            if (cfg.retraso !== false && (dias >= umbral || diasEnEstatusActual >= umbral)) {
-                notifs.push({
-                    tipo: (dias >= 5 || diasEnEstatusActual >= 5) ? 'urgente' : 'aviso',
-                    titulo: `⏱️ ${u.no_unidad || 'Sin número'} — ${diasEnEstatusActual}d en ${u.estatus}`,
-                    detalle: `${u.cliente || '—'} · Total taller: ${dias}d · Tu área: ${responsable}`,
-                    unidadId: u.id
-                });
+            if (cfg.retraso !== false) {
+                // Retraso por días totales en taller
+                if (dias >= umbral) {
+                    notifs.push({
+                        tipo: dias >= 5 ? 'urgente' : 'aviso',
+                        titulo: `⏱️ Retraso taller: ${u.no_unidad || 'Sin número'} — ${dias}d`,
+                        detalle: `${u.cliente || '—'} · Estatus: ${u.estatus} · Área: ${responsable}`,
+                        unidadId: u.id
+                    });
+                }
+                // Retraso por días en el mismo estatus
+                if (diasEnEstatusActual >= umbralEstatus) {
+                    notifs.push({
+                        tipo: diasEnEstatusActual >= 5 ? 'urgente' : 'aviso',
+                        titulo: `📌 Estancada: ${u.no_unidad || 'Sin número'} — ${diasEnEstatusActual}d en ${u.estatus}`,
+                        detalle: `${u.cliente || '—'} · Responsable: ${responsable}`,
+                        unidadId: u.id
+                    });
+                }
             }
 
-            // Diagnóstico pendiente: relevante para Mantenimiento y Ventas (y Gerencia)
-            if (cfg.diagnostico !== false && u.estatus === 'Cotizando' && !(u.diagnostico_detalle || '').toString().trim()) {
+            // Retraso de refacciones (ETA)
+            if (cfg.refacciones !== false && u.estatus === 'Espera de refacciones') {
+                const eta = normalizarFechaISO(u.fecha_estimada_refacciones);
+                if (eta) {
+                    const hoy = fechaHoyISO();
+                    const d0 = new Date(hoy + 'T12:00:00');
+                    const d1 = new Date(eta + 'T12:00:00');
+                    const diff = Math.round((d1 - d0) / (24 * 60 * 60 * 1000));
+                    // Solo Compras/Gerencia ven estas (responsable ya filtrado = Compras)
+                    if (diff < 0) {
+                        notifs.push({
+                            tipo: 'urgente',
+                            titulo: `🛒 Refacciones vencidas: ${u.no_unidad || 'Sin número'}`,
+                            detalle: `ETA era ${formatearFecha(eta)} · Retraso ${Math.abs(diff)} día(s) · ${(u.refacciones_esperadas || '').toString().substring(0, 60)}`,
+                            unidadId: u.id
+                        });
+                    } else if (diff <= diasAntesEta) {
+                        notifs.push({
+                            tipo: diff === 0 ? 'urgente' : 'aviso',
+                            titulo: `🛒 Refacciones ${diff === 0 ? 'llegan hoy' : 'próximas'}: ${u.no_unidad || 'Sin número'}`,
+                            detalle: `ETA ${formatearFecha(eta)} · ${(u.refacciones_esperadas || '').toString().substring(0, 60)}`,
+                            unidadId: u.id
+                        });
+                    }
+                }
+            }
+
+            // Diagnóstico pendiente
+            if (cfg.diagnostico !== false && u.estatus === 'Cotizando' && !(u.diagnostico_detalle || '').toString().trim() && !u.diagnostico_pdf_url) {
                 if (!areaSesion || areaSesion === 'Gerencia' || areaSesion === 'Mantenimiento' || areaSesion === 'Ventas') {
                     notifs.push({
                         tipo: 'aviso',
