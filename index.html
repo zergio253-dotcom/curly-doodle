@@ -821,8 +821,15 @@
 <!-- ===== LOGIN DEPARTAMENTO ===== -->
 <div class="login-overlay" id="loginOverlay">
     <div class="login-box">
-        <h2>❄️ Thermo King del Noroeste</h2>
-        <p class="sub">Ingresa tu departamento y clave para continuar</p>
+        <h2>❄️ Thermo King</h2>
+        <p class="sub">Elige taller, departamento y clave</p>
+        <div class="form-group">
+            <label>Taller *</label>
+            <select id="loginTaller" onchange="actualizarPersonasLogin()">
+                <option value="Noroeste">🏭 Noroeste</option>
+                <option value="Juarez">🏭 Juárez</option>
+            </select>
+        </div>
         <div class="form-group">
             <label>Departamento</label>
             <select id="loginArea" onchange="actualizarPersonasLogin()">
@@ -1592,21 +1599,53 @@
     // Bucket: "diagnosticos" (crearlo en Supabase → Storage, público)
     const BUCKET_DIAGNOSTICOS = 'diagnosticos';
 
-    // ===== PERSONAS POR ÁREA =====
-    const personasPorArea = {
-        'Gerencia': ['Luis Solís'],
-        // Orden: Máster → Profesional → Aprendiz
-        'Mantenimiento': ['Marcos Sifuentes', 'Sergio Holguín', 'Miguel Arredondo', 'Alfredo'],
-        'Ventas': ['Romina', 'Jesús'],
-        'Compras': ['Alfredo']
+    // ===== TALLERES Y PERSONAS =====
+    const TALLER_DEFAULT = 'Noroeste';
+    const nombresTaller = {
+        'Noroeste': 'Thermo King del Noroeste',
+        'Juarez': 'Thermo King Juárez'
     };
 
-    // Jerarquía de técnicos de Mantenimiento
+    // Personas por taller y área
+    const personasPorTaller = {
+        'Noroeste': {
+            'Gerencia': ['Luis Solís'],
+            'Mantenimiento': ['Marcos Sifuentes', 'Sergio Holguín', 'Miguel Arredondo', 'Alfredo'],
+            'Ventas': ['Romina', 'Jesús'],
+            'Compras': ['Alfredo']
+        },
+        'Juarez': {
+            // Luis Solís gerente de ambas; Abel lleva el taller con todos los permisos
+            'Gerencia': ['Luis Solís'],
+            'Mantenimiento': ['Abel'],
+            'Ventas': ['Romina', 'Jesús'],
+            'Compras': ['Abel']
+        }
+    };
+
+    // Compatibilidad: personasPorArea del taller de la sesión
+    function getPersonasPorArea(taller) {
+        const t = taller || (sesion && sesion.taller) || TALLER_DEFAULT;
+        return personasPorTaller[t] || personasPorTaller[TALLER_DEFAULT];
+    }
+    // Alias dinámico usado en muchas partes del código
+    Object.defineProperty(window, 'personasPorAreaProxy', { get: () => getPersonasPorArea() });
+
+    // Gerencia y Abel (Juárez) tienen control total del flujo
+    function tienePermisoTotal() {
+        if (!sesion) return false;
+        if (sesion.area === 'Gerencia') return true;
+        if (sesion.persona === 'Abel') return true;
+        return false;
+    }
+
+    // Jerarquía de técnicos (todos los talleres)
     const jerarquiaTecnicos = {
         'Marcos Sifuentes': 'Máster',
         'Sergio Holguín': 'Profesional',
         'Miguel Arredondo': 'Profesional',
-        'Alfredo': 'Aprendiz'
+        'Alfredo': 'Aprendiz',
+        'Abel': 'Profesional'
     };
     const ordenJerarquia = { 'Máster': 1, 'Profesional': 2, 'Aprendiz': 3 };
 
@@ -1621,8 +1660,9 @@
         return `${icono} ${nombre} · ${nivel}`;
     }
 
-    function listaTecnicosOrdenada() {
-        const lista = (personasPorArea['Mantenimiento'] || []).slice();
+    function listaTecnicosOrdenada(taller) {
+        const pa = getPersonasPorArea(taller);
+        const lista = (pa['Mantenimiento'] || []).slice();
         lista.sort((a, b) => {
             const na = ordenJerarquia[nivelTecnico(a)] || 99;
             const nb = ordenJerarquia[nivelTecnico(b)] || 99;
@@ -1636,10 +1676,15 @@
         return listaTecnicosOrdenada().map(p => etiquetaTecnico(p)).join('\n');
     }
 
+    function getTallerActual() {
+        return (sesion && sesion.taller) || TALLER_DEFAULT;
+    }
+
     function llenarSelectPersonas(selectId, area, valorActual) {
         const sel = document.getElementById(selectId);
         if (!sel) return;
-        const personas = area === 'Mantenimiento' ? listaTecnicosOrdenada() : (personasPorArea[area] || []);
+        const pa = getPersonasPorArea();
+        const personas = area === 'Mantenimiento' ? listaTecnicosOrdenada() : (pa[area] || []);
         const actual = (valorActual || '').trim();
         let html = '<option value="">Selecciona...</option>';
         personas.forEach(p => {
@@ -1722,18 +1767,16 @@
         const boxRep = document.getElementById('boxRepNueva');
         const boxDiagRep = document.getElementById('boxDiagRepNueva');
 
-        // Asesor: al recibir (Recibida o Agenda→luego se recibe). En alta: visible si Recibida y Ventas/Gerencia
-        const puedeAsesor = (area === 'Ventas' || area === 'Gerencia');
+        // Asesor: al recibir. Abel/Gerencia/Ventas
+        const puedeAsesor = (area === 'Ventas' || area === 'Gerencia' || tienePermisoTotal());
         if (boxAsesor) {
             boxAsesor.style.display = (est === 'Recibida' && puedeAsesor) ? 'block' : (est === 'Recibida' ? 'block' : 'none');
         }
 
-        // Diagnosticador solo si nace en Diagnosticando y Mantenimiento/Gerencia
-        const puedeDiag = (area === 'Mantenimiento' || area === 'Gerencia');
+        const puedeDiag = (area === 'Mantenimiento' || area === 'Gerencia' || tienePermisoTotal());
         if (boxDiag) boxDiag.style.display = (est === 'Diagnosticando' && puedeDiag) ? 'block' : 'none';
 
-        // Reparador solo si nace en Reparando y Mantenimiento/Gerencia
-        const puedeRep = (area === 'Mantenimiento' || area === 'Gerencia');
+        const puedeRep = (area === 'Mantenimiento' || area === 'Gerencia' || tienePermisoTotal());
         if (boxRep) boxRep.style.display = (est === 'Reparando' && puedeRep) ? 'block' : 'none';
 
         if (boxDiagRep) {
@@ -1745,35 +1788,39 @@
     function aplicarReglasCamposEditar(u) {
         const area = sesion ? sesion.area : '';
         const est = u.estatus || '';
+        const full = tienePermisoTotal();
 
-        // Asesor: solo Ventas/Gerencia y solo si aún no está asignado
+        // Asesor: Ventas/Gerencia/Abel; si ya está y no es permiso total, bloqueado
         const asesorActual = (u.asesor_ventas || '').trim();
-        const puedeAsignarAsesor = !asesorActual && (area === 'Ventas' || area === 'Gerencia');
-        if (puedeAsignarAsesor) {
-            llenarSelectPersonas('asesorVentasEditar', 'Ventas', '');
-            setCampoPersonaEditable('asesorVentasEditar', true, '', 'hintAsesorEditar', 'Solo Ventas o Gerencia. Una vez guardado no se puede cambiar.');
+        const puedeAsignarAsesor = (!asesorActual && (area === 'Ventas' || area === 'Gerencia' || full)) || (full && true);
+        if (puedeAsignarAsesor && (!asesorActual || full)) {
+            llenarSelectPersonas('asesorVentasEditar', 'Ventas', asesorActual || '');
+            setCampoPersonaEditable('asesorVentasEditar', true, '', 'hintAsesorEditar',
+                full ? 'Permiso total: puedes asignar o corregir asesor.' : 'Solo Ventas o Gerencia. Una vez guardado no se puede cambiar.');
         } else {
             setCampoPersonaEditable('asesorVentasEditar', false, asesorActual, 'hintAsesorEditar',
                 asesorActual ? 'Asignado al recibir. No se puede modificar.' : 'Solo Ventas o Gerencia pueden asignarlo al recibir la unidad.');
         }
 
-        // Diagnosticador: solo en Diagnosticando, Mantenimiento o Gerencia
+        // Diagnosticador
         const diagActual = (u.diagnosticador || '').trim();
-        const puedeDiag = est === 'Diagnosticando' && (area === 'Mantenimiento' || area === 'Gerencia');
+        const puedeDiag = full || (est === 'Diagnosticando' && (area === 'Mantenimiento' || area === 'Gerencia'));
         if (puedeDiag) {
             llenarSelectPersonas('diagnosticadorEditar', 'Mantenimiento', diagActual);
-            setCampoPersonaEditable('diagnosticadorEditar', true, '', 'hintDiagEditar', 'Solo se elige o cambia en estatus Diagnosticando (Mantenimiento / Gerencia).');
+            setCampoPersonaEditable('diagnosticadorEditar', true, '', 'hintDiagEditar',
+                full ? 'Permiso total: puedes asignar diagnosticador.' : 'Solo se elige o cambia en Diagnosticando.');
         } else {
             setCampoPersonaEditable('diagnosticadorEditar', false, diagActual, 'hintDiagEditar',
                 est === 'Diagnosticando' ? 'Solo Mantenimiento o Gerencia pueden asignarlo aquí.' : 'Solo se asigna en Diagnosticando.');
         }
 
-        // Reparador: solo en Reparando, Mantenimiento (o Gerencia por control)
+        // Reparador
         const repActual = (u.reparador || '').trim();
-        const puedeRep = est === 'Reparando' && (area === 'Mantenimiento' || area === 'Gerencia');
+        const puedeRep = full || (est === 'Reparando' && (area === 'Mantenimiento' || area === 'Gerencia'));
         if (puedeRep) {
             llenarSelectPersonas('reparadorEditar', 'Mantenimiento', repActual);
-            setCampoPersonaEditable('reparadorEditar', true, '', 'hintRepEditar', 'Solo se elige o cambia en estatus Reparando (Mantenimiento).');
+            setCampoPersonaEditable('reparadorEditar', true, '', 'hintRepEditar',
+                full ? 'Permiso total: puedes asignar reparador.' : 'Solo se elige o cambia en Reparando.');
         } else {
             setCampoPersonaEditable('reparadorEditar', false, repActual, 'hintRepEditar',
                 est === 'Reparando' ? 'Solo Mantenimiento o Gerencia pueden asignarlo aquí.' : 'Solo se asigna en Reparando.');
@@ -1818,9 +1865,11 @@
             container.innerHTML = '';
             return;
         }
-        const personas = area === 'Mantenimiento' ? listaTecnicosOrdenada() : (personasPorArea[area] || []);
+        const taller = (document.getElementById('loginTaller') || {}).value || TALLER_DEFAULT;
+        const pa = getPersonasPorArea(taller);
+        const personas = area === 'Mantenimiento' ? listaTecnicosOrdenada(taller) : (pa[area] || []);
         if (personas.length === 0) {
-            container.innerHTML = '<span style="color:#888;font-size:13px;">Sin personas</span>';
+            container.innerHTML = '<span style="color:#888;font-size:13px;">Sin personas en este taller</span>';
             return;
         }
         container.innerHTML = personas.map((p, i) => `
@@ -1858,7 +1907,7 @@
             show('btnTrabajoHoy', true);
             show('btnProduccion', true);
             show('btnInventario', true);
-            show('btnReporteDiario', sesion.area === 'Gerencia');
+            show('btnReporteDiario', sesion.area === 'Gerencia' || sesion.persona === 'Abel');
             show('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
             show('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
             show('btnMensaje', sesion.area !== 'Cliente');
@@ -1869,6 +1918,7 @@
     }
 
     function iniciarSesion() {
+        const taller = (document.getElementById('loginTaller') || {}).value || TALLER_DEFAULT;
         const area = document.getElementById('loginArea').value;
         const clave = document.getElementById('loginClave').value.trim();
         const err = document.getElementById('loginError');
@@ -1880,10 +1930,10 @@
             return;
         }
 
-        // Cliente: sin clave, solo vista
+        // Cliente: sin clave, solo vista del taller elegido
         if (area === 'Cliente') {
             const recordar = document.getElementById('loginRecordar').checked;
-            guardarSesion({ area: 'Cliente', persona: 'Cliente' }, recordar);
+            guardarSesion({ area: 'Cliente', persona: 'Cliente', taller }, recordar);
             document.getElementById('loginOverlay').classList.add('oculto');
             mostrarInfoSesion();
             aplicarModoClienteUI(true);
@@ -1898,6 +1948,7 @@
             err.style.display = 'block';
             return;
         }
+        // Clave de mantenimiento 117 sirve en ambos talleres (Abel en Juárez)
         if (clave !== clavesPorArea[area]) {
             err.textContent = 'Clave incorrecta';
             err.style.display = 'block';
@@ -1907,7 +1958,7 @@
         }
 
         const recordar = document.getElementById('loginRecordar').checked;
-        guardarSesion({ area, persona }, recordar);
+        guardarSesion({ area, persona, taller }, recordar);
         document.getElementById('loginOverlay').classList.add('oculto');
         aplicarModoClienteUI(false);
         mostrarInfoSesion();
@@ -1950,10 +2001,16 @@
         if (!sesion) return;
         const el = document.getElementById('sesionInfo');
         el.style.display = 'inline-block';
+        const tallerTxt = sesion.taller === 'Juarez' ? 'Juárez' : (sesion.taller || 'Noroeste');
         el.textContent = sesion.area === 'Cliente'
-            ? '👁️ Cliente · solo lectura'
-            : `👤 ${sesion.persona} · ${sesion.area}`;
+            ? `👁️ Cliente · ${tallerTxt} · solo lectura`
+            : `👤 ${sesion.persona} · ${sesion.area} · ${tallerTxt}`;
         el.title = el.textContent;
+        const h1 = document.querySelector('.header h1');
+        if (h1) {
+            const nombre = nombresTaller[sesion.taller] || nombresTaller[TALLER_DEFAULT];
+            h1.innerHTML = `❄️ ${nombre} <small>${tallerTxt}</small>`;
+        }
         el.style.cursor = 'pointer';
         if (!el.dataset.eggBound) {
             el.dataset.eggBound = '1';
@@ -1975,7 +2032,7 @@
             const el = document.getElementById(id);
             if (el) el.style.display = visible ? 'block' : 'none';
         };
-        showMenu('btnReporteDiario', sesion.area === 'Gerencia');
+        showMenu('btnReporteDiario', sesion.area === 'Gerencia' || (sesion && sesion.persona === 'Abel'));
         showMenu('btnProduccion', true);
         showMenu('btnInventario', true);
         showMenu('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
@@ -2236,7 +2293,12 @@
             
             if (error) throw error;
             
-            unidades = data || [];
+            const taller = getTallerActual();
+            // Unidades del taller actual (sin campo taller = Noroeste por compatibilidad)
+            unidades = (data || []).filter(u => {
+                const t = (u.taller || TALLER_DEFAULT);
+                return t === taller;
+            });
             await cargarMensajes();
             await cargarTrabajoHoy();
             await cargarInventario(false);
@@ -2245,7 +2307,7 @@
             actualizarStats();
             actualizarNotificaciones();
             notificarUrgentesAlCargar();
-            document.getElementById('statusConexion').innerHTML = '✅ Conectado';
+            document.getElementById('statusConexion').innerHTML = '✅ ' + (nombresTaller[taller] || taller);
             document.getElementById('statusConexion').style.background = 'rgba(40, 167, 69, 0.3)';
         } catch (error) {
             console.error('Error al cargar datos:', error);
@@ -2354,8 +2416,8 @@
 
     async function guardarPiezaInv() {
         if (!sesion) return;
-        if (sesion.area !== 'Compras' && sesion.area !== 'Gerencia') {
-            alert('Solo Compras o Gerencia pueden crear/editar el catálogo.');
+        if (sesion.area !== 'Compras' && sesion.area !== 'Gerencia' && sesion.persona !== 'Abel') {
+            alert('Solo Compras, Gerencia o encargado (Abel) pueden crear/editar el catálogo.');
             return;
         }
         const id = document.getElementById('invEditId').value;
@@ -2580,6 +2642,7 @@
 
     async function agregarUnidad(nuevaUnidad) {
         try {
+            if (!nuevaUnidad.taller) nuevaUnidad.taller = getTallerActual();
             const { data, error } = await supabaseClient
                 .from('unidades')
                 .insert([nuevaUnidad])
@@ -4233,21 +4296,21 @@
         let diagnosticador = '';
         let reparador = '';
         if (estatusInicial === 'Recibida') {
-            if (sesion.area === 'Ventas' || sesion.area === 'Gerencia') {
+            if (sesion.area === 'Ventas' || sesion.area === 'Gerencia' || tienePermisoTotal()) {
                 asesor = valorPersonaSelect('asesorVentasNueva');
                 if (!asesor) {
                     alert('⚠️ Al recibir la unidad debes elegir el Asesor de ventas.');
                     return;
                 }
             } else {
-                alert('⚠️ Solo Ventas o Gerencia pueden registrar una unidad en Recibida (asignando asesor).');
+                alert('⚠️ Solo Ventas, Gerencia o encargado pueden registrar una unidad en Recibida.');
                 return;
             }
         }
-        if (estatusInicial === 'Diagnosticando' && (sesion.area === 'Mantenimiento' || sesion.area === 'Gerencia')) {
+        if (estatusInicial === 'Diagnosticando' && (sesion.area === 'Mantenimiento' || sesion.area === 'Gerencia' || tienePermisoTotal())) {
             diagnosticador = valorPersonaSelect('diagnosticadorNueva');
         }
-        if (estatusInicial === 'Reparando' && (sesion.area === 'Mantenimiento' || sesion.area === 'Gerencia')) {
+        if (estatusInicial === 'Reparando' && (sesion.area === 'Mantenimiento' || sesion.area === 'Gerencia' || tienePermisoTotal())) {
             reparador = valorPersonaSelect('reparadorNueva');
         }
 
@@ -4404,7 +4467,7 @@
         const area = document.getElementById('areaCambio').value;
         const container = document.getElementById('personasList');
         const personalizadoContainer = document.getElementById('nombrePersonalizadoContainer');
-        const personas = personasPorArea[area] || [];
+        const personas = (getPersonasPorArea()[area] || []);
         
         personalizadoContainer.style.display = 'none';
         
@@ -4458,10 +4521,12 @@
 
         let opcionesPermitidas = [];
 
-        if (area === 'Gerencia') {
-            // Gerencia puede mover a cualquier estatus
+        if (area === 'Gerencia' || (sesion && sesion.persona === 'Abel')) {
+            // Gerencia y Abel: cualquier estatus
             opcionesPermitidas = Object.keys(nombresEstatus);
-            ayuda.textContent = '👔 Gerencia puede cambiar a cualquier estatus.';
+            ayuda.textContent = sesion && sesion.persona === 'Abel'
+                ? '🔧 Abel puede cambiar a cualquier estatus (encargado Juárez).'
+                : '👔 Gerencia puede cambiar a cualquier estatus.';
         } else {
             const permisosArea = permisosCambio[area];
             if (permisosArea && estatusActual && permisosArea[estatusActual]) {
@@ -4564,7 +4629,7 @@
         const u = unidades.find(item => item.id === id);
         if (!u) return;
 
-        if (area !== 'Gerencia') {
+        if (area !== 'Gerencia' && !(sesion && sesion.persona === 'Abel')) {
             const permisosArea = permisosCambio[area];
             const permitidos = permisosArea && permisosArea[u.estatus] ? permisosArea[u.estatus] : [];
             if (!permitidos.includes(nuevoEstatus)) {
@@ -4655,7 +4720,7 @@
                 alert('⚠️ Solo Ventas o Gerencia pueden recibir la unidad y asignar el Asesor de ventas.');
                 return;
             }
-            const nombres = (personasPorArea['Ventas'] || []).join('\n');
+            const nombres = (getPersonasPorArea()['Ventas'] || []).join('\n');
             const elegido = prompt('💰 Elige el Asesor de ventas (escribe el nombre exacto):\n\n' + nombres, sesion.persona || '');
             if (!elegido || !elegido.trim()) {
                 alert('⚠️ Debes asignar el Asesor de ventas al recibir.');
@@ -5653,8 +5718,9 @@
 
     function listaTodasLasPersonas() {
         const lista = [];
-        Object.keys(personasPorArea).forEach(area => {
-            (personasPorArea[area] || []).forEach(p => {
+        const pa = getPersonasPorArea();
+        Object.keys(pa).forEach(area => {
+            (pa[area] || []).forEach(p => {
                 lista.push({ area, persona: p });
             });
         });
@@ -6089,7 +6155,7 @@
     function actualizarPersonasNota() {
         const area = document.getElementById('areaNota').value;
         const container = document.getElementById('personasListNota');
-        const personas = personasPorArea[area] || [];
+        const personas = (getPersonasPorArea()[area] || []);
         if (!area) {
             container.innerHTML = '';
             return;
@@ -6699,6 +6765,7 @@
     
     // Sesión: si ya hay login, entrar; si no, esperar al login
     sesion = getSesionGuardada();
+    if (sesion && !sesion.taller) sesion.taller = TALLER_DEFAULT;
     const sesionValida = sesion && sesion.area && sesion.persona &&
         (sesion.area === 'Cliente' || clavesPorArea[sesion.area]);
     if (sesionValida) {
