@@ -1099,9 +1099,27 @@
         </div>
         <div id="adminPanelBox" style="display:none;">
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                <button type="button" class="btn-modal secondary" id="tabAdminTalleres" onclick="mostrarTabAdmin('talleres')">🏭 Talleres</button>
                 <button type="button" class="btn-modal secondary" id="tabAdminUsuarios" onclick="mostrarTabAdmin('usuarios')">👥 Usuarios</button>
                 <button type="button" class="btn-modal secondary" id="tabAdminPermisos" onclick="mostrarTabAdmin('permisos')">🔑 Permisos de estatus</button>
                 <button type="button" class="btn-modal secondary" id="tabAdminClaves" onclick="mostrarTabAdmin('claves')">🔢 Claves de área</button>
+            </div>
+            <!-- Talleres -->
+            <div id="adminTabTalleres" style="display:none;">
+                <p style="font-size:12px; color:#666; margin-bottom:8px;">Cada taller tiene sus unidades, usuarios e inventario propios. El <strong>código interno</strong> no debe cambiarse si ya hay datos guardados.</p>
+                <div style="padding:10px; background:var(--detalle-item,#f8f9fa); border-radius:10px; margin-bottom:12px;">
+                    <input type="hidden" id="adminTallerEditId">
+                    <div class="grid-2">
+                        <div class="form-group"><label>Código interno *</label><input type="text" id="adminTallerId" placeholder="Ej. Torreon"></div>
+                        <div class="form-group"><label>Etiqueta corta *</label><input type="text" id="adminTallerEtiqueta" placeholder="Ej. Torreón"></div>
+                    </div>
+                    <div class="form-group"><label>Nombre completo *</label><input type="text" id="adminTallerNombre" placeholder="Ej. Thermo King Torreón"></div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn-modal primary" onclick="guardarTallerAdmin()">💾 Guardar taller</button>
+                        <button class="btn-modal secondary" onclick="limpiarFormTallerAdmin()">Limpiar</button>
+                    </div>
+                </div>
+                <div id="adminListaTalleres" style="max-height:40vh; overflow-y:auto;"></div>
             </div>
             <!-- Usuarios -->
             <div id="adminTabUsuarios">
@@ -1705,19 +1723,47 @@
     const BUCKET_DIAGNOSTICOS = 'diagnosticos';
 
     // ===== TALLERES Y PERSONAS =====
-    const TALLER_DEFAULT = 'Noroeste'; // interno (BD); se muestra como Chihuahua
-    const nombresTaller = {
-        'Noroeste': 'Thermo King Chihuahua',
-        'Chihuahua': 'Thermo King Chihuahua',
-        'Juarez': 'Thermo King Juárez'
-    };
+    const TALLER_DEFAULT = 'Noroeste'; // interno (BD Chihuahua); no cambiar si ya hay datos
+    let listaTalleres = [
+        { id: 'Noroeste', etiqueta: 'Chihuahua', nombre: 'Thermo King Chihuahua' },
+        { id: 'Juarez', etiqueta: 'Juárez', nombre: 'Thermo King Juárez' }
+    ];
+    function getTallerDef(t) {
+        const id = t || TALLER_DEFAULT;
+        return (listaTalleres || []).find(x => x.id === id) ||
+            (listaTalleres || []).find(x => x.id === TALLER_DEFAULT) ||
+            { id: id, etiqueta: id, nombre: 'Thermo King ' + id };
+    }
     function etiquetaTaller(t) {
-        if (t === 'Juarez') return 'Juárez';
-        if (t === 'Noroeste' || t === 'Chihuahua' || !t) return 'Chihuahua';
-        return t;
+        return getTallerDef(t).etiqueta || t || 'Chihuahua';
     }
     function nombreAppTaller(t) {
-        return nombresTaller[t] || nombresTaller[TALLER_DEFAULT] || 'Thermo King Chihuahua';
+        return getTallerDef(t).nombre || ('Thermo King ' + (t || 'Chihuahua'));
+    }
+    function idsEquivalentesTaller(a, b) {
+        // Compat: piezas/unidades sin taller o Chihuahua = Noroeste
+        const norm = (x) => {
+            if (!x || x === 'Chihuahua') return TALLER_DEFAULT;
+            return x;
+        };
+        return norm(a) === norm(b);
+    }
+    function perteneceAlTallerActual(registroTaller) {
+        return idsEquivalentesTaller(registroTaller, getTallerActual());
+    }
+    function llenarSelectTalleres(selectId, valor) {
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        const v = valor || sel.value || TALLER_DEFAULT;
+        sel.innerHTML = (listaTalleres || []).map(t =>
+            `<option value="${t.id}">${t.nombre || t.etiqueta || t.id}</option>`
+        ).join('');
+        if ([...sel.options].some(o => o.value === v)) sel.value = v;
+        else if (sel.options.length) sel.selectedIndex = 0;
+    }
+    function actualizarSelectsTallerUI() {
+        llenarSelectTalleres('loginTaller');
+        llenarSelectTalleres('adminUserTaller');
     }
 
     // Personas por taller y área (se reconstruye desde listaUsuarios)
@@ -1764,7 +1810,9 @@
 
     function rebuildPersonasDesdeUsuarios() {
         const base = () => ({ 'Gerencia': [], 'Mantenimiento': [], 'Ventas': [], 'Compras': [] });
-        personasPorTaller = { 'Noroeste': base(), 'Juarez': base() };
+        personasPorTaller = {};
+        (listaTalleres || []).forEach(t => { personasPorTaller[t.id] = base(); });
+        if (!personasPorTaller[TALLER_DEFAULT]) personasPorTaller[TALLER_DEFAULT] = base();
         jerarquiaTecnicos = {};
         (listaUsuarios || []).forEach(u => {
             const t = u.taller || TALLER_DEFAULT;
@@ -2275,10 +2323,17 @@
 
     function aplicarConfigAdmin(cfg) {
         if (!cfg || typeof cfg !== 'object') return;
+        if (Array.isArray(cfg.talleres) && cfg.talleres.length) {
+            listaTalleres = cfg.talleres.map(t => ({
+                id: String(t.id || '').trim(),
+                etiqueta: (t.etiqueta || t.id || '').trim(),
+                nombre: (t.nombre || t.etiqueta || t.id || '').trim()
+            })).filter(t => t.id);
+        }
         if (Array.isArray(cfg.usuarios) && cfg.usuarios.length) {
             listaUsuarios = cfg.usuarios;
-            rebuildPersonasDesdeUsuarios();
         }
+        rebuildPersonasDesdeUsuarios();
         if (cfg.permisosCambio && typeof cfg.permisosCambio === 'object') {
             permisosCambio = cfg.permisosCambio;
             if (permisosCambio.Gerencia === undefined) permisosCambio.Gerencia = null;
@@ -2287,10 +2342,12 @@
             clavesPorArea = { ...clavesPorArea, ...cfg.clavesPorArea };
         }
         if (cfg.claveAdmin) CLAVE_ADMIN = String(cfg.claveAdmin);
+        actualizarSelectsTallerUI();
     }
 
     function obtenerConfigAdminActual() {
         return {
+            talleres: listaTalleres,
             usuarios: listaUsuarios,
             permisosCambio: permisosCambio,
             clavesPorArea: clavesPorArea,
@@ -2360,16 +2417,112 @@
         adminDesbloqueado = true;
         document.getElementById('adminLoginBox').style.display = 'none';
         document.getElementById('adminPanelBox').style.display = 'block';
-        mostrarTabAdmin('usuarios');
+        actualizarSelectsTallerUI();
+        mostrarTabAdmin('talleres');
+        renderListaTalleresAdmin();
         renderListaUsuariosAdmin();
         renderEditorPermisos();
         cargarFormClavesAdmin();
     }
 
     function mostrarTabAdmin(tab) {
+        document.getElementById('adminTabTalleres').style.display = tab === 'talleres' ? 'block' : 'none';
         document.getElementById('adminTabUsuarios').style.display = tab === 'usuarios' ? 'block' : 'none';
         document.getElementById('adminTabPermisos').style.display = tab === 'permisos' ? 'block' : 'none';
         document.getElementById('adminTabClaves').style.display = tab === 'claves' ? 'block' : 'none';
+        if (tab === 'talleres') renderListaTalleresAdmin();
+        if (tab === 'usuarios') {
+            llenarSelectTalleres('adminUserTaller');
+            renderListaUsuariosAdmin();
+        }
+    }
+
+    function limpiarFormTallerAdmin() {
+        document.getElementById('adminTallerEditId').value = '';
+        document.getElementById('adminTallerId').value = '';
+        document.getElementById('adminTallerId').disabled = false;
+        document.getElementById('adminTallerEtiqueta').value = '';
+        document.getElementById('adminTallerNombre').value = '';
+    }
+
+    function renderListaTalleresAdmin() {
+        const box = document.getElementById('adminListaTalleres');
+        if (!box) return;
+        const lista = listaTalleres || [];
+        if (!lista.length) {
+            box.innerHTML = '<p style="color:#888;">Sin talleres. Agrega el primero.</p>';
+            return;
+        }
+        box.innerHTML = lista.map(t => `
+            <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; padding:10px; margin-bottom:6px; border-radius:10px; border-left:4px solid #17a2b8; background:var(--detalle-item,#f8f9fa);">
+                <div style="flex:1; min-width:140px;">
+                    <strong>${t.nombre || t.etiqueta || t.id}</strong>
+                    <div style="font-size:12px; color:#666;">Código: <code>${t.id}</code> · Etiqueta: ${t.etiqueta || '—'}</div>
+                </div>
+                <div style="display:flex; gap:4px;">
+                    <button class="btn-accion" onclick="editarTallerAdmin('${t.id}')">✏️</button>
+                    <button class="btn-accion" style="color:#dc3545;" onclick="eliminarTallerAdmin('${t.id}')">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function editarTallerAdmin(id) {
+        const t = (listaTalleres || []).find(x => x.id === id);
+        if (!t) return;
+        document.getElementById('adminTallerEditId').value = t.id;
+        document.getElementById('adminTallerId').value = t.id;
+        document.getElementById('adminTallerId').disabled = true; // no cambiar código si ya existe
+        document.getElementById('adminTallerEtiqueta').value = t.etiqueta || '';
+        document.getElementById('adminTallerNombre').value = t.nombre || '';
+    }
+
+    function guardarTallerAdmin() {
+        if (!adminDesbloqueado) return;
+        let id = (document.getElementById('adminTallerId').value || '').trim();
+        const editId = document.getElementById('adminTallerEditId').value;
+        const etiqueta = (document.getElementById('adminTallerEtiqueta').value || '').trim();
+        const nombre = (document.getElementById('adminTallerNombre').value || '').trim();
+        if (!editId) {
+            // normalizar código: sin espacios
+            id = id.replace(/\s+/g, '');
+        } else {
+            id = editId;
+        }
+        if (!id || !etiqueta || !nombre) {
+            alert('Código, etiqueta y nombre son obligatorios.');
+            return;
+        }
+        const exists = (listaTalleres || []).some(t => t.id === id);
+        if (!editId && exists) {
+            alert('Ya existe un taller con ese código.');
+            return;
+        }
+        if (editId) {
+            listaTalleres = listaTalleres.map(t => t.id === id ? { id, etiqueta, nombre } : t);
+        } else {
+            listaTalleres.push({ id, etiqueta, nombre });
+        }
+        rebuildPersonasDesdeUsuarios();
+        actualizarSelectsTallerUI();
+        limpiarFormTallerAdmin();
+        renderListaTalleresAdmin();
+        mostrarToastApp('Taller guardado (pulsa «Guardar todo»)', '#28a745');
+    }
+
+    function eliminarTallerAdmin(id) {
+        if (!adminDesbloqueado) return;
+        if ((listaTalleres || []).length <= 1) {
+            alert('Debe quedar al menos un taller.');
+            return;
+        }
+        const usuariosEnTaller = (listaUsuarios || []).filter(u => u.taller === id).length;
+        if (!confirm('¿Eliminar el taller «' + id + '»?' + (usuariosEnTaller ? '\nHay ' + usuariosEnTaller + ' usuario(s) asignados a este taller.' : ''))) return;
+        listaTalleres = listaTalleres.filter(t => t.id !== id);
+        rebuildPersonasDesdeUsuarios();
+        actualizarSelectsTallerUI();
+        renderListaTalleresAdmin();
+        mostrarToastApp('Taller eliminado (pulsa «Guardar todo»)', '#dc3545');
     }
 
     function limpiarFormUsuarioAdmin() {
@@ -2746,12 +2899,8 @@
             
             if (error) throw error;
             
-            const taller = getTallerActual();
-            // Unidades del taller actual (sin campo taller = Noroeste por compatibilidad)
-            unidades = (data || []).filter(u => {
-                const t = (u.taller || TALLER_DEFAULT);
-                return t === taller;
-            });
+            // Unidades solo del taller de la sesión
+            unidades = (data || []).filter(u => perteneceAlTallerActual(u.taller));
             await cargarMensajes();
             await cargarTrabajoHoy();
             await cargarInventario(false);
@@ -2760,7 +2909,7 @@
             actualizarStats();
             actualizarNotificaciones();
             notificarUrgentesAlCargar();
-            document.getElementById('statusConexion').innerHTML = '✅ ' + (nombresTaller[taller] || taller);
+            document.getElementById('statusConexion').innerHTML = '✅ ' + nombreAppTaller(getTallerActual());
             document.getElementById('statusConexion').style.background = 'rgba(40, 167, 69, 0.3)';
         } catch (error) {
             console.error('Error al cargar datos:', error);
@@ -2791,6 +2940,7 @@
                 .select('*')
                 .order('nombre', { ascending: true });
             if (error) throw error;
+            // Todo el catálogo en memoria; se filtra por taller al mostrar
             inventario = data || [];
             inventarioALocal(inventario);
             if (document.getElementById('modalInventario')?.style.display === 'flex') renderInventario();
@@ -2850,12 +3000,21 @@
             const btnNueva = document.getElementById('btnNuevaPiezaInv');
             const hint = document.getElementById('invSoloLecturaHint');
             if (btnNueva) btnNueva.style.display = edita ? '' : 'none';
-            if (hint) hint.style.display = edita ? 'none' : 'block';
+            if (hint) {
+                hint.style.display = 'block';
+                hint.innerHTML = edita
+                    ? ('📦 Inventario de <strong>' + nombreAppTaller(getTallerActual()) + '</strong> (independiente por taller).')
+                    : ('👁️ Solo consulta · Inventario de <strong>' + nombreAppTaller(getTallerActual()) + '</strong>. Solo Compras y Gerencia pueden modificar.');
+            }
             const form = document.getElementById('formPiezaInv');
             if (form && !edita) form.style.display = 'none';
             renderInventario();
             document.getElementById('modalInventario').style.display = 'flex';
         });
+    }
+
+    function inventarioDelTallerActual() {
+        return (inventario || []).filter(i => perteneceAlTallerActual(i.taller));
     }
 
     function puedeEditarInventario() {
@@ -2900,6 +3059,7 @@
             minimo: parseFloat(document.getElementById('invMinimo').value) || 0,
             ubicacion: (document.getElementById('invUbicacion').value || '').trim(),
             unidad_medida: (document.getElementById('invUnidad').value || 'pza').trim() || 'pza',
+            taller: getTallerActual(),
             updated_at: new Date().toISOString()
         };
         if (!payload.nombre) {
@@ -2983,7 +3143,9 @@
         if (!box) return;
         const q = ((document.getElementById('buscarInventario') || {}).value || '').toLowerCase().trim();
         const filtro = ((document.getElementById('filtroInventario') || {}).value || 'todas');
-        let lista = inventario.slice();
+        // Solo piezas de este taller
+        let lista = inventarioDelTallerActual();
+        const totalTaller = lista.length;
         if (q) {
             lista = lista.filter(i =>
                 (i.nombre || '').toLowerCase().includes(q) ||
@@ -2998,7 +3160,6 @@
         } else if (filtro === 'ok') {
             lista = lista.filter(i => (parseFloat(i.cantidad) || 0) > (parseFloat(i.minimo) || 0));
         }
-        // Todas: sin límite, orden alfabético; si filtro todas, priorizar bajos arriba
         lista.sort((a, b) => {
             if (filtro === 'todas') {
                 const ba = (parseFloat(a.cantidad) || 0) <= (parseFloat(a.minimo) || 0) ? 0 : 1;
@@ -3007,7 +3168,7 @@
             }
             return (a.nombre || '').localeCompare(b.nombre || '');
         });
-        const bajos = inventario.filter(i => (parseFloat(i.cantidad) || 0) <= (parseFloat(i.minimo) || 0));
+        const bajos = inventarioDelTallerActual().filter(i => (parseFloat(i.cantidad) || 0) <= (parseFloat(i.minimo) || 0));
         if (alerta) {
             if (bajos.length) {
                 alerta.style.display = 'block';
@@ -3017,8 +3178,8 @@
             }
         }
         if (contador) {
-            contador.textContent = `Mostrando ${lista.length} de ${inventario.length} pieza(s)` +
-                (filtro === 'todas' && !q ? ' · Catálogo completo' : '');
+            contador.textContent = `Mostrando ${lista.length} de ${totalTaller} pieza(s) · ${etiquetaTaller(getTallerActual())}` +
+                (filtro === 'todas' && !q ? ' · Catálogo de este taller' : '');
         }
         if (!lista.length) {
             box.innerHTML = '<p style="color:#888; padding:12px;">No hay piezas con este filtro. Elige «Todas las piezas» o agrega productos.</p>';
@@ -3049,13 +3210,12 @@
     function renderInvEnRefacciones() {
         const box = document.getElementById('listaInvRefacciones');
         if (!box) return;
-        if (!inventario.length) {
-            box.innerHTML = '<span style="color:#888;">Sin inventario cargado. Abre 📦 Inventario para agregar piezas.</span>';
+        if (!inventarioDelTallerActual().length) {
+            box.innerHTML = '<span style="color:#888;">Sin inventario en este taller. Abre 📦 Inventario para agregar piezas.</span>';
             return;
         }
-        // Todas las piezas (con buscador local)
         box.innerHTML = `
-            <input type="text" id="buscarInvRef" placeholder="Buscar pieza..." oninput="filtrarInvEnRefacciones()" style="width:100%; padding:6px 8px; border-radius:8px; margin-bottom:8px; box-sizing:border-box;">
+            <input type="text" id="buscarInvRef" placeholder="Buscar pieza de este taller..." oninput="filtrarInvEnRefacciones()" style="width:100%; padding:6px 8px; border-radius:8px; margin-bottom:8px; box-sizing:border-box;">
             <div id="listaInvRefaccionesItems"></div>
         `;
         filtrarInvEnRefacciones();
@@ -3065,7 +3225,7 @@
         const box = document.getElementById('listaInvRefaccionesItems');
         if (!box) return;
         const q = ((document.getElementById('buscarInvRef') || {}).value || '').toLowerCase().trim();
-        let lista = inventario.slice();
+        let lista = inventarioDelTallerActual();
         if (q) {
             lista = lista.filter(i =>
                 (i.nombre || '').toLowerCase().includes(q) ||
@@ -6514,16 +6674,16 @@
             });
         }
 
-        // Stock bajo / agotado (Compras y Gerencia)
+        // Stock bajo / agotado del taller actual (Compras y Gerencia)
         if (!areaSesion || areaSesion === 'Compras' || areaSesion === 'Gerencia') {
-            (inventario || []).forEach(i => {
+            inventarioDelTallerActual().forEach(i => {
                 const cant = parseFloat(i.cantidad) || 0;
                 const min = parseFloat(i.minimo) || 0;
                 if (cant <= min) {
                     notifs.push({
                         tipo: cant <= 0 ? 'urgente' : 'aviso',
                         titulo: cant <= 0 ? `📦 Sin stock: ${i.nombre}` : `📦 Stock bajo: ${i.nombre}`,
-                        detalle: `Quedan ${cant} ${i.unidad_medida || 'pza'} (mín. ${min})${i.codigo ? ' · ' + i.codigo : ''}`,
+                        detalle: `Quedan ${cant} ${i.unidad_medida || 'pza'} (mín. ${min})${i.codigo ? ' · ' + i.codigo : ''} · ${etiquetaTaller(getTallerActual())}`,
                         unidadId: null
                     });
                 }
@@ -7310,9 +7470,11 @@
         }
     });
     
-    // Config admin (usuarios / permisos) + sesión
+    // Config admin (talleres / usuarios / permisos) + sesión
     rebuildPersonasDesdeUsuarios();
+    actualizarSelectsTallerUI();
     cargarConfigAdmin().then(function() {
+        actualizarSelectsTallerUI();
         sesion = getSesionGuardada();
         if (sesion && !sesion.taller) sesion.taller = TALLER_DEFAULT;
         const sesionValida = sesion && sesion.area && sesion.persona &&
