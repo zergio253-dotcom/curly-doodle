@@ -1,24 +1,38 @@
 {
-  "name": "Thermo King del Noroeste",
+  "name": "Thermo King Chihuahua",
   "short_name": "Thermo King",
-  "description": "Sistema de gestión de taller y Kanban",
-  "start_url": "/curly-doodle/",
-  "scope": "/curly-doodle/",
+  "description": "Control de taller Thermo King Chihuahua y Juárez",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#007bff",
-  "theme_color": "#007bff",
+  "orientation": "any",
+  "background_color": "#1a3a5c",
+  "theme_color": "#1a3a5c",
+  "lang": "es-MX",
   "icons": [
     {
-      "src": "/curly-doodle/icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/curly-doodle/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
