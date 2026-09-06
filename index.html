@@ -3,7 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Thermo King del Noroeste</title>
+    <title>Thermo King Chihuahua</title>
+    <meta name="theme-color" content="#1a3a5c">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Thermo King">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -826,7 +837,7 @@
         <div class="form-group">
             <label>Taller *</label>
             <select id="loginTaller" onchange="actualizarPersonasLogin()">
-                <option value="Noroeste">🏭 Noroeste</option>
+                <option value="Noroeste">🏭 Chihuahua</option>
                 <option value="Juarez">🏭 Juárez</option>
             </select>
         </div>
@@ -863,7 +874,7 @@
 <!-- ===== HEADER ===== -->
 <div class="header">
     <div class="header-top">
-        <h1>❄️ Thermo King del Noroeste <small>Base de Datos en la Nube</small></h1>
+        <h1>❄️ Thermo King Chihuahua <small>Base de Datos en la Nube</small></h1>
         <div class="header-user-corner">
             <span id="sesionInfo"></span>
             <button class="btn-header btn-notif" id="btnNotif" onclick="togglePanelNotif()" title="Notificaciones">🔔 <span id="badgeNotif" class="badge-notif" style="display:none;">0</span></button>
@@ -881,7 +892,6 @@
 
                     <button type="button" class="menu-item" id="btnThermoDiagPRO" onclick="window.open('https://cosmic-zabaione-7bd9cc.netlify.app/', '_blank'); cerrarMenuPrincipal();" style="display:none;">🔬 ThermoDiagPRO</button>
                     <div class="menu-sep"></div>
-                    <button type="button" class="menu-item" id="btnAdmin" onclick="abrirModalAdmin(); cerrarMenuPrincipal();">⚙️ Administración</button>
                     <button type="button" class="menu-item" id="btnDarkMode" onclick="toggleDarkMode(); cerrarMenuPrincipal();">🌙 Modo oscuro</button>
                     <button type="button" class="menu-item" onclick="cargarDatos(); cerrarMenuPrincipal();">🔄 Recargar datos</button>
                 </div>
@@ -1112,8 +1122,8 @@
                     <div class="grid-2">
                         <div class="form-group"><label>Taller *</label>
                             <select id="adminUserTaller">
-                                <option value="Noroeste">Noroeste</option>
-                                <option value="Juarez">Juárez</option>
+                                <option value="Noroeste">Thermo King Chihuahua</option>
+                                <option value="Juarez">Thermo King Juárez</option>
                             </select>
                         </div>
                         <div class="form-group"><label>Nivel (técnicos)</label>
@@ -1695,11 +1705,20 @@
     const BUCKET_DIAGNOSTICOS = 'diagnosticos';
 
     // ===== TALLERES Y PERSONAS =====
-    const TALLER_DEFAULT = 'Noroeste';
+    const TALLER_DEFAULT = 'Noroeste'; // interno (BD); se muestra como Chihuahua
     const nombresTaller = {
-        'Noroeste': 'Thermo King del Noroeste',
+        'Noroeste': 'Thermo King Chihuahua',
+        'Chihuahua': 'Thermo King Chihuahua',
         'Juarez': 'Thermo King Juárez'
     };
+    function etiquetaTaller(t) {
+        if (t === 'Juarez') return 'Juárez';
+        if (t === 'Noroeste' || t === 'Chihuahua' || !t) return 'Chihuahua';
+        return t;
+    }
+    function nombreAppTaller(t) {
+        return nombresTaller[t] || nombresTaller[TALLER_DEFAULT] || 'Thermo King Chihuahua';
+    }
 
     // Personas por taller y área (se reconstruye desde listaUsuarios)
     let personasPorTaller = {
@@ -2161,15 +2180,33 @@
         if (!sesion) return;
         const el = document.getElementById('sesionInfo');
         el.style.display = 'inline-block';
-        const tallerTxt = sesion.taller === 'Juarez' ? 'Juárez' : (sesion.taller || 'Noroeste');
+        const tallerTxt = etiquetaTaller(sesion.taller);
         el.textContent = sesion.area === 'Cliente'
             ? `👁️ Cliente · ${tallerTxt} · solo lectura`
             : `👤 ${sesion.persona} · ${sesion.area} · ${tallerTxt}`;
         el.title = el.textContent;
         const h1 = document.querySelector('.header h1');
         if (h1) {
-            const nombre = nombresTaller[sesion.taller] || nombresTaller[TALLER_DEFAULT];
+            const nombre = nombreAppTaller(sesion.taller);
             h1.innerHTML = `❄️ ${nombre} <small>${tallerTxt}</small>`;
+            h1.style.cursor = 'pointer';
+            h1.title = '';
+            // 5 toques en el título → Administración (pide clave 0310)
+            if (!h1.dataset.adminEggBound) {
+                h1.dataset.adminEggBound = '1';
+                let clicksAdmin = 0;
+                let timerAdmin = null;
+                h1.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    clicksAdmin++;
+                    clearTimeout(timerAdmin);
+                    timerAdmin = setTimeout(function() { clicksAdmin = 0; }, 1000);
+                    if (clicksAdmin >= 5) {
+                        clicksAdmin = 0;
+                        abrirModalAdmin();
+                    }
+                });
+            }
         }
         el.style.cursor = 'pointer';
         if (!el.dataset.eggBound) {
@@ -2361,7 +2398,7 @@
                 <div style="flex:1; min-width:140px;">
                     <strong>${u.nombre || '—'}</strong>
                     ${u.permiso_total ? ' <span style="font-size:11px; background:#d4edda; color:#155724; padding:2px 6px; border-radius:8px;">Permiso total</span>' : ''}
-                    <div style="font-size:12px; color:#666;">${u.area || ''} · ${u.taller === 'Juarez' ? 'Juárez' : (u.taller || '')}${u.nivel ? ' · ' + u.nivel : ''}</div>
+                    <div style="font-size:12px; color:#666;">${u.area || ''} · ${etiquetaTaller(u.taller)}${u.nivel ? ' · ' + u.nivel : ''}</div>
                 </div>
                 <div style="display:flex; gap:4px;">
                     <button class="btn-accion" onclick="editarUsuarioAdmin('${u.id}')">✏️</button>
@@ -3414,7 +3451,7 @@
         }
         const data = generarDatosReporteDiario();
         const lineas = [];
-        lineas.push('Reporte diario Thermo King del Noroeste');
+        lineas.push('Reporte diario ' + nombreAppTaller(getTallerActual()));
         lineas.push('Fecha,' + data.hoy);
         lineas.push('');
         lineas.push('Metrica,Valor');
@@ -3997,7 +4034,7 @@
         const lista = _ultimaProduccion.length ? _ultimaProduccion : calcularProduccionPorUsuario(periodo);
         const ciclo = _ultimoCiclo || calcularMetricasCiclo(periodo);
         const lineas = [];
-        lineas.push('Produccion - Thermo King del Noroeste');
+        lineas.push('Produccion - ' + nombreAppTaller(getTallerActual()));
         lineas.push('Periodo,' + periodo);
         lineas.push('Ciclo promedio recepcion-entrega,' + (ciclo.promedioCicloTexto || ''));
         lineas.push('Primera vez bien %,' + (ciclo.pctPrimeraVez != null ? ciclo.pctPrimeraVez : ''));
@@ -5437,7 +5474,7 @@
             localStorage.setItem('thermocontrol_notif_descartadas', JSON.stringify(disc));
         } catch (e) {}
         mostrarToastApp(titulo, '#1a3a5c');
-        mostrarNotifNavegador('Thermo King del Noroeste', titulo + ' — ' + detalle);
+        mostrarNotifNavegador(nombreAppTaller(getTallerActual()), titulo + ' — ' + detalle);
     }
 
     // ===== GESTIÓN RÁPIDA DE REFACCIONES =====
@@ -5769,7 +5806,7 @@
             document.getElementById('cfgNotifNavegador').checked = true;
             guardarConfigNotif();
             actualizarEstadoPushUI();
-            await mostrarNotifNavegador('Thermo King del Noroeste', 'Notificaciones push activadas. Te avisaremos de movimientos de tu área.');
+            await mostrarNotifNavegador(nombreAppTaller(getTallerActual()), 'Notificaciones push activadas. Te avisaremos de movimientos de tu área.');
             alert('✅ Notificaciones activadas');
         } catch (e) {
             console.error(e);
@@ -5827,7 +5864,7 @@
         document.getElementById('cfgNotifNavegador').checked = true;
         guardarConfigNotif();
         await registrarServiceWorkerNotif();
-        await mostrarNotifNavegador('Thermo King del Noroeste', 'Prueba OK — las notificaciones funcionan en este dispositivo.');
+        await mostrarNotifNavegador(nombreAppTaller(getTallerActual()), 'Prueba OK — las notificaciones funcionan en este dispositivo.');
         actualizarEstadoPushUI();
     }
 
@@ -5872,7 +5909,7 @@
         });
         localStorage.setItem('thermocontrol_notif_eventos', JSON.stringify(lista.slice(0, 40)));
         if (ev.titulo && (esMovimiento || sesion)) {
-            mostrarNotifNavegador('Thermo King del Noroeste', ev.titulo + (ev.detalle ? ' — ' + ev.detalle : ''));
+            mostrarNotifNavegador(nombreAppTaller(getTallerActual()), ev.titulo + (ev.detalle ? ' — ' + ev.detalle : ''));
         }
     }
 
@@ -6576,7 +6613,7 @@
         if (ya) return;
         sessionStorage.setItem('thermocontrol_notif_resumen', '1');
         mostrarNotifNavegador(
-            'Thermo King del Noroeste — ' + urgentes.length + ' alerta(s)',
+            nombreAppTaller(getTallerActual()) + ' — ' + urgentes.length + ' alerta(s)',
             urgentes.slice(0, 3).map(n => n.titulo).join(' · ')
         );
     }
@@ -7128,7 +7165,7 @@
 
         doc.setFontSize(18);
         doc.setTextColor(26, 58, 92);
-        doc.text('Thermo King del Noroeste', margin, y);
+        doc.text(nombreAppTaller(getTallerActual()), margin, y);
         y += 8;
         doc.setFontSize(14);
         const tituloPdf = u.estatus === 'Espera de refacciones'
@@ -7227,7 +7264,7 @@
         y += 10;
         doc.setFontSize(9);
         doc.setTextColor(100);
-        doc.text('Documento generado por Thermo King del Noroeste', margin, y);
+        doc.text('Documento generado por ' + nombreAppTaller(getTallerActual()), margin, y);
 
         const prefijo = esEspera ? 'EsperaRefacciones' : 'Entrega';
         const nombreArchivo = `${prefijo}_${(u.no_unidad || 'unidad').replace(/\s/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
