@@ -3840,6 +3840,75 @@
         return Object.values(porPersona).sort((a, b) => b.finalizadas - a.finalizadas || b.msTotal - a.msTotal);
     }
 
+    // Ranking solo técnicos: finalizadas (reparador) y diagnosticadas (diagnosticador)
+    function calcularRankingTecnicos(periodo) {
+        const rango = rangoPeriodoProduccion(periodo || '7');
+        const porFin = {};
+        const porDiag = {};
+
+        function bump(map, nombre, campo) {
+            const n = (nombre || '').trim();
+            if (!n || n === 'Sin nombre') return;
+            if (!map[n]) {
+                map[n] = {
+                    persona: n,
+                    nivel: nivelTecnico(n) || '',
+                    finalizadas: 0,
+                    diagnosticadas: 0,
+                    reparadas: 0
+                };
+            }
+            map[n][campo] = (map[n][campo] || 0) + 1;
+        }
+
+        unidades.forEach(u => {
+            const hist = u.historial || [];
+            if (!hist.length) return;
+            hist.forEach(h => {
+                const d = parseFechaHistorial(h.fecha);
+                if (!d) return;
+                const t = d.getTime();
+                if (t < rango.inicio || t > rango.fin) return;
+                const est = h.estatus || '';
+
+                if (est === 'Diagnosticando') {
+                    // Prioridad: diagnosticador de la unidad, luego persona del historial si es mantenimiento
+                    let tech = (u.diagnosticador || '').trim();
+                    if (!tech && (h.area === 'Mantenimiento' || nivelTecnico(h.persona))) {
+                        tech = (h.persona || '').trim();
+                    }
+                    bump(porDiag, tech, 'diagnosticadas');
+                }
+                if (est === 'Reparando') {
+                    let tech = (u.reparador || '').trim();
+                    if (!tech && (h.area === 'Mantenimiento' || nivelTecnico(h.persona))) {
+                        tech = (h.persona || '').trim();
+                    }
+                    bump(porFin, tech, 'reparadas');
+                }
+                if (est === 'Finalizada') {
+                    // Solo técnicos: reparador asignado (no quien pulsó el botón si fue Gerencia/Ventas)
+                    let tech = (u.reparador || '').trim();
+                    if (!tech && (h.area === 'Mantenimiento' || nivelTecnico(h.persona))) {
+                        tech = (h.persona || '').trim();
+                    }
+                    if (!tech) tech = (u.diagnosticador || '').trim();
+                    bump(porFin, tech, 'finalizadas');
+                }
+            });
+        });
+
+        // Incluir técnicos del taller aunque estén en 0 (opcional: no, solo con datos)
+        const finalizadas = Object.values(porFin)
+            .filter(x => x.finalizadas > 0 || x.reparadas > 0)
+            .sort((a, b) => b.finalizadas - a.finalizadas || b.reparadas - a.reparadas);
+        const diagnosticadas = Object.values(porDiag)
+            .filter(x => x.diagnosticadas > 0)
+            .sort((a, b) => b.diagnosticadas - a.diagnosticadas);
+
+        return { finalizadas, diagnosticadas };
+    }
+
     // Ciclo recepción → entrega y % primera vez bien (por unidad)
     function calcularMetricasCiclo(periodo) {
         const rango = rangoPeriodoProduccion(periodo || '7');
@@ -4080,17 +4149,25 @@
             }
         });
 
-        // Ranking (podio) por finalizadas — técnicos de mantenimiento primero, luego todos
-        const ranking = lista.slice().sort((a, b) => b.finalizadas - a.finalizadas || b.diagnosticadas - a.diagnosticadas);
+        // Rankings SOLO técnicos (Mantenimiento): finalizadas y diagnosticadas
+        const rankingTecnicos = calcularRankingTecnicos(periodo);
         const medallas = ['🥇', '🥈', '🥉'];
-        const podioHtml = ranking.slice(0, 5).map((st, i) => {
+        const podioFinalizadasHtml = rankingTecnicos.finalizadas.slice(0, 8).map((st, i) => {
             const med = medallas[i] || (i + 1) + '.';
-            const metaOk = st.area === 'Mantenimiento' && st.finalizadas >= meta;
+            const metaOk = st.finalizadas >= meta;
             return `<div style="display:flex; justify-content:space-between; gap:8px; padding:8px 10px; background:${i < 3 ? '#fff8e6' : 'var(--detalle-item,#f8f9fa)'}; border-radius:8px; margin-bottom:4px; font-size:13px;">
-                <span>${med} <strong>${st.persona}</strong> ${st.nivel ? '(' + st.nivel + ')' : ''} · ${st.area}</span>
+                <span>${med} <strong>${st.persona}</strong> ${st.nivel ? '<span style="color:#666;font-size:11px;">(' + st.nivel + ')</span>' : ''}</span>
                 <span>✅ ${st.finalizadas}${metaOk ? ' · 🎯 Meta' : ''}</span>
             </div>`;
-        }).join('') || '<span style="color:#888;">Sin datos</span>';
+        }).join('') || '<span style="color:#888;">Sin finalizadas de técnicos en este periodo</span>';
+
+        const podioDiagHtml = rankingTecnicos.diagnosticadas.slice(0, 8).map((st, i) => {
+            const med = medallas[i] || (i + 1) + '.';
+            return `<div style="display:flex; justify-content:space-between; gap:8px; padding:8px 10px; background:${i < 3 ? '#e8f7fa' : 'var(--detalle-item,#f8f9fa)'}; border-radius:8px; margin-bottom:4px; font-size:13px;">
+                <span>${med} <strong>${st.persona}</strong> ${st.nivel ? '<span style="color:#666;font-size:11px;">(' + st.nivel + ')</span>' : ''}</span>
+                <span>🔍 ${st.diagnosticadas}</span>
+            </div>`;
+        }).join('') || '<span style="color:#888;">Sin diagnósticos de técnicos en este periodo</span>';
 
         // Comparación por jerarquía
         const jerHtml = ['Máster', 'Profesional', 'Aprendiz'].map(niv => {
@@ -4216,8 +4293,15 @@
             </div>
 
             <div style="margin-bottom:14px; padding:12px; background:#fff8e6; border-radius:10px;">
-                <strong style="display:block; margin-bottom:8px;">🏆 Ranking (finalizadas)</strong>
-                ${podioHtml}
+                <strong style="display:block; margin-bottom:8px;">🏆 Ranking técnicos — Finalizadas</strong>
+                <small style="display:block; color:#666; margin-bottom:8px;">Solo Mantenimiento · se cuenta el reparador de la unidad</small>
+                ${podioFinalizadasHtml}
+            </div>
+
+            <div style="margin-bottom:14px; padding:12px; background:#e8f7fa; border-radius:10px;">
+                <strong style="display:block; margin-bottom:8px;">🔍 Ranking técnicos — Diagnosticadas</strong>
+                <small style="display:block; color:#666; margin-bottom:8px;">Solo Mantenimiento · se cuenta el diagnosticador de la unidad</small>
+                ${podioDiagHtml}
             </div>
 
             <div style="margin-bottom:14px; padding:12px; background:var(--detalle-item,#f8f9fa); border-radius:10px; overflow-x:auto;">
