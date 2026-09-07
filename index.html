@@ -3337,7 +3337,7 @@
             const u = unidades.find(item => item.id === id);
             const historial = (u && u.historial) ? [...u.historial] : [];
             historial.push({
-                fecha: new Date().toLocaleString(),
+                fecha: fechaHistorialAhora(),
                 estatus: u ? u.estatus : 'Archivada',
                 area: area,
                 persona: persona,
@@ -3664,14 +3664,58 @@
 
     // ===== PRODUCCIÓN POR USUARIO =====
     function parseFechaHistorial(fechaStr) {
-        if (!fechaStr) return null;
-        let t = Date.parse(fechaStr);
-        if (!isNaN(t)) return new Date(t);
-        try {
+        if (fechaStr == null || fechaStr === '') return null;
+        if (fechaStr instanceof Date) return isNaN(fechaStr.getTime()) ? null : fechaStr;
+        if (typeof fechaStr === 'number') {
             const d = new Date(fechaStr);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        const s = String(fechaStr).trim();
+        // ISO / RFC
+        let t = Date.parse(s);
+        if (!isNaN(t)) return new Date(t);
+        // DD/MM/YYYY[ ,] HH:mm[:ss] [a. m.|p. m.]  (típico toLocaleString es-MX)
+        let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[T\s,]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?\s*m\.?|p\.?\s*m\.?|AM|PM)?)?/i);
+        if (m) {
+            let day = parseInt(m[1], 10);
+            let month = parseInt(m[2], 10);
+            const year = parseInt(m[3], 10);
+            // Si el primer número > 12, es día (DD/MM). Si el segundo > 12, es MM/DD mal leído → intercambiar
+            if (day > 12 && month <= 12) {
+                // DD/MM ya correcto
+            } else if (month > 12 && day <= 12) {
+                const tmp = day; day = month; month = tmp;
+            } else {
+                // Ambiguo: preferir DD/MM (México)
+            }
+            let hour = parseInt(m[4] || '0', 10);
+            const min = parseInt(m[5] || '0', 10);
+            const sec = parseInt(m[6] || '0', 10);
+            const ampm = (m[7] || '').toLowerCase().replace(/\s/g, '');
+            if (ampm.indexOf('p') === 0 && hour < 12) hour += 12;
+            if (ampm.indexOf('a') === 0 && hour === 12) hour = 0;
+            const d = new Date(year, month - 1, day, hour, min, sec);
+            if (!isNaN(d.getTime())) return d;
+        }
+        // YYYY-MM-DD[ HH:mm:ss]
+        m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+        if (m) {
+            const d = new Date(
+                parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10),
+                parseInt(m[4] || '0', 10), parseInt(m[5] || '0', 10), parseInt(m[6] || '0', 10)
+            );
+            if (!isNaN(d.getTime())) return d;
+        }
+        try {
+            const d = new Date(s);
             if (!isNaN(d.getTime())) return d;
         } catch (e) {}
         return null;
+    }
+
+    // Usar siempre ISO en historial nuevo (producción y tiempos fiables)
+    function fechaHistorialAhora() {
+        return new Date().toISOString();
     }
 
     function rangoPeriodoProduccion(periodo) {
@@ -3728,12 +3772,24 @@
                 const t = d.getTime();
                 if (t < rango.inicio || t > rango.fin) return;
 
-                const persona = (h.persona || '').trim() || 'Sin nombre';
-                const area = (h.area || '').trim();
-                const st = getStats(persona, area);
                 const est = h.estatus || '';
                 // Agenda no cuenta como tiempo de taller / producción
                 if (est === 'Agenda') return;
+                // Persona: del historial, o la asignada en la unidad (datos viejos)
+                let persona = (h.persona || '').trim();
+                if (!persona) {
+                    if (est === 'Diagnosticando') persona = (u.diagnosticador || '').trim();
+                    else if (est === 'Reparando' || est === 'Finalizada') persona = (u.reparador || '').trim() || (u.diagnosticador || '').trim();
+                    else if (est === 'Cotizando' || est === 'Recibida' || est === 'Agenda') persona = (u.asesor_ventas || '').trim();
+                }
+                if (!persona) persona = 'Sin nombre';
+                let area = (h.area || '').trim();
+                if (!area) {
+                    if (est === 'Diagnosticando' || est === 'Reparando') area = 'Mantenimiento';
+                    else if (est === 'Cotizando' || est === 'Recibida' || est === 'Finalizada') area = 'Ventas';
+                    else if (est === 'Espera de refacciones') area = 'Compras';
+                }
+                const st = getStats(persona, area);
 
                 st.unidades.add(u.id);
                 st.msTotal += h.duracionMs || 0;
@@ -3886,7 +3942,9 @@
 
             if (u.estatus && u.estatus !== 'Finalizada' && u.estatus !== 'Agenda') {
                 const actual = tiempos.length ? tiempos[tiempos.length - 1] : null;
-                const diasEst = actual ? Math.floor((actual.duracionMs || 0) / (24 * 60 * 60 * 1000)) : diasEnTaller(u);
+                const diasPorPaso = actual ? Math.floor((actual.duracionMs || 0) / (24 * 60 * 60 * 1000)) : 0;
+                const diasTaller = diasEnTaller(u) || 0;
+                const diasEst = Math.max(diasPorPaso, diasTaller);
                 if (porEstatus[u.estatus]) porEstatus[u.estatus].ahora++;
                 estancadas.push({
                     id: u.id,
@@ -4089,7 +4147,8 @@
                     ${barraMeta}
                 </div>
             </div>`;
-        }).join('') : '<p style="color:#888;">No hay movimientos de persona en este periodo.</p>';
+        }).join('') : `<p style="color:#888; padding:10px;">No hay movimientos con persona en este periodo.<br>
+            <small>La producción se calcula con los cambios de estatus del historial. Prueba el periodo «Todo» o mueve unidades de estatus (ya quedará registrado con fecha correcta).</small></p>`;
 
         const maxProm = Math.max(...(cuellos.ranking.map(r => r.promedioMs).concat([1])));
         const barrasCuello = cuellos.ranking.filter(r => r.estatus !== 'Finalizada').map(r => {
@@ -4350,10 +4409,15 @@
         if (!historial || historial.length === 0) return [];
         const ahora = new Date();
         return historial.map((h, i) => {
-            const inicio = new Date(h.fecha);
-            const fin = (i < historial.length - 1) ? new Date(historial[i + 1].fecha) : ahora;
-            let ms = fin - inicio;
-            if (isNaN(ms) || ms < 0) ms = 0;
+            const inicio = parseFechaHistorial(h.fecha) || null;
+            const fin = (i < historial.length - 1)
+                ? (parseFechaHistorial(historial[i + 1].fecha) || ahora)
+                : ahora;
+            let ms = 0;
+            if (inicio && fin) {
+                ms = fin - inicio;
+                if (isNaN(ms) || ms < 0) ms = 0;
+            }
             return {
                 ...h,
                 duracionMs: ms,
@@ -5014,7 +5078,7 @@
             fecha_llegada: estatusInicial === 'Agenda' ? (fechaAgenda || hoy) : hoy,
             eliminado: false,
             historial: [{
-                fecha: new Date().toLocaleString(),
+                fecha: fechaHistorialAhora(),
                 estatus: estatusInicial,
                 area: sesion ? sesion.area : 'Sistema',
                 persona: sesion ? sesion.persona : 'Sistema',
@@ -5126,7 +5190,7 @@
                 datos.estatus = 'Finalizada';
                 const historial = u.historial || [];
                 historial.push({
-                    fecha: new Date().toLocaleString(),
+                    fecha: fechaHistorialAhora(),
                     estatus: 'Finalizada',
                     area: 'Edición manual',
                     persona: 'Sistema',
@@ -5464,7 +5528,7 @@
 
         const historial = (u.historial || []).slice();
         historial.push({
-            fecha: new Date().toLocaleString(),
+            fecha: fechaHistorialAhora(),
             estatus: nuevoEstatus,
             area: area,
             persona: persona,
@@ -5698,7 +5762,7 @@
             (pasarRep ? ' · → Reparando' : '');
 
         historial.push({
-            fecha: new Date().toLocaleString(),
+            fecha: fechaHistorialAhora(),
             estatus: pasarRep ? 'Reparando' : u.estatus,
             area: sesion.area,
             persona: sesion.persona,
@@ -6064,7 +6128,7 @@
         lista.unshift({
             ...ev,
             areaSesion: null, // visible para todas las áreas
-            fecha: new Date().toLocaleString(),
+            fecha: fechaHistorialAhora(),
             id: Date.now()
         });
         localStorage.setItem('thermocontrol_notif_eventos', JSON.stringify(lista.slice(0, 40)));
@@ -6129,7 +6193,7 @@
         const hoy = fechaHoyISO();
         const historial = (u.historial || []).slice();
         historial.push({
-            fecha: new Date().toLocaleString(),
+            fecha: fechaHistorialAhora(),
             estatus: 'Recibida',
             area: sesion.area,
             persona: sesion.persona,
@@ -6896,7 +6960,7 @@
 
         const historial = (u.historial || []).slice();
         historial.push({
-            fecha: new Date().toLocaleString(),
+            fecha: fechaHistorialAhora(),
             estatus: u.estatus,
             area: area,
             persona: persona,
@@ -7022,7 +7086,7 @@
             const u = unidades.find(x => x.id === id);
             const historial = (u && u.historial) ? [...u.historial] : [];
             historial.push({
-                fecha: new Date().toLocaleString(),
+                fecha: fechaHistorialAhora(),
                 estatus: u ? u.estatus : 'Diagnosticando',
                 area: sesion ? sesion.area : 'Mantenimiento',
                 persona: sesion ? sesion.persona : 'TK Diag',
@@ -7069,7 +7133,7 @@
         const u = unidades.find(item => item.id === id);
         const historial = (u && u.historial) ? [...u.historial] : [];
         historial.push({
-            fecha: new Date().toLocaleString(),
+            fecha: fechaHistorialAhora(),
             estatus: u ? u.estatus : 'Diagnosticando',
             area: 'Mantenimiento',
             persona: 'Diagnóstico',
@@ -7123,7 +7187,7 @@
             const u = unidades.find(item => item.id === id);
             const historial = (u && u.historial) ? [...u.historial] : [];
             historial.push({
-                fecha: new Date().toLocaleString(),
+                fecha: fechaHistorialAhora(),
                 estatus: u ? u.estatus : 'Diagnosticando',
                 area: 'Mantenimiento',
                 persona: 'Diagnóstico PDF',
@@ -7200,7 +7264,7 @@
             const u = unidades.find(item => item.id === id);
             const historial = (u && u.historial) ? [...u.historial] : [];
             historial.push({
-                fecha: new Date().toLocaleString(),
+                fecha: fechaHistorialAhora(),
                 estatus: u ? u.estatus : '',
                 area: 'Sistema',
                 persona: 'Orden de trabajo',
