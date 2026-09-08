@@ -1905,60 +1905,147 @@
         return (sesion && sesion.taller) || TALLER_DEFAULT;
     }
 
+    // Solo usuarios registrados del taller (listaUsuarios / Admin)
+    function esUsuarioRegistrado(nombre, area, taller) {
+        const n = (nombre || '').trim();
+        if (!n) return false;
+        const t = taller || getTallerActual();
+        return (listaUsuarios || []).some(u => {
+            if ((u.nombre || '').trim() !== n) return false;
+            if (area && u.area !== area) return false;
+            return idsEquivalentesTaller(u.taller, t);
+        });
+    }
+
+    function nombresRegistradosArea(area, taller) {
+        const t = taller || getTallerActual();
+        return (listaUsuarios || [])
+            .filter(u => u.area === area && idsEquivalentesTaller(u.taller, t))
+            .map(u => u.nombre)
+            .filter(Boolean);
+    }
+
     function llenarSelectPersonas(selectId, area, valorActual) {
         const sel = document.getElementById(selectId);
         if (!sel) return;
-        const pa = getPersonasPorArea();
-        const personas = area === 'Mantenimiento' ? listaTecnicosOrdenada() : (pa[area] || []);
+        // Solo usuarios registrados (sin "Otro...")
+        const personas = area === 'Mantenimiento'
+            ? listaTecnicosOrdenada().filter(p => esUsuarioRegistrado(p, 'Mantenimiento'))
+            : nombresRegistradosArea(area);
         const actual = (valorActual || '').trim();
         let html = '<option value="">Selecciona...</option>';
         personas.forEach(p => {
             const label = area === 'Mantenimiento' ? etiquetaTecnico(p) : p;
             html += `<option value="${p.replace(/"/g, '&quot;')}">${label}</option>`;
         });
-        html += '<option value="__OTRO__">Otro...</option>';
         sel.innerHTML = html;
         const otro = document.getElementById(selectId + 'Otro');
+        if (otro) { otro.style.display = 'none'; otro.value = ''; }
         if (actual && personas.includes(actual)) {
             sel.value = actual;
-            if (otro) { otro.style.display = 'none'; otro.value = ''; }
-        } else if (actual) {
-            sel.value = '__OTRO__';
-            if (otro) { otro.style.display = 'block'; otro.value = actual; }
-        } else {
-            if (sesion && sesion.area === area && personas.includes(sesion.persona)) {
-                sel.value = sesion.persona;
-            }
-            if (otro) { otro.style.display = 'none'; otro.value = ''; }
+        } else if (actual && !personas.includes(actual)) {
+            // Nombre viejo no registrado: no se puede elegir; dejar vacío
+            sel.value = '';
+        } else if (sesion && sesion.area === area && personas.includes(sesion.persona)) {
+            sel.value = sesion.persona;
         }
     }
 
     function toggleCampoOtroPersona(selectId) {
-        const sel = document.getElementById(selectId);
+        // Ya no se permiten nombres libres ("Otro")
         const otro = document.getElementById(selectId + 'Otro');
-        if (!sel || !otro) return;
-        if (sel.value === '__OTRO__') {
-            otro.style.display = 'block';
-            otro.focus();
-        } else {
-            otro.style.display = 'none';
-            otro.value = '';
-        }
+        if (otro) { otro.style.display = 'none'; otro.value = ''; }
+        const sel = document.getElementById(selectId);
+        if (sel && sel.value === '__OTRO__') sel.value = '';
     }
 
     function valorPersonaSelect(selectId) {
         const sel = document.getElementById(selectId);
         if (!sel) return '';
         if (sel.style.display === 'none' || sel.disabled) {
-            // Si está bloqueado, el valor real puede estar en el locked div vía data
             const locked = document.getElementById(selectId + 'Locked');
-            if (locked && locked.dataset.value) return locked.dataset.value;
+            if (locked && locked.dataset.value) {
+                const v = locked.dataset.value;
+                // Solo devolver si sigue siendo usuario registrado (cualquier área del taller)
+                return esUsuarioRegistrado(v) || esUsuarioRegistrado(v, null) ? v : (v || '');
+            }
         }
-        if (sel.value === '__OTRO__') {
-            const otro = document.getElementById(selectId + 'Otro');
-            return (otro && otro.value || '').trim();
-        }
+        if (sel.value === '__OTRO__') return ''; // bloqueado: no libres
         return (sel.value || '').trim();
+    }
+
+    // ===== GARANTÍA / REINGRESO =====
+    const DIAS_GARANTIA = 30; // días tras Finalizada para considerar reingreso en garantía
+
+    function fechaUltimaFinalizacion(u) {
+        if (!u) return null;
+        const hist = u.historial || [];
+        let ultima = null;
+        hist.forEach(h => {
+            if (h.estatus !== 'Finalizada') return;
+            const d = parseFechaHistorial(h.fecha);
+            if (d && (!ultima || d > ultima)) ultima = d;
+        });
+        if (!ultima && u.estatus === 'Finalizada' && u.updated_at) {
+            const d = parseFechaHistorial(u.updated_at);
+            if (d) ultima = d;
+        }
+        return ultima;
+    }
+
+    function normalizarClaveMatch(s) {
+        return (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    // Busca unidad finalizada previa (mismo serie, placas o no. unidad) dentro del plazo de garantía
+    function buscarReingresoGarantia(datos) {
+        const serie = normalizarClaveMatch(datos.no_serie);
+        const placas = normalizarClaveMatch(datos.placas);
+        const noUnidad = normalizarClaveMatch(datos.no_unidad);
+        const cliente = normalizarClaveMatch(datos.cliente);
+        if (!serie && !placas && !noUnidad) return null;
+
+        const ahora = Date.now();
+        const plazoMs = DIAS_GARANTIA * 24 * 60 * 60 * 1000;
+        let mejor = null;
+
+        (unidades || []).forEach(u => {
+            if (u.eliminado) return;
+            // Solo comparar dentro del mismo taller
+            if (!perteneceAlTallerActual(u.taller)) return;
+            const fin = fechaUltimaFinalizacion(u);
+            if (!fin) return;
+            const edad = ahora - fin.getTime();
+            if (edad < 0 || edad > plazoMs) return;
+
+            const matchSerie = serie && normalizarClaveMatch(u.no_serie) === serie;
+            const matchPlacas = placas && normalizarClaveMatch(u.placas) === placas;
+            const matchUnidad = noUnidad && normalizarClaveMatch(u.no_unidad) === noUnidad;
+            // Evitar falsos positivos solo por nombre de cliente
+            if (!matchSerie && !matchPlacas && !matchUnidad) return;
+
+            const dias = Math.floor(edad / (24 * 60 * 60 * 1000));
+            if (!mejor || fin > mejor.fechaFin) {
+                mejor = {
+                    unidad: u,
+                    fechaFin: fin,
+                    diasDesdeFin: dias,
+                    match: matchSerie ? 'serie' : (matchPlacas ? 'placas' : 'no_unidad'),
+                    es_garantia: true,
+                    es_reingreso: true
+                };
+            }
+        });
+        return mejor;
+    }
+
+    function textoBadgeGarantia(u) {
+        if (!u) return '';
+        if (u.es_garantia || u.es_reingreso) {
+            const dias = u.dias_desde_fin_prev != null ? ` · ${u.dias_desde_fin_prev}d` : '';
+            return `<span style="display:inline-block; background:#fff3cd; color:#856404; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600;">🛡️ Garantía / Reingreso${dias}</span>`;
+        }
+        return '';
     }
 
     function setCampoPersonaEditable(selectId, editable, valorFijo, hintId, hintText) {
@@ -2911,6 +2998,8 @@
             notificarUrgentesAlCargar();
             document.getElementById('statusConexion').innerHTML = '✅ ' + nombreAppTaller(getTallerActual());
             document.getElementById('statusConexion').style.background = 'rgba(40, 167, 69, 0.3)';
+            // Aviso de pendientes / SLA al cargar (Ventas, Compras, etc.)
+            try { mostrarAvisoPendientesLogin(); } catch (e) {}
         } catch (error) {
             console.error('Error al cargar datos:', error);
             document.getElementById('statusConexion').innerHTML = '❌ Error: ' + (error.message || '').substring(0, 40);
@@ -3783,14 +3872,15 @@
                     else if (est === 'Reparando' || est === 'Finalizada') persona = (u.reparador || '').trim() || (u.diagnosticador || '').trim();
                     else if (est === 'Cotizando' || est === 'Recibida' || est === 'Agenda') persona = (u.asesor_ventas || '').trim();
                 }
-                if (!persona) persona = 'Sin nombre';
                 let area = (h.area || '').trim();
                 if (!area) {
                     if (est === 'Diagnosticando' || est === 'Reparando') area = 'Mantenimiento';
                     else if (est === 'Cotizando' || est === 'Recibida' || est === 'Finalizada') area = 'Ventas';
                     else if (est === 'Espera de refacciones') area = 'Compras';
                 }
-                const st = getStats(persona, area);
+                // Solo usuarios registrados del taller cuentan en producción / ranking
+                if (!persona || !esUsuarioRegistrado(persona)) return;
+                const st = getStats(persona, area || '');
 
                 st.unidades.add(u.id);
                 st.msTotal += h.duracionMs || 0;
@@ -3854,6 +3944,8 @@
         function bump(map, nombre, campo) {
             const n = (nombre || '').trim();
             if (!n || n === 'Sin nombre') return;
+            // Solo técnicos registrados en Mantenimiento
+            if (!esUsuarioRegistrado(n, 'Mantenimiento')) return;
             if (!map[n]) {
                 map[n] = {
                     persona: n,
@@ -4352,7 +4444,8 @@
                 (${ciclo.primeraVezBien}/${ciclo.finalizadasPeriodo} finalizadas sin regresar a cotizar)<br>
                 ⏳ Espera refacciones: <strong>${unidadesEnEspera}</strong> und. ·
                 ${formatearDuracion(msEsperaGlobal)}
-                ${unidadesEnEspera ? ' · prom. ' + formatearDuracion(msEsperaGlobal / unidadesEnEspera) : ''}
+                ${unidadesEnEspera ? ' · prom. ' + formatearDuracion(msEsperaGlobal / unidadesEnEspera) : ''}<br>
+                🛡️ Reingresos / garantía activos: <strong>${(unidades || []).filter(u => !u.eliminado && (u.es_garantia || u.es_reingreso) && u.estatus !== 'Finalizada').length}</strong>
             </div>
 
             <div style="margin-bottom:14px; padding:12px; background:#fff5f5; border-radius:10px; border:1px solid #f5c2c7;">
@@ -4526,6 +4619,190 @@
         const ahora = new Date();
         const diff = (ahora - llegada) / (1000 * 60 * 60 * 24);
         return Math.max(0, Math.floor(diff));
+    }
+
+    // ===== SLA: tiempo en el estatus actual (enfocado Ventas / Compras) =====
+    // Umbrales en días: verde / amarillo / rojo
+    const SLA_POR_ESTATUS = {
+        'Cotizando': { verdeMax: 1, amarilloMax: 3, area: 'Ventas' },
+        'Recibida': { verdeMax: 1, amarilloMax: 2, area: 'Mantenimiento' },
+        'Espera de refacciones': { verdeMax: 2, amarilloMax: 4, area: 'Compras' },
+        'Diagnosticando': { verdeMax: 1, amarilloMax: 3, area: 'Mantenimiento' },
+        'Reparando': { verdeMax: 2, amarilloMax: 5, area: 'Mantenimiento' },
+        'Agenda': { verdeMax: 0, amarilloMax: 0, area: 'Ventas' }
+    };
+
+    function msEnEstatusActual(u) {
+        if (!u) return 0;
+        const tiempos = calcularTiemposHistorial(u.historial || []);
+        if (!tiempos.length) {
+            // fallback: desde fecha_llegada si el estatus es el inicial
+            const llegada = fechaInicioTaller(u);
+            if (!llegada) return 0;
+            return Math.max(0, Date.now() - llegada.getTime());
+        }
+        const actual = tiempos[tiempos.length - 1];
+        if (actual.estatus !== u.estatus) {
+            // último historial no coincide: contar desde el último match del estatus actual
+            for (let i = tiempos.length - 1; i >= 0; i--) {
+                if (tiempos[i].estatus === u.estatus) return tiempos[i].duracionMs || 0;
+            }
+            return 0;
+        }
+        return actual.duracionMs || 0;
+    }
+
+    function diasEnEstatusActual(u) {
+        return Math.floor(msEnEstatusActual(u) / (24 * 60 * 60 * 1000));
+    }
+
+    function horasEnEstatusActual(u) {
+        return Math.floor(msEnEstatusActual(u) / (60 * 60 * 1000));
+    }
+
+    function nivelSlaEstatus(u) {
+        const est = u && u.estatus;
+        if (!est || est === 'Finalizada' || est === 'Agenda') return 'ok';
+        const cfg = SLA_POR_ESTATUS[est] || { verdeMax: 2, amarilloMax: 4 };
+        const d = diasEnEstatusActual(u);
+        if (d > cfg.amarilloMax) return 'rojo';
+        if (d > cfg.verdeMax) return 'amarillo';
+        return 'verde';
+    }
+
+    function colorSla(nivel) {
+        if (nivel === 'rojo') return { bg: '#f8d7da', fg: '#721c24', border: '#dc3545', label: 'ATRASADA' };
+        if (nivel === 'amarillo') return { bg: '#fff3cd', fg: '#856404', border: '#ffc107', label: 'Atención' };
+        return { bg: '#d4edda', fg: '#155724', border: '#28a745', label: 'En tiempo' };
+    }
+
+    function textoTiempoEnEstatus(u) {
+        const ms = msEnEstatusActual(u);
+        const horas = Math.floor(ms / (60 * 60 * 1000));
+        const dias = Math.floor(ms / (24 * 60 * 60 * 1000));
+        if (dias >= 1) return dias === 1 ? '1 día en este estatus' : dias + ' días en este estatus';
+        if (horas >= 1) return horas === 1 ? '1 h en este estatus' : horas + ' h en este estatus';
+        const mins = Math.max(0, Math.floor(ms / 60000));
+        return mins <= 1 ? 'Recién entró' : mins + ' min en este estatus';
+    }
+
+    function duenoVisibleUnidad(u) {
+        if (!u) return '';
+        if (u.estatus === 'Cotizando' || u.estatus === 'Recibida' || u.estatus === 'Finalizada') {
+            if (u.asesor_ventas) return '💰 ' + u.asesor_ventas;
+        }
+        if (u.estatus === 'Espera de refacciones') {
+            // última persona de Compras en historial
+            const hist = (u.historial || []).slice().reverse();
+            const h = hist.find(x => x.area === 'Compras' && x.persona);
+            if (h) return '🛒 ' + h.persona;
+            return '🛒 Compras';
+        }
+        if (u.estatus === 'Diagnosticando' && u.diagnosticador) return '🔧 ' + u.diagnosticador;
+        if (u.estatus === 'Reparando' && u.reparador) return '🛠️ ' + u.reparador;
+        return '';
+    }
+
+    function unidadesAtrasadasSla(areaFiltro) {
+        return (unidades || []).filter(u => {
+            if (u.eliminado || u.estatus === 'Finalizada' || u.estatus === 'Agenda') return false;
+            const cfg = SLA_POR_ESTATUS[u.estatus];
+            if (!cfg) return false;
+            if (areaFiltro && cfg.area !== areaFiltro && areaFiltro !== 'Gerencia') return false;
+            if (areaFiltro === 'Gerencia') {
+                // gerencia ve atrasadas de ventas y compras prioritarias
+                if (cfg.area !== 'Ventas' && cfg.area !== 'Compras' && nivelSlaEstatus(u) !== 'rojo') return false;
+            }
+            return nivelSlaEstatus(u) === 'rojo' || nivelSlaEstatus(u) === 'amarillo';
+        });
+    }
+
+    function resumenPendientesPersona() {
+        if (!sesion || sesion.area === 'Cliente') return null;
+        const area = sesion.area;
+        const persona = sesion.persona;
+        const activas = (unidades || []).filter(u => !u.eliminado && u.estatus !== 'Finalizada' && u.estatus !== 'Agenda');
+        if (area === 'Ventas') {
+            const mias = activas.filter(u =>
+                (u.estatus === 'Cotizando' || u.estatus === 'Recibida') &&
+                (u.asesor_ventas || '') === persona
+            );
+            const cotizando = mias.filter(u => u.estatus === 'Cotizando');
+            const atrasadas = mias.filter(u => nivelSlaEstatus(u) !== 'verde');
+            return {
+                area,
+                persona,
+                texto: `Tienes ${cotizando.length} en Cotizando` +
+                    (atrasadas.length ? ` · ⚠️ ${atrasadas.length} con atraso SLA` : ' · en tiempo')
+            };
+        }
+        if (area === 'Compras') {
+            const espera = activas.filter(u => u.estatus === 'Espera de refacciones');
+            const atrasadas = espera.filter(u => nivelSlaEstatus(u) !== 'verde');
+            const etaVencida = espera.filter(u => {
+                const eta = normalizarFechaISO(u.fecha_estimada_refacciones);
+                if (!eta) return false;
+                return eta < fechaHoyISO();
+            });
+            return {
+                area,
+                persona,
+                texto: `${espera.length} en Espera de refacciones` +
+                    (atrasadas.length ? ` · ⚠️ ${atrasadas.length} atrasadas` : '') +
+                    (etaVencida.length ? ` · 🛒 ${etaVencida.length} con ETA vencida` : '')
+            };
+        }
+        if (area === 'Mantenimiento') {
+            const mias = activas.filter(u =>
+                (u.estatus === 'Diagnosticando' && u.diagnosticador === persona) ||
+                (u.estatus === 'Reparando' && u.reparador === persona)
+            );
+            const atrasadas = mias.filter(u => nivelSlaEstatus(u) === 'rojo');
+            return {
+                area,
+                persona,
+                texto: `${mias.length} asignadas a ti` + (atrasadas.length ? ` · ⚠️ ${atrasadas.length} en rojo` : '')
+            };
+        }
+        if (area === 'Gerencia') {
+            const v = unidadesAtrasadasSla('Ventas').filter(u => nivelSlaEstatus(u) === 'rojo');
+            const c = unidadesAtrasadasSla('Compras').filter(u => nivelSlaEstatus(u) === 'rojo');
+            return {
+                area,
+                persona,
+                texto: `Atrasadas: Ventas ${v.length} · Compras ${c.length}`
+            };
+        }
+        return null;
+    }
+
+    function mostrarAvisoPendientesLogin() {
+        const r = resumenPendientesPersona();
+        if (!r || !r.texto) return;
+        // Toast + opcional alerta si hay rojo
+        const atrasadasRojas = (unidades || []).filter(u => {
+            if (u.eliminado || u.estatus === 'Finalizada' || u.estatus === 'Agenda') return false;
+            const cfg = SLA_POR_ESTATUS[u.estatus];
+            if (!cfg) return false;
+            if (sesion.area === 'Ventas' && cfg.area !== 'Ventas') return false;
+            if (sesion.area === 'Compras' && cfg.area !== 'Compras') return false;
+            if (sesion.area === 'Mantenimiento' && cfg.area !== 'Mantenimiento') return false;
+            return nivelSlaEstatus(u) === 'rojo';
+        });
+        mostrarToastApp('📋 ' + r.texto, atrasadasRojas.length ? '#dc3545' : '#1a3a5c');
+        if (atrasadasRojas.length && (sesion.area === 'Ventas' || sesion.area === 'Compras' || sesion.area === 'Gerencia')) {
+            setTimeout(() => {
+                alert(
+                    '⚠️ Unidades atrasadas (SLA)\n\n' +
+                    r.texto + '\n\n' +
+                    atrasadasRojas.slice(0, 8).map(u =>
+                        '• ' + (u.no_unidad || '—') + ' · ' + u.estatus + ' · ' + textoTiempoEnEstatus(u)
+                    ).join('\n') +
+                    (atrasadasRojas.length > 8 ? '\n…' : '') +
+                    '\n\nRevisa el Kanban (tarjetas en rojo) y las notificaciones.'
+                );
+            }, 400);
+        }
     }
 
     // 0-2 verde | 3-4 amarillo | 5+ rojo
@@ -4709,15 +4986,23 @@
                     abrirModalDetalle(u.id);
                 };
                 const ultimo = u.historial && u.historial.length > 0 ? u.historial[u.historial.length-1] : null;
+                const slaNiv = (!esFinalizada && u.estatus !== 'Agenda') ? nivelSlaEstatus(u) : 'ok';
+                const sla = colorSla(slaNiv);
+                const dueno = duenoVisibleUnidad(u);
+                card.style.borderLeft = (!esFinalizada && u.estatus !== 'Agenda')
+                    ? ('5px solid ' + sla.border)
+                    : '';
                 card.innerHTML = `
                     <div class="unidad-id">
                         ${u.no_unidad || '—'}
+                        ${u.es_garantia || u.es_reingreso ? ' <span style="font-size:10px;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;">🛡️</span>' : ''}
                     </div>
-                    <div class="cliente">${u.cliente || '—'} ${u.modelo ? '· '+u.modelo : ''}</div>
+                    <div class="cliente">${u.cliente || '—'} ${u.modelo ? '· '+u.modelo : ''} ${textoBadgeGarantia(u)}</div>
                     <div class="fechas">
                         📅 Llegada: ${formatearFecha(u.fecha_llegada)}
                         ${u.fecha_salida ? ' | 🚚 Salida: '+formatearFecha(u.fecha_salida) : ''}
                     </div>
+                    ${dueno ? `<div style="font-size:11px; margin:4px 0; color:#333;"><strong>Responsable:</strong> ${dueno}</div>` : ''}
                     <div class="meta">
                         <span>
                             🔧 ${u.diagnosticador || '—'} 
@@ -4736,6 +5021,11 @@
                                </span>`)}
                         <span style="font-size:10px; color:#999;">${u.problema ? u.problema.substring(0,25)+'...' : ''}</span>
                     </div>
+                    ${!esFinalizada && u.estatus !== 'Agenda' ? `
+                    <div style="margin-top:6px; padding:5px 8px; border-radius:8px; font-size:11px; font-weight:600;
+                        background:${sla.bg}; color:${sla.fg}; border:1px solid ${sla.border};">
+                        ⏳ ${textoTiempoEnEstatus(u)} · ${sla.label}
+                    </div>` : ''}
                     ${u.estatus === 'Espera de refacciones' ? `
                     <div style="margin-top:6px; padding:6px 8px; background:#fff4e5; border-radius:8px; font-size:11px; color:#7a3e00; line-height:1.35;">
                         <strong>🛒 ${etiquetaEstadoRefacciones(u)}</strong><br>
@@ -4972,6 +5262,13 @@
 
         const grid = document.getElementById('detalleGrid');
         grid.innerHTML = `
+            ${(u.es_garantia || u.es_reingreso) ? `
+            <div class="detalle-item" style="grid-column:1/-1; background:#fff3cd; border-radius:10px;">
+                <div class="label">Garantía / Reingreso</div>
+                <div class="valor">🛡️ Sí${u.dias_desde_fin_prev != null ? ' · ' + u.dias_desde_fin_prev + ' días desde la última finalización' : ''}
+                ${u.unidad_origen_id ? ' · Ref. unidad #' + u.unidad_origen_id : ''}
+                <br><small>Plazo de garantía configurado: ${DIAS_GARANTIA} días</small></div>
+            </div>` : ''}
             <div class="detalle-item">
                 <div class="label">Número de Unidad</div>
                 <div class="valor">${u.no_unidad || '—'}</div>
@@ -5215,8 +5512,8 @@
         if (estatusInicial === 'Recibida') {
             if (sesion.area === 'Ventas' || sesion.area === 'Gerencia' || tienePermisoTotal()) {
                 asesor = valorPersonaSelect('asesorVentasNueva');
-                if (!asesor) {
-                    alert('⚠️ Al recibir la unidad debes elegir el Asesor de ventas.');
+                if (!asesor || !esUsuarioRegistrado(asesor, 'Ventas')) {
+                    alert('⚠️ Debes elegir un Asesor de ventas registrado. No se permiten nombres libres.');
                     return;
                 }
             } else {
@@ -5226,17 +5523,53 @@
         }
         if (estatusInicial === 'Diagnosticando' && (sesion.area === 'Mantenimiento' || sesion.area === 'Gerencia' || tienePermisoTotal())) {
             diagnosticador = valorPersonaSelect('diagnosticadorNueva');
+            if (diagnosticador && !esUsuarioRegistrado(diagnosticador, 'Mantenimiento')) {
+                alert('⚠️ El diagnosticador debe ser un usuario registrado de Mantenimiento.');
+                return;
+            }
         }
         if (estatusInicial === 'Reparando' && (sesion.area === 'Mantenimiento' || sesion.area === 'Gerencia' || tienePermisoTotal())) {
             reparador = valorPersonaSelect('reparadorNueva');
+            if (reparador && !esUsuarioRegistrado(reparador, 'Mantenimiento')) {
+                alert('⚠️ El reparador debe ser un usuario registrado de Mantenimiento.');
+                return;
+            }
+        }
+
+        const noUnidadVal = document.getElementById('noUnidadNueva').value.trim();
+        const clienteVal = document.getElementById('clienteNueva').value.trim();
+        const placasVal = document.getElementById('placasNueva').value.trim();
+        const noSerieVal = document.getElementById('noSerieNueva').value.trim();
+
+        // Garantía / reingreso (misma serie, placas o no. unidad finalizada en los últimos N días)
+        let garantiaInfo = null;
+        if (estatusInicial === 'Recibida' || estatusInicial === 'Diagnosticando' || estatusInicial === 'Agenda') {
+            garantiaInfo = buscarReingresoGarantia({
+                no_unidad: noUnidadVal,
+                placas: placasVal,
+                no_serie: noSerieVal,
+                cliente: clienteVal
+            });
+            if (garantiaInfo) {
+                const ok = confirm(
+                    '🛡️ Posible GARANTÍA / REINGRESO\n\n' +
+                    'Coincide con una unidad finalizada hace ' + garantiaInfo.diasDesdeFin + ' día(s)\n' +
+                    'Unidad: ' + (garantiaInfo.unidad.no_unidad || '—') + '\n' +
+                    'Cliente: ' + (garantiaInfo.unidad.cliente || '—') + '\n' +
+                    'Match por: ' + garantiaInfo.match + '\n' +
+                    'Plazo de garantía: ' + DIAS_GARANTIA + ' días\n\n' +
+                    '¿Registrar esta unidad como reingreso en garantía?'
+                );
+                if (!ok) garantiaInfo = null;
+            }
         }
 
         const nueva = {
-            no_unidad: document.getElementById('noUnidadNueva').value.trim(),
-            cliente: document.getElementById('clienteNueva').value.trim(),
+            no_unidad: noUnidadVal,
+            cliente: clienteVal,
             modelo: document.getElementById('modeloNueva').value.trim(),
-            placas: document.getElementById('placasNueva').value.trim(),
-            no_serie: document.getElementById('noSerieNueva').value.trim(),
+            placas: placasVal,
+            no_serie: noSerieVal,
             orden_compra: document.getElementById('ordenCompraNueva').value.trim(),
             hoja_servicio: document.getElementById('hojaServicioNueva').value.trim(),
             folio: document.getElementById('folioNueva').value.trim(),
@@ -5245,17 +5578,20 @@
             reparador: reparador,
             asesor_ventas: asesor,
             estatus: estatusInicial,
-            // No enviar null en fechas (evita error "null value" en Supabase)
             fecha_llegada: estatusInicial === 'Agenda' ? (fechaAgenda || hoy) : hoy,
             eliminado: false,
+            es_garantia: !!(garantiaInfo && garantiaInfo.es_garantia),
+            es_reingreso: !!(garantiaInfo && garantiaInfo.es_reingreso),
+            unidad_origen_id: garantiaInfo && garantiaInfo.unidad ? garantiaInfo.unidad.id : null,
+            dias_desde_fin_prev: garantiaInfo ? garantiaInfo.diasDesdeFin : null,
             historial: [{
                 fecha: fechaHistorialAhora(),
                 estatus: estatusInicial,
                 area: sesion ? sesion.area : 'Sistema',
                 persona: sesion ? sesion.persona : 'Sistema',
-                comentario: estatusInicial === 'Agenda'
+                comentario: (estatusInicial === 'Agenda'
                     ? ('Agendada para llegada el ' + fechaAgenda + (fallaLlegada ? '. Falla: ' + fallaLlegada : ''))
-                    : 'Unidad creada'
+                    : 'Unidad creada') + (garantiaInfo ? ' · 🛡️ Reingreso/garantía (' + garantiaInfo.diasDesdeFin + 'd desde fin previo)' : '')
             }]
         };
         if (fechaAgenda) nueva.fecha_agenda = fechaAgenda;
@@ -5646,28 +5982,28 @@
             datosFechaLlegadaRecibida = fechaHoyISO();
         }
 
-        // Asesor obligatorio al pasar a Recibida (solo Ventas/Gerencia pueden asignarlo)
+        // Asesor obligatorio al pasar a Recibida (solo usuarios registrados de Ventas)
         if (nuevoEstatus === 'Recibida' && !(u.asesor_ventas || '').toString().trim()) {
             if (area !== 'Ventas' && area !== 'Gerencia') {
                 alert('⚠️ Solo Ventas o Gerencia pueden recibir la unidad y asignar el Asesor de ventas.');
                 return;
             }
-            const nombres = (getPersonasPorArea()['Ventas'] || []).join('\n');
-            const elegido = prompt('💰 Elige el Asesor de ventas (escribe el nombre exacto):\n\n' + nombres, sesion.persona || '');
-            if (!elegido || !elegido.trim()) {
-                alert('⚠️ Debes asignar el Asesor de ventas al recibir.');
+            const nombres = nombresRegistradosArea('Ventas');
+            const elegido = prompt('💰 Elige el Asesor de ventas (nombre exacto, solo registrados):\n\n' + nombres.join('\n'), sesion.persona || '');
+            if (!elegido || !elegido.trim() || !esUsuarioRegistrado(elegido.trim(), 'Ventas')) {
+                alert('⚠️ Debes elegir un Asesor de ventas registrado. No se permiten nombres libres.');
                 return;
             }
             datosAsesor = elegido.trim();
         }
 
-        // Diagnosticador: solo se asigna en Diagnosticando (Mantenimiento/Gerencia)
+        // Diagnosticador: solo usuarios registrados de Mantenimiento
         if (nuevoEstatus === 'Diagnosticando' && (area === 'Mantenimiento' || area === 'Gerencia')) {
             if (!(u.diagnosticador || '').toString().trim()) {
-                const nombres = textoListaTecnicosPrompt();
-                const elegido = prompt('🔧 Elige el Diagnosticador:\n\n' + nombres + '\n\n(Escribe solo el nombre, sin estrellas)', sesion.persona || '');
-                if (!elegido || !elegido.trim()) {
-                    alert('⚠️ Debes asignar el diagnosticador al pasar a Diagnosticando.');
+                const nombres = nombresRegistradosArea('Mantenimiento');
+                const elegido = prompt('🔧 Elige el Diagnosticador (solo registrados):\n\n' + nombres.join('\n'), sesion.persona || '');
+                if (!elegido || !elegido.trim() || !esUsuarioRegistrado(elegido.trim(), 'Mantenimiento')) {
+                    alert('⚠️ Debes asignar un diagnosticador registrado de Mantenimiento.');
                     return;
                 }
                 datosDiagnosticador = elegido.trim();
@@ -5684,16 +6020,31 @@
             }
         }
 
-        // Reparador: solo en Reparando (Mantenimiento)
+        // Reparador: solo usuarios registrados de Mantenimiento
         if (nuevoEstatus === 'Reparando' && (area === 'Mantenimiento' || area === 'Gerencia')) {
             if (!(u.reparador || '').toString().trim()) {
-                const nombres = textoListaTecnicosPrompt();
-                const elegido = prompt('🛠️ Elige el Reparador:\n\n' + nombres + '\n\n(Escribe solo el nombre, sin estrellas)', sesion.persona || '');
-                if (!elegido || !elegido.trim()) {
-                    alert('⚠️ Debes asignar el reparador al pasar a Reparando.');
+                const nombres = nombresRegistradosArea('Mantenimiento');
+                const elegido = prompt('🛠️ Elige el Reparador (solo registrados):\n\n' + nombres.join('\n'), sesion.persona || '');
+                if (!elegido || !elegido.trim() || !esUsuarioRegistrado(elegido.trim(), 'Mantenimiento')) {
+                    alert('⚠️ Debes asignar un reparador registrado de Mantenimiento.');
                     return;
                 }
                 datosReparador = elegido.trim();
+            }
+        }
+
+        // Si pasa a Recibida y aún no está marcada, detectar garantía/reingreso
+        let datosGarantia = null;
+        if (nuevoEstatus === 'Recibida' && !u.es_garantia && !u.es_reingreso) {
+            const g = buscarReingresoGarantia(u);
+            if (g) {
+                const ok = confirm(
+                    '🛡️ Posible GARANTÍA / REINGRESO\n\n' +
+                    'Coincide con una unidad finalizada hace ' + g.diasDesdeFin + ' día(s)\n' +
+                    'Unidad previa: ' + (g.unidad.no_unidad || '—') + ' · ' + (g.unidad.cliente || '') + '\n' +
+                    'Match por: ' + g.match + '\n\n¿Marcar como reingreso en garantía?'
+                );
+                if (ok) datosGarantia = g;
             }
         }
 
@@ -5703,7 +6054,8 @@
             estatus: nuevoEstatus,
             area: area,
             persona: persona,
-            comentario: comentario || `Cambio de ${estatusAnterior} a ${nuevoEstatus}`,
+            comentario: (comentario || `Cambio de ${estatusAnterior} a ${nuevoEstatus}`) +
+                (datosGarantia ? ' · 🛡️ Reingreso/garantía (' + datosGarantia.diasDesdeFin + 'd)' : ''),
             motivo_retorno: motivoRetorno || undefined,
             requiere_refacciones: requiereRef || undefined
         });
@@ -5745,6 +6097,12 @@
         }
         if (datosFechaLlegadaRecibida) {
             datos.fecha_llegada = datosFechaLlegadaRecibida;
+        }
+        if (datosGarantia) {
+            datos.es_garantia = true;
+            datos.es_reingreso = true;
+            datos.unidad_origen_id = datosGarantia.unidad ? datosGarantia.unidad.id : null;
+            datos.dias_desde_fin_prev = datosGarantia.diasDesdeFin;
         }
         if (nuevoEstatus === 'Espera de refacciones') {
             datos.refacciones_esperadas = refaccionesEsperadas;
@@ -6361,6 +6719,24 @@
         );
         if (!llego) return;
 
+        let garantiaPatch = {};
+        const g = buscarReingresoGarantia(u);
+        if (g) {
+            const okG = confirm(
+                '🛡️ Posible GARANTÍA / REINGRESO\n\n' +
+                'Coincide con finalizada hace ' + g.diasDesdeFin + ' día(s)\n' +
+                'Unidad previa: ' + (g.unidad.no_unidad || '—') + '\n\n¿Marcar como reingreso en garantía?'
+            );
+            if (okG) {
+                garantiaPatch = {
+                    es_garantia: true,
+                    es_reingreso: true,
+                    unidad_origen_id: g.unidad ? g.unidad.id : null,
+                    dias_desde_fin_prev: g.diasDesdeFin
+                };
+            }
+        }
+
         const hoy = fechaHoyISO();
         const historial = (u.historial || []).slice();
         historial.push({
@@ -6368,13 +6744,15 @@
             estatus: 'Recibida',
             area: sesion.area,
             persona: sesion.persona,
-            comentario: 'Llegada confirmada por Ventas. Antes en Agenda' + (u.fecha_agenda ? ' (' + u.fecha_agenda + ')' : '')
+            comentario: 'Llegada confirmada por Ventas. Antes en Agenda' + (u.fecha_agenda ? ' (' + u.fecha_agenda + ')' : '') +
+                (garantiaPatch.es_garantia ? ' · 🛡️ Reingreso/garantía' : '')
         });
 
         const resultado = await actualizarUnidad(id, {
             estatus: 'Recibida',
             fecha_llegada: hoy,
-            historial: historial
+            historial: historial,
+            ...garantiaPatch
         });
         if (resultado.success) {
             registrarNotificacionEvento({
@@ -6827,6 +7205,21 @@
                         tipo: diasEnEstatusActual >= 5 ? 'urgente' : 'aviso',
                         titulo: `📌 Estancada: ${u.no_unidad || 'Sin número'} — ${diasEnEstatusActual}d en ${u.estatus}`,
                         detalle: `${u.cliente || '—'} · Responsable: ${responsable}`,
+                        unidadId: u.id
+                    });
+                }
+            }
+
+            // SLA estricto Ventas (Cotizando) y Compras (Espera de refacciones)
+            const slaNiv = nivelSlaEstatus(u);
+            if (slaNiv === 'rojo' || slaNiv === 'amarillo') {
+                const slaCfg = SLA_POR_ESTATUS[u.estatus];
+                if (slaCfg && notifRelevanteParaArea(slaCfg.area, areaSesion)) {
+                    const dueno = duenoVisibleUnidad(u);
+                    notifs.push({
+                        tipo: slaNiv === 'rojo' ? 'urgente' : 'aviso',
+                        titulo: `${slaNiv === 'rojo' ? '🚨' : '⚠️'} SLA ${u.estatus}: ${u.no_unidad || 'Sin número'}`,
+                        detalle: `${textoTiempoEnEstatus(u)} · ${u.cliente || '—'}${dueno ? ' · ' + dueno : ''} · Mueve o actualiza esta unidad`,
                         unidadId: u.id
                     });
                 }
