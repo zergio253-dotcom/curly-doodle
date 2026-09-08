@@ -3739,6 +3739,7 @@
             reparadas: 0,
             finalizadas: 0,
             cotizadas: 0,
+            recibidas: 0,
             ventasMov: 0,
             comprasMov: 0,
             esperaRefacciones: 0,
@@ -3794,6 +3795,10 @@
                 st.unidades.add(u.id);
                 st.msTotal += h.duracionMs || 0;
 
+                if (est === 'Recibida') {
+                    st.recibidas++;
+                    if (area === 'Ventas' || area === 'Gerencia') st.ventasMov++;
+                }
                 if (est === 'Diagnosticando') {
                     st.diagnosticadas++;
                     st.msDiagnostico += h.duracionMs || 0;
@@ -4169,6 +4174,28 @@
             </div>`;
         }).join('') || '<span style="color:#888;">Sin diagnósticos de técnicos en este periodo</span>';
 
+        const podioVentasHtml = lista.filter(s => s.area === 'Ventas')
+            .sort((a, b) => (b.recibidas || 0) - (a.recibidas || 0) || b.cotizadas - a.cotizadas || b.finalizadas - a.finalizadas)
+            .slice(0, 8)
+            .map((st, i) => {
+                const med = medallas[i] || (i + 1) + '.';
+                return `<div style="display:flex; justify-content:space-between; gap:8px; padding:8px 10px; background:${i < 3 ? '#eafaf1' : 'var(--detalle-item,#f8f9fa)'}; border-radius:8px; margin-bottom:4px; font-size:13px;">
+                    <span>${med} <strong>${st.persona}</strong></span>
+                    <span style="text-align:right; font-size:12px;">📥 ${st.recibidas || 0} · 💰 ${st.cotizadas} · ✅ ${st.finalizadas}</span>
+                </div>`;
+            }).join('') || '<span style="color:#888;">Sin movimientos de ventas en este periodo</span>';
+
+        const podioComprasHtml = lista.filter(s => s.area === 'Compras')
+            .sort((a, b) => b.esperaRefacciones - a.esperaRefacciones || b.comprasMov - a.comprasMov)
+            .slice(0, 8)
+            .map((st, i) => {
+                const med = medallas[i] || (i + 1) + '.';
+                return `<div style="display:flex; justify-content:space-between; gap:8px; padding:8px 10px; background:${i < 3 ? '#fff4e5' : 'var(--detalle-item,#f8f9fa)'}; border-radius:8px; margin-bottom:4px; font-size:13px;">
+                    <span>${med} <strong>${st.persona}</strong></span>
+                    <span style="text-align:right; font-size:12px;">📦 ${st.esperaRefacciones} · 🛒 ${st.comprasMov}</span>
+                </div>`;
+            }).join('') || '<span style="color:#888;">Sin movimientos de compras en este periodo</span>';
+
         // Comparación por jerarquía
         const jerHtml = ['Máster', 'Profesional', 'Aprendiz'].map(niv => {
             const n = jerarquia[niv];
@@ -4183,25 +4210,55 @@
             </tr>`;
         }).join('');
 
-        const cards = lista.length ? lista.map(st => {
+        // Tarjetas solo con métricas de la responsabilidad de cada área
+        function cardPersonaDepto(st) {
             const colorArea = st.area === 'Mantenimiento' ? '#17a2b8'
                 : st.area === 'Ventas' ? '#28a745'
                 : st.area === 'Compras' ? '#fd7e14'
                 : st.area === 'Gerencia' ? '#1a3a5c' : '#6c757d';
-            const progresoMeta = st.area === 'Mantenimiento'
-                ? Math.min(100, Math.round((st.finalizadas / meta) * 100))
-                : null;
-            const barraMeta = progresoMeta != null
-                ? `<div style="grid-column:1/-1; margin-top:4px;">
-                    <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
-                        <span>🎯 Meta semanal (${meta})</span>
-                        <span>${st.finalizadas}/${meta} (${progresoMeta}%)</span>
-                    </div>
-                    <div style="height:8px; background:#e9ecef; border-radius:6px; overflow:hidden;">
-                        <div style="height:100%; width:${progresoMeta}%; background:${progresoMeta >= 100 ? '#28a745' : '#1a3a5c'};"></div>
-                    </div>
-                   </div>`
-                : '';
+            let metricsHtml = '';
+            if (st.area === 'Mantenimiento') {
+                const progresoMeta = Math.min(100, Math.round((st.finalizadas / meta) * 100));
+                metricsHtml = `
+                    <div>🔍 Diagnosticó: <strong>${st.diagnosticadas}</strong></div>
+                    <div>🔧 Reparó: <strong>${st.reparadas}</strong></div>
+                    <div>✅ Finalizó: <strong>${st.finalizadas}</strong></div>
+                    <div>↩️ Retrabajos: <strong>${st.retrabajos}</strong></div>
+                    <div>📈 Eficiencia: <strong>${st.eficiencia != null ? st.eficiencia + '%' : '—'}</strong></div>
+                    <div style="grid-column:1/-1;">⏱️ Diag: <strong>${st.tiempoDiagTexto || '—'}</strong> · Rep: <strong>${st.tiempoRepTexto || '—'}</strong></div>
+                    <div style="grid-column:1/-1;">
+                        <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
+                            <span>🎯 Meta finalizadas (${meta})</span>
+                            <span>${st.finalizadas}/${meta} (${progresoMeta}%)</span>
+                        </div>
+                        <div style="height:8px; background:#e9ecef; border-radius:6px; overflow:hidden;">
+                            <div style="height:100%; width:${progresoMeta}%; background:${progresoMeta >= 100 ? '#28a745' : '#17a2b8'};"></div>
+                        </div>
+                    </div>`;
+            } else if (st.area === 'Ventas') {
+                metricsHtml = `
+                    <div>📥 Recibidas: <strong>${st.recibidas || 0}</strong></div>
+                    <div>💰 Cotizó: <strong>${st.cotizadas}</strong></div>
+                    <div>✅ Entregas (fin.): <strong>${st.finalizadas}</strong></div>
+                    <div>📦 A espera refacc.: <strong>${st.esperaRefacciones}</strong></div>
+                    <div style="grid-column:1/-1;">📊 Movimientos ventas: <strong>${st.ventasMov || 0}</strong></div>
+                    <div style="grid-column:1/-1; color:#666;">Unidades tocadas: <strong>${st.unidadesCount}</strong></div>`;
+            } else if (st.area === 'Compras') {
+                metricsHtml = `
+                    <div>📦 En espera refacc.: <strong>${st.esperaRefacciones}</strong></div>
+                    <div>🛒 Movimientos: <strong>${st.comprasMov}</strong></div>
+                    <div style="grid-column:1/-1;">⏳ Tiempo en espera: <strong>${st.tiempoEsperaTexto || '—'}</strong></div>
+                    <div style="grid-column:1/-1; color:#666;">Unidades tocadas: <strong>${st.unidadesCount}</strong></div>`;
+            } else {
+                // Gerencia u otros: resumen general
+                metricsHtml = `
+                    <div>📥 Recibidas: <strong>${st.recibidas || 0}</strong></div>
+                    <div>🔍 Diag.: <strong>${st.diagnosticadas}</strong></div>
+                    <div>💰 Cotizó: <strong>${st.cotizadas}</strong></div>
+                    <div>✅ Finalizó: <strong>${st.finalizadas}</strong></div>
+                    <div>🛒 Compras: <strong>${st.comprasMov}</strong></div>
+                    <div style="grid-column:1/-1;">⏱️ Tiempo total pasos: <strong>${st.tiempoTexto}</strong></div>`;
+            }
             return `
             <div style="border:1px solid var(--border,#e9ecef); border-radius:12px; padding:12px; margin-bottom:10px; border-left:5px solid ${colorArea};">
                 <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
@@ -4209,23 +4266,42 @@
                     <span style="font-size:12px; background:${colorArea}; color:#fff; padding:3px 10px; border-radius:12px;">${st.area || '—'}</span>
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:13px;">
-                    <div>🔍 Diagnosticó: <strong>${st.diagnosticadas}</strong></div>
-                    <div>🔧 Reparó: <strong>${st.reparadas}</strong></div>
-                    <div>✅ Finalizó: <strong>${st.finalizadas}</strong></div>
-                    <div>↩️ Retrabajos: <strong>${st.retrabajos}</strong></div>
-                    <div>💰 Cotizó: <strong>${st.cotizadas}</strong></div>
-                    <div>🛒 Compras: <strong>${st.comprasMov}</strong></div>
-                    <div>📦 Espera refacc.: <strong>${st.esperaRefacciones}</strong></div>
-                    <div>📈 Eficiencia: <strong>${st.eficiencia != null ? st.eficiencia + '%' : '—'}</strong></div>
-                    <div style="grid-column:1/-1;">⏱️ Tiempo pasos: <strong>${st.tiempoTexto}</strong></div>
-                    <div style="grid-column:1/-1;">🔍 Diagnóstico: <strong>${st.tiempoDiagTexto || '—'}</strong> · 🛠️ Reparación: <strong>${st.tiempoRepTexto || '—'}</strong></div>
-                    <div style="grid-column:1/-1;">⏳ Espera refacciones: <strong>${st.tiempoEsperaTexto}</strong></div>
-                    <div style="grid-column:1/-1; color:#666;">Unidades tocadas: <strong>${st.unidadesCount}</strong></div>
-                    ${barraMeta}
+                    ${metricsHtml}
                 </div>
             </div>`;
-        }).join('') : `<p style="color:#888; padding:10px;">No hay movimientos con persona en este periodo.<br>
-            <small>La producción se calcula con los cambios de estatus del historial. Prueba el periodo «Todo» o mueve unidades de estatus (ya quedará registrado con fecha correcta).</small></p>`;
+        }
+
+        function bloqueDepto(titulo, color, items, vacioMsg) {
+            if (!items.length) {
+                return `<div style="margin-bottom:14px; padding:12px; background:${color}; border-radius:10px;">
+                    <strong style="display:block; margin-bottom:6px;">${titulo}</strong>
+                    <span style="color:#666; font-size:13px;">${vacioMsg}</span>
+                </div>`;
+            }
+            return `<div style="margin-bottom:14px; padding:12px; background:${color}; border-radius:10px;">
+                <strong style="display:block; margin-bottom:8px;">${titulo}</strong>
+                ${items.map(cardPersonaDepto).join('')}
+            </div>`;
+        }
+
+        const listaMant = lista.filter(s => s.area === 'Mantenimiento')
+            .sort((a, b) => b.finalizadas - a.finalizadas || b.diagnosticadas - a.diagnosticadas);
+        const listaVentas = lista.filter(s => s.area === 'Ventas')
+            .sort((a, b) => (b.recibidas || 0) - (a.recibidas || 0) || b.cotizadas - a.cotizadas);
+        const listaCompras = lista.filter(s => s.area === 'Compras')
+            .sort((a, b) => b.esperaRefacciones - a.esperaRefacciones || b.comprasMov - a.comprasMov);
+        const listaGerencia = lista.filter(s => s.area === 'Gerencia')
+            .sort((a, b) => b.finalizadas - a.finalizadas);
+
+        const cardsPorDepto = (listaMant.length || listaVentas.length || listaCompras.length || listaGerencia.length)
+            ? (
+                bloqueDepto('🔧 Mantenimiento (diagnósticos, reparaciones, finalizadas)', '#e8f7fa', listaMant, 'Sin movimientos de técnicos') +
+                bloqueDepto('💰 Ventas (recibidas, cotizadas, entregas)', '#eafaf1', listaVentas, 'Sin movimientos de ventas') +
+                bloqueDepto('🛒 Compras (refacciones y tiempos de espera)', '#fff4e5', listaCompras, 'Sin movimientos de compras') +
+                (listaGerencia.length ? bloqueDepto('👔 Gerencia (resumen)', '#eef2f7', listaGerencia, '') : '')
+            )
+            : `<p style="color:#888; padding:10px;">No hay movimientos con persona en este periodo.<br>
+            <small>Prueba el periodo «Todo» o realiza cambios de estatus (quedan registrados con fecha).</small></p>`;
 
         const maxProm = Math.max(...(cuellos.ranking.map(r => r.promedioMs).concat([1])));
         const barrasCuello = cuellos.ranking.filter(r => r.estatus !== 'Finalizada').map(r => {
@@ -4293,15 +4369,27 @@
             </div>
 
             <div style="margin-bottom:14px; padding:12px; background:#fff8e6; border-radius:10px;">
-                <strong style="display:block; margin-bottom:8px;">🏆 Ranking técnicos — Finalizadas</strong>
-                <small style="display:block; color:#666; margin-bottom:8px;">Solo Mantenimiento · se cuenta el reparador de la unidad</small>
+                <strong style="display:block; margin-bottom:8px;">🏆 Mantenimiento — Finalizadas por técnico</strong>
+                <small style="display:block; color:#666; margin-bottom:8px;">Se cuenta el reparador de la unidad</small>
                 ${podioFinalizadasHtml}
             </div>
 
             <div style="margin-bottom:14px; padding:12px; background:#e8f7fa; border-radius:10px;">
-                <strong style="display:block; margin-bottom:8px;">🔍 Ranking técnicos — Diagnosticadas</strong>
-                <small style="display:block; color:#666; margin-bottom:8px;">Solo Mantenimiento · se cuenta el diagnosticador de la unidad</small>
+                <strong style="display:block; margin-bottom:8px;">🔍 Mantenimiento — Diagnosticadas por técnico</strong>
+                <small style="display:block; color:#666; margin-bottom:8px;">Se cuenta el diagnosticador de la unidad</small>
                 ${podioDiagHtml}
+            </div>
+
+            <div style="margin-bottom:14px; padding:12px; background:#eafaf1; border-radius:10px;">
+                <strong style="display:block; margin-bottom:8px;">💰 Ventas — Ranking por responsabilidades</strong>
+                <small style="display:block; color:#666; margin-bottom:8px;">Recibidas · Cotizadas · Entregas</small>
+                ${podioVentasHtml}
+            </div>
+
+            <div style="margin-bottom:14px; padding:12px; background:#fff4e5; border-radius:10px;">
+                <strong style="display:block; margin-bottom:8px;">🛒 Compras — Ranking refacciones</strong>
+                <small style="display:block; color:#666; margin-bottom:8px;">Espera de refacciones y movimientos</small>
+                ${podioComprasHtml}
             </div>
 
             <div style="margin-bottom:14px; padding:12px; background:var(--detalle-item,#f8f9fa); border-radius:10px; overflow-x:auto;">
@@ -4322,12 +4410,11 @@
                 </table>
             </div>
 
-            <strong style="display:block; margin-bottom:8px;">👤 Detalle por persona</strong>
-            ${cards}
+            <strong style="display:block; margin-bottom:8px;">👤 Detalle por departamento y persona</strong>
+            ${cardsPorDepto}
             <p style="font-size:11px; color:#888; margin-top:8px;">
-                Agenda no cuenta en tiempos. Ciclo = desde primera Recibida hasta Finalizada.
-                Primera vez bien = finalizó sin volver de Reparando a Cotizando.
-                Meta se guarda en este dispositivo.
+                Cada persona solo se evalúa por su área: técnicos (diag/rep/fin), ventas (recibidas/cotizadas), compras (refacciones).
+                Agenda no cuenta en tiempos. Meta de finalizadas solo aplica a Mantenimiento.
             </p>
         `;
     }
