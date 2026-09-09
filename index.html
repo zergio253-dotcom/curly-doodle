@@ -897,6 +897,7 @@
                     <button type="button" class="menu-item" id="btnTrabajoHoy" onclick="abrirModalTrabajoHoy(); cerrarMenuPrincipal();" style="display:none;">📋 Trabajar hoy</button>
                     <button type="button" class="menu-item" id="btnMensaje" onclick="abrirModalMensaje(); cerrarMenuPrincipal();" style="display:none;">💬 Mensaje</button>
                     <button type="button" class="menu-item" id="btnProduccion" onclick="abrirModalProduccion(); cerrarMenuPrincipal();">📈 Producción</button>
+                    <button type="button" class="menu-item" id="btnMiDia" onclick="abrirMiDia();">☀️ Mi día</button>
                     <button type="button" class="menu-item" id="btnInventario" onclick="abrirModalInventario(); cerrarMenuPrincipal();">📦 Inventario</button>
                     <button type="button" class="menu-item" id="btnReporteDiario" onclick="abrirReporteDiario(); cerrarMenuPrincipal();" style="display:none;">📊 Reporte diario</button>
                     <button type="button" class="menu-item" id="btnDiagnosticosExt" onclick="window.open('https://insert-code-067286.onhercules.app/', '_blank'); cerrarMenuPrincipal();" style="display:none;">🔧 Diagnósticos</button>
@@ -1015,11 +1016,41 @@
                 </select>
             </div>
             <div class="form-group" style="margin:0;">
-                <label>Meta semanal (finalizadas / técnico)</label>
-                <input type="number" id="prodMetaSemanal" min="1" max="50" value="5" onchange="guardarMetaProduccion(); renderProduccion()" style="width:100%; padding:8px; border-radius:8px;">
+                <label>Meta semanal técnico (finalizadas)</label>
+                <input type="number" id="prodMetaSemanal" min="1" max="50" value="4" onchange="guardarMetaProduccion(); renderProduccion()" style="width:100%; padding:8px; border-radius:8px;">
             </div>
         </div>
-        <div id="produccionContenido" style="font-size:14px; max-height:60vh; overflow-y:auto;"></div>
+        <details style="margin-bottom:10px; padding:10px; background:var(--detalle-item,#f8f9fa); border-radius:10px;">
+            <summary style="cursor:pointer; font-weight:600;">🎯 Metas realistas por área (semanales · editable)</summary>
+            <p style="font-size:12px; color:#666; margin:8px 0;">Se ajustan al periodo (hoy ≈ 1/5, 30 días ≈ ×4). Edita y guarda.</p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px;">
+                <div>
+                    <strong style="color:#17a2b8;">🔧 Mantenimiento / técnico</strong>
+                    <label style="display:block; margin-top:4px;">Finalizadas</label>
+                    <input type="number" id="metaMantFin" min="1" max="30" value="4" style="width:100%; padding:6px; border-radius:6px;">
+                    <label style="display:block; margin-top:4px;">Diagnósticos</label>
+                    <input type="number" id="metaMantDiag" min="1" max="40" value="8" style="width:100%; padding:6px; border-radius:6px;">
+                </div>
+                <div>
+                    <strong style="color:#28a745;">💰 Ventas / asesor</strong>
+                    <label style="display:block; margin-top:4px;">Recibidas</label>
+                    <input type="number" id="metaVenRec" min="1" max="40" value="8" style="width:100%; padding:6px; border-radius:6px;">
+                    <label style="display:block; margin-top:4px;">Cotizadas</label>
+                    <input type="number" id="metaVenCot" min="1" max="40" value="10" style="width:100%; padding:6px; border-radius:6px;">
+                </div>
+                <div>
+                    <strong style="color:#fd7e14;">🛒 Compras</strong>
+                    <label style="display:block; margin-top:4px;">Liberaciones a reparar</label>
+                    <input type="number" id="metaComLib" min="1" max="40" value="7" style="width:100%; padding:6px; border-radius:6px;">
+                    <label style="display:block; margin-top:4px;">Movimientos</label>
+                    <input type="number" id="metaComMov" min="1" max="50" value="12" style="width:100%; padding:6px; border-radius:6px;">
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                    <button type="button" class="btn-modal primary" style="width:100%;" onclick="guardarMetasPorArea(); renderProduccion()">💾 Guardar metas</button>
+                </div>
+            </div>
+        </details>
+        <div id="produccionContenido" style="font-size:14px; max-height:55vh; overflow-y:auto;"></div>
         <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
             <button class="btn-modal success" style="flex:1;" onclick="exportarProduccionCSV()">📥 Exportar CSV</button>
             <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalProduccion')">Cerrar</button>
@@ -2526,6 +2557,7 @@
         };
         showMenu('btnReporteDiario', sesion.area === 'Gerencia' || (sesion && sesion.persona === 'Abel'));
         showMenu('btnProduccion', true);
+        showMenu('btnMiDia', sesion.area !== 'Gerencia' && sesion.area !== 'Cliente');
         showMenu('btnInventario', true);
         showMenu('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
         showMenu('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
@@ -4461,8 +4493,8 @@
             const finRep = st.finalizadasComoReparador || st.finalizadas || 0;
             const base = finRep + st.retrabajos;
             st.eficiencia = base > 0 ? Math.round((finRep / base) * 100) : null;
-            // Puntuación de desempeño 0–100 por rol
-            st.score = calcularScoreDesempeno(st);
+            // Puntuación de desempeño 0–100 por rol (vs metas del periodo)
+            st.score = calcularScoreDesempeno(st, periodo || '7');
             st.scoreLabel = etiquetaScoreDesempeno(st.score);
             delete st.unidades;
         });
@@ -4470,28 +4502,36 @@
         return Object.values(porPersona).sort((a, b) => (b.score || 0) - (a.score || 0) || b.finalizadas - a.finalizadas);
     }
 
-    function calcularScoreDesempeno(st) {
+    function calcularScoreDesempeno(st, periodo) {
         if (!st) return 0;
-        let score = 40; // base
+        const metas = getMetasPorArea();
+        const per = periodo || '7';
+        let score = 35;
         if (st.area === 'Mantenimiento') {
             const fin = st.finalizadasComoReparador || st.finalizadas || 0;
-            score += Math.min(30, fin * 6);
-            score += Math.min(15, (st.diagnosticadas || 0) * 3);
+            const metaFin = escalarMetaSemanal(metas.mantenimiento.finalizadas, per);
+            const metaDiag = escalarMetaSemanal(metas.mantenimiento.diagnosticos, per);
+            score += Math.min(30, Math.round((fin / metaFin) * 30));
+            score += Math.min(15, Math.round(((st.diagnosticadas || 0) / metaDiag) * 15));
             score -= Math.min(25, (st.retrabajos || 0) * 8);
-            if (st.eficiencia != null) score += Math.round((st.eficiencia - 70) / 5); // bonus si >70%
-            // Premio tiempos razonables de reparación (<2 días promedio)
-            if (st.promedioRepMs > 0 && st.promedioRepMs < 2 * 24 * 3600 * 1000) score += 5;
-            if (st.promedioRepMs > 5 * 24 * 3600 * 1000) score -= 5;
+            if (st.eficiencia != null) score += Math.round((st.eficiencia - 70) / 5);
+            if (st.promedioRepMs > 0 && st.promedioRepMs < 2 * MS_DIA_LABORAL) score += 5;
+            if (st.promedioRepMs > 5 * MS_DIA_LABORAL) score -= 5;
         } else if (st.area === 'Ventas') {
-            score += Math.min(20, (st.recibidas || 0) * 3);
-            score += Math.min(20, (st.cotizadas || 0) * 4);
+            const metaRec = escalarMetaSemanal(metas.ventas.recibidas, per);
+            const metaCot = escalarMetaSemanal(metas.ventas.cotizadas, per);
+            score += Math.min(25, Math.round(((st.recibidas || 0) / metaRec) * 25));
+            score += Math.min(25, Math.round(((st.cotizadas || 0) / metaCot) * 25));
             score += Math.min(15, (st.entregasComoAsesor || st.finalizadas || 0) * 3);
             score += Math.min(10, (st.liberacionesRef || 0) * 4);
         } else if (st.area === 'Compras') {
-            score += Math.min(35, (st.liberacionesRef || 0) * 10);
-            score += Math.min(15, (st.comprasMov || 0) * 2);
-            // Penaliza mucho tiempo acumulado en espera si hay muchas unidades
-            if (st.esperaRefacciones > 0 && st.msEsperaRefacciones > st.esperaRefacciones * 5 * 24 * 3600 * 1000) score -= 10;
+            const metaLib = escalarMetaSemanal(metas.compras.liberaciones, per);
+            const metaMov = escalarMetaSemanal(metas.compras.movimientos, per);
+            score += Math.min(35, Math.round(((st.liberacionesRef || 0) / metaLib) * 35));
+            score += Math.min(20, Math.round(((st.comprasMov || 0) / metaMov) * 20));
+            // No penalizar tiempo en pausa; solo espera activa larga
+            const msActiva = Math.max(0, (st.msEsperaRefacciones || 0) - (st.msPausaCompras || 0));
+            if (st.esperaRefacciones > 0 && msActiva > st.esperaRefacciones * 3 * MS_DIA_LABORAL) score -= 8;
         } else {
             score += Math.min(20, (st.finalizadas || 0) * 2);
             score += Math.min(15, (st.recibidas || 0) + (st.cotizadas || 0));
@@ -4764,13 +4804,98 @@
 
     const META_PROD_KEY = 'thermocontrol_meta_semanal';
     function getMetaProduccion() {
-        const n = parseInt(localStorage.getItem(META_PROD_KEY) || '5', 10);
-        return isNaN(n) || n < 1 ? 5 : n;
+        const metas = getMetasPorArea();
+        return metas.mantenimiento.finalizadas || 4;
     }
     function guardarMetaProduccion() {
         const el = document.getElementById('prodMetaSemanal');
         const n = parseInt(el && el.value, 10);
-        localStorage.setItem(META_PROD_KEY, String(isNaN(n) || n < 1 ? 5 : n));
+        const metas = getMetasPorArea();
+        metas.mantenimiento.finalizadas = isNaN(n) || n < 1 ? 4 : n;
+        localStorage.setItem(METAS_AREA_KEY, JSON.stringify(metas));
+        localStorage.setItem(META_PROD_KEY, String(metas.mantenimiento.finalizadas));
+        const mf = document.getElementById('metaMantFin');
+        if (mf) mf.value = String(metas.mantenimiento.finalizadas);
+    }
+
+    const METAS_AREA_KEY = 'thermocontrol_metas_area';
+    const METAS_AREA_DEFAULT = {
+        mantenimiento: { finalizadas: 4, diagnosticos: 8 },
+        ventas: { recibidas: 8, cotizadas: 10 },
+        compras: { liberaciones: 7, movimientos: 12 }
+    };
+
+    function getMetasPorArea() {
+        try {
+            const raw = localStorage.getItem(METAS_AREA_KEY);
+            if (raw) {
+                const p = JSON.parse(raw);
+                return {
+                    mantenimiento: { ...METAS_AREA_DEFAULT.mantenimiento, ...(p.mantenimiento || {}) },
+                    ventas: { ...METAS_AREA_DEFAULT.ventas, ...(p.ventas || {}) },
+                    compras: { ...METAS_AREA_DEFAULT.compras, ...(p.compras || {}) }
+                };
+            }
+        } catch (e) {}
+        return JSON.parse(JSON.stringify(METAS_AREA_DEFAULT));
+    }
+
+    function guardarMetasPorArea() {
+        const n = (id, def) => {
+            const v = parseInt((document.getElementById(id) || {}).value, 10);
+            return isNaN(v) || v < 1 ? def : v;
+        };
+        const metas = {
+            mantenimiento: {
+                finalizadas: n('metaMantFin', 4),
+                diagnosticos: n('metaMantDiag', 8)
+            },
+            ventas: {
+                recibidas: n('metaVenRec', 8),
+                cotizadas: n('metaVenCot', 10)
+            },
+            compras: {
+                liberaciones: n('metaComLib', 7),
+                movimientos: n('metaComMov', 12)
+            }
+        };
+        localStorage.setItem(METAS_AREA_KEY, JSON.stringify(metas));
+        localStorage.setItem(META_PROD_KEY, String(metas.mantenimiento.finalizadas));
+        const ms = document.getElementById('prodMetaSemanal');
+        if (ms) ms.value = String(metas.mantenimiento.finalizadas);
+        mostrarToastApp('🎯 Metas por área guardadas', '#28a745');
+    }
+
+    function cargarMetasEnFormulario() {
+        const m = getMetasPorArea();
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = String(v); };
+        set('metaMantFin', m.mantenimiento.finalizadas);
+        set('metaMantDiag', m.mantenimiento.diagnosticos);
+        set('metaVenRec', m.ventas.recibidas);
+        set('metaVenCot', m.ventas.cotizadas);
+        set('metaComLib', m.compras.liberaciones);
+        set('metaComMov', m.compras.movimientos);
+        set('prodMetaSemanal', m.mantenimiento.finalizadas);
+    }
+
+    /** Escala meta semanal al periodo seleccionado */
+    function escalarMetaSemanal(metaSemanal, periodo) {
+        const m = metaSemanal || 1;
+        if (periodo === 'hoy') return Math.max(1, Math.ceil(m / 5));
+        if (periodo === '30') return m * 4;
+        if (periodo === 'todo') return m * 12; // ~3 meses de referencia
+        return m; // 7 días
+    }
+
+    function progresoMeta(valor, meta) {
+        if (!meta || meta <= 0) return { pct: 0, texto: '—', color: '#6c757d' };
+        const pct = Math.min(150, Math.round((valor / meta) * 100));
+        let color = '#dc3545';
+        if (pct >= 100) color = '#28a745';
+        else if (pct >= 70) color = '#17a2b8';
+        else if (pct >= 40) color = '#ffc107';
+        else color = '#fd7e14';
+        return { pct: Math.min(100, pct), pctRaw: pct, texto: valor + ' / ' + meta + ' (' + pct + '%)', color };
     }
 
     let _ultimaProduccion = [];
@@ -4780,8 +4905,7 @@
         if (modoCliente) {
             alert('Vista de solo lectura: inicia sesión con un área para ver producción detallada.');
         }
-        const metaEl = document.getElementById('prodMetaSemanal');
-        if (metaEl) metaEl.value = String(getMetaProduccion());
+        cargarMetasEnFormulario();
         renderProduccion();
         document.getElementById('modalProduccion').style.display = 'flex';
     }
@@ -4858,20 +4982,29 @@
         // Rankings SOLO técnicos (Mantenimiento): finalizadas y diagnosticadas
         const rankingTecnicos = calcularRankingTecnicos(periodo);
         const medallas = ['🥇', '🥈', '🥉'];
+        const metasArea = getMetasPorArea();
+        const metaFinEsc = escalarMetaSemanal(metasArea.mantenimiento.finalizadas, periodo);
+        const metaDiagEsc = escalarMetaSemanal(metasArea.mantenimiento.diagnosticos, periodo);
+        const metaRecEsc = escalarMetaSemanal(metasArea.ventas.recibidas, periodo);
+        const metaCotEsc = escalarMetaSemanal(metasArea.ventas.cotizadas, periodo);
+        const metaLibEsc = escalarMetaSemanal(metasArea.compras.liberaciones, periodo);
+        const metaMovEsc = escalarMetaSemanal(metasArea.compras.movimientos, periodo);
+
         const podioFinalizadasHtml = rankingTecnicos.finalizadas.slice(0, 8).map((st, i) => {
             const med = medallas[i] || (i + 1) + '.';
-            const metaOk = st.finalizadas >= meta;
+            const pm = progresoMeta(st.finalizadas, metaFinEsc);
             return `<div style="display:flex; justify-content:space-between; gap:8px; padding:8px 10px; background:${i < 3 ? '#fff8e6' : 'var(--detalle-item,#f8f9fa)'}; border-radius:8px; margin-bottom:4px; font-size:13px;">
                 <span>${med} <strong>${st.persona}</strong> ${st.nivel ? '<span style="color:#666;font-size:11px;">(' + st.nivel + ')</span>' : ''}</span>
-                <span>✅ ${st.finalizadas}${metaOk ? ' · 🎯 Meta' : ''}</span>
+                <span style="color:${pm.color}; font-weight:600;">✅ ${pm.texto}${pm.pctRaw >= 100 ? ' 🎯' : ''}</span>
             </div>`;
         }).join('') || '<span style="color:#888;">Sin finalizadas de técnicos en este periodo</span>';
 
         const podioDiagHtml = rankingTecnicos.diagnosticadas.slice(0, 8).map((st, i) => {
             const med = medallas[i] || (i + 1) + '.';
+            const pm = progresoMeta(st.diagnosticadas, metaDiagEsc);
             return `<div style="display:flex; justify-content:space-between; gap:8px; padding:8px 10px; background:${i < 3 ? '#e8f7fa' : 'var(--detalle-item,#f8f9fa)'}; border-radius:8px; margin-bottom:4px; font-size:13px;">
                 <span>${med} <strong>${st.persona}</strong> ${st.nivel ? '<span style="color:#666;font-size:11px;">(' + st.nivel + ')</span>' : ''}</span>
-                <span>🔍 ${st.diagnosticadas}</span>
+                <span style="color:${pm.color}; font-weight:600;">🔍 ${pm.texto}</span>
             </div>`;
         }).join('') || '<span style="color:#888;">Sin diagnósticos de técnicos en este periodo</span>';
 
@@ -4920,7 +5053,8 @@
             const finRep = st.finalizadasComoReparador || st.finalizadas || 0;
             let metricsHtml = '';
             if (st.area === 'Mantenimiento') {
-                const progresoMeta = Math.min(100, Math.round((finRep / meta) * 100));
+                const pFin = progresoMeta(finRep, metaFinEsc);
+                const pDiag = progresoMeta(st.diagnosticadas || 0, metaDiagEsc);
                 metricsHtml = `
                     <div>🔍 Diagnosticó: <strong>${st.diagnosticadas}</strong></div>
                     <div>🔧 En reparación: <strong>${st.reparadas}</strong></div>
@@ -4931,14 +5065,23 @@
                     <div style="grid-column:1/-1;">⏱️ Prom. diag: <strong>${st.promedioDiagTexto || '—'}</strong> · Prom. rep: <strong>${st.promedioRepTexto || '—'}</strong></div>
                     <div style="grid-column:1/-1;">
                         <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
-                            <span>🎯 Meta finalizadas (${meta})</span>
-                            <span>${finRep}/${meta} (${progresoMeta}%)</span>
+                            <span>🎯 Meta finalizadas</span>
+                            <span style="color:${pFin.color}; font-weight:600;">${pFin.texto}</span>
+                        </div>
+                        <div style="height:8px; background:#e9ecef; border-radius:6px; overflow:hidden; margin-bottom:6px;">
+                            <div style="height:100%; width:${pFin.pct}%; background:${pFin.color};"></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
+                            <span>🎯 Meta diagnósticos</span>
+                            <span style="color:${pDiag.color}; font-weight:600;">${pDiag.texto}</span>
                         </div>
                         <div style="height:8px; background:#e9ecef; border-radius:6px; overflow:hidden;">
-                            <div style="height:100%; width:${progresoMeta}%; background:${progresoMeta >= 100 ? '#28a745' : '#17a2b8'};"></div>
+                            <div style="height:100%; width:${pDiag.pct}%; background:${pDiag.color};"></div>
                         </div>
                     </div>`;
             } else if (st.area === 'Ventas') {
+                const pRec = progresoMeta(st.recibidas || 0, metaRecEsc);
+                const pCot = progresoMeta(st.cotizadas || 0, metaCotEsc);
                 metricsHtml = `
                     <div>📥 Recibió: <strong>${st.recibidas || 0}</strong></div>
                     <div>💰 Cotizó: <strong>${st.cotizadas}</strong></div>
@@ -4947,8 +5090,25 @@
                     <div>✅ Liberó a reparar: <strong>${st.liberacionesRef || 0}</strong></div>
                     <div>📊 Movimientos: <strong>${st.ventasMov || 0}</strong></div>
                     <div style="grid-column:1/-1;">⏳ Tiempo espera cliente: <strong>${st.tiempoEsperaClienteTexto || '—'}</strong></div>
-                    <div style="grid-column:1/-1; color:#666;">Unidades tocadas: <strong>${st.unidadesCount}</strong></div>`;
+                    <div style="grid-column:1/-1;">
+                        <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
+                            <span>🎯 Meta recibidas</span>
+                            <span style="color:${pRec.color}; font-weight:600;">${pRec.texto}</span>
+                        </div>
+                        <div style="height:8px; background:#e9ecef; border-radius:6px; overflow:hidden; margin-bottom:6px;">
+                            <div style="height:100%; width:${pRec.pct}%; background:${pRec.color};"></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
+                            <span>🎯 Meta cotizadas</span>
+                            <span style="color:${pCot.color}; font-weight:600;">${pCot.texto}</span>
+                        </div>
+                        <div style="height:8px; background:#e9ecef; border-radius:6px; overflow:hidden;">
+                            <div style="height:100%; width:${pCot.pct}%; background:${pCot.color};"></div>
+                        </div>
+                    </div>`;
             } else if (st.area === 'Compras') {
+                const pLib = progresoMeta(st.liberacionesRef || 0, metaLibEsc);
+                const pMov = progresoMeta(st.comprasMov || 0, metaMovEsc);
                 metricsHtml = `
                     <div>📦 Pasos en espera: <strong>${st.esperaRefacciones}</strong></div>
                     <div>✅ Liberó a reparar: <strong>${st.liberacionesRef || 0}</strong></div>
@@ -4956,7 +5116,22 @@
                     <div>⏸️ Pausas (proveedor): <strong>${st.nPausaCompras || 0}</strong></div>
                     <div style="grid-column:1/-1;">⏳ Tiempo espera refacciones: <strong>${st.tiempoEsperaTexto || '—'}</strong></div>
                     <div style="grid-column:1/-1;">⏸️ Tiempo en pausa (no SLA): <strong>${st.tiempoPausaComprasTexto || '—'}</strong></div>
-                    <div style="grid-column:1/-1; color:#666;">Unidades tocadas: <strong>${st.unidadesCount}</strong></div>`;
+                    <div style="grid-column:1/-1;">
+                        <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
+                            <span>🎯 Meta liberaciones</span>
+                            <span style="color:${pLib.color}; font-weight:600;">${pLib.texto}</span>
+                        </div>
+                        <div style="height:8px; background:#e9ecef; border-radius:6px; overflow:hidden; margin-bottom:6px;">
+                            <div style="height:100%; width:${pLib.pct}%; background:${pLib.color};"></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
+                            <span>🎯 Meta movimientos</span>
+                            <span style="color:${pMov.color}; font-weight:600;">${pMov.texto}</span>
+                        </div>
+                        <div style="height:8px; background:#e9ecef; border-radius:6px; overflow:hidden;">
+                            <div style="height:100%; width:${pMov.pct}%; background:${pMov.color};"></div>
+                        </div>
+                    </div>`;
             } else {
                 metricsHtml = `
                     <div>📥 Recibidas: <strong>${st.recibidas || 0}</strong></div>
@@ -5071,6 +5246,13 @@
         box.innerHTML = `
             <div style="margin-bottom:14px; padding:12px; background:#e7f1ff; border-radius:10px; font-size:13px;">
                 <strong>📊 Indicadores del periodo</strong><br>
+                <div style="margin:6px 0 8px; padding:8px; background:#fff; border-radius:8px; font-size:12px; color:#333;">
+                    <strong>🎯 Metas del periodo</strong>
+                    (escala: ${periodo === 'hoy' ? 'día' : periodo === '30' ? '≈4 semanas' : periodo === 'todo' ? '≈12 semanas' : 'semana'})<br>
+                    🔧 Mant. finalizadas <strong>${metaFinEsc}</strong> · diag. <strong>${metaDiagEsc}</strong>
+                    · 💰 Ventas rec. <strong>${metaRecEsc}</strong> · cot. <strong>${metaCotEsc}</strong>
+                    · 🛒 Compras lib. <strong>${metaLibEsc}</strong> · mov. <strong>${metaMovEsc}</strong>
+                </div>
                 🏁 Ciclo promedio recepción → entrega: <strong>${ciclo.promedioCicloTexto}</strong>
                 ${ciclo.nCiclo ? ' (' + ciclo.nCiclo + ' unidades)' : ''}<br>
                 ✅ Primera vez bien: <strong>${ciclo.pctPrimeraVez != null ? ciclo.pctPrimeraVez + '%' : '—'}</strong>
@@ -5740,9 +5922,43 @@
         return [];
     }
 
-    function mostrarPanelPendientesLogin() {
-        const lista = listarPendientesPersona();
-        if (!lista.length) return;
+    function ordenPrioridadSla(u) {
+        const n = nivelSlaEstatus(u);
+        if (n === 'rojo') return 0;
+        if (n === 'amarillo') return 1;
+        if (n === 'cliente' || n === 'pausa') return 3;
+        if (n === 'verde') return 2;
+        return 4;
+    }
+
+    function etiquetaAccionSla(u) {
+        const n = nivelSlaEstatus(u);
+        if (n === 'rojo') return { badge: '🔥 MOVER HOY', color: '#dc3545', bg: '#f8d7da' };
+        if (n === 'amarillo') return { badge: '⚡ Priorizar hoy', color: '#856404', bg: '#fff3cd' };
+        if (n === 'cliente') return { badge: '⏸️ Espera cliente', color: '#004085', bg: '#e7f1ff' };
+        if (n === 'pausa') return { badge: '⏸️ Pausa proveedor', color: '#5b21b6', bg: '#f3e8ff' };
+        return { badge: 'En tiempo', color: '#155724', bg: '#d4edda' };
+    }
+
+    function mostrarPanelPendientesLogin(forzar) {
+        if (modoCliente || !sesion || sesion.area === 'Cliente') return;
+        // Gerencia no usa «Mi día» (evita ruido al iniciar)
+        if (sesion.area === 'Gerencia') return;
+        const lista = listarPendientesPersona().slice().sort((a, b) => {
+            const pa = ordenPrioridadSla(a) - ordenPrioridadSla(b);
+            if (pa !== 0) return pa;
+            return msEnEstatusActual(b) - msEnEstatusActual(a);
+        });
+        const moverHoy = lista.filter(u => {
+            const n = nivelSlaEstatus(u);
+            return n === 'rojo' || n === 'amarillo';
+        });
+        const rojas = moverHoy.filter(u => nivelSlaEstatus(u) === 'rojo');
+        const amarillas = moverHoy.filter(u => nivelSlaEstatus(u) === 'amarillo');
+
+        // Si no hay nada y no se forzó (botón menú), no molestar
+        if (!lista.length && !forzar) return;
+
         let modal = document.getElementById('modalPendientesLogin');
         if (!modal) {
             modal = document.createElement('div');
@@ -5750,26 +5966,79 @@
             modal.className = 'modal';
             modal.style.display = 'none';
             modal.innerHTML = `
-                <div class="modal-content" style="max-width:420px;">
-                    <h3 style="margin-top:0;">📋 Tus pendientes</h3>
-                    <p id="pendientesLoginResumen" style="font-size:13px;color:#666;margin-bottom:10px;"></p>
+                <div class="modal-content" style="max-width:440px;">
+                    <h3 style="margin-top:0;" id="miDiaTitulo">☀️ Mi día</h3>
+                    <div id="miDiaResumenBox" style="margin-bottom:12px;"></div>
                     <div id="pendientesLoginLista" style="max-height:50vh;overflow-y:auto;"></div>
                     <button class="btn-modal secondary" style="width:100%;margin-top:12px;" onclick="cerrarModal('modalPendientesLogin')">Cerrar</button>
                 </div>`;
             document.body.appendChild(modal);
         }
+
+        const nombre = (sesion.persona || '').split(' ')[0] || sesion.persona || '';
+        document.getElementById('miDiaTitulo').textContent = '☀️ Mi día' + (nombre ? ' · ' + nombre : '');
+
         const r = resumenPendientesPersona();
-        document.getElementById('pendientesLoginResumen').textContent = r ? r.texto : '';
-        document.getElementById('pendientesLoginLista').innerHTML = lista.map(u => {
-            const sla = nivelSlaEstatus(u);
-            const col = sla === 'rojo' ? '#dc3545' : (sla === 'amarillo' ? '#ffc107' : '#28a745');
-            return `<div onclick="cerrarModal('modalPendientesLogin'); abrirModalDetalle(${u.id})"
-                style="padding:10px; margin-bottom:6px; border-radius:10px; background:var(--detalle-item,#f8f9fa); border-left:4px solid ${col}; cursor:pointer; font-size:13px;">
-                <strong>${u.no_unidad || '—'}</strong> · ${u.cliente || ''}<br>
-                <span style="color:#666;">${u.estatus} · ${textoTiempoEnEstatus(u)}</span>
-            </div>`;
-        }).join('');
+        let resumenHtml = '';
+        if (moverHoy.length > 0) {
+            resumenHtml = `
+                <div style="padding:12px; border-radius:12px; background:${rojas.length ? '#f8d7da' : '#fff3cd'}; border:1px solid ${rojas.length ? '#f5c2c7' : '#ffe69c'}; margin-bottom:8px;">
+                    <div style="font-size:16px; font-weight:700; color:${rojas.length ? '#721c24' : '#856404'};">
+                        Hoy debes mover <strong>${moverHoy.length}</strong> unidad${moverHoy.length === 1 ? '' : 'es'}
+                    </div>
+                    <div style="font-size:13px; margin-top:4px; color:#333;">
+                        ${rojas.length ? '🔥 ' + rojas.length + ' atrasada' + (rojas.length === 1 ? '' : 's') + ' (rojo)' : ''}
+                        ${rojas.length && amarillas.length ? ' · ' : ''}
+                        ${amarillas.length ? '⚡ ' + amarillas.length + ' en atención (amarillo)' : ''}
+                    </div>
+                    <div style="font-size:12px; color:#666; margin-top:6px;">${r ? r.texto : ''}</div>
+                </div>`;
+        } else if (lista.length) {
+            resumenHtml = `
+                <div style="padding:12px; border-radius:12px; background:#d4edda; border:1px solid #c3e6cb; margin-bottom:8px;">
+                    <div style="font-size:15px; font-weight:700; color:#155724;">✅ Nada urgente por SLA hoy</div>
+                    <div style="font-size:12px; color:#666; margin-top:4px;">Tienes ${lista.length} en tu área, todas en tiempo. ${r ? r.texto : ''}</div>
+                </div>`;
+        } else {
+            resumenHtml = `
+                <div style="padding:12px; border-radius:12px; background:#e7f1ff; margin-bottom:8px;">
+                    <div style="font-size:15px; font-weight:700; color:#004085;">🎉 Sin pendientes en tu área</div>
+                    <div style="font-size:12px; color:#666; margin-top:4px;">Buen trabajo. Revisa el Kanban si entra algo nuevo.</div>
+                </div>`;
+        }
+        document.getElementById('miDiaResumenBox').innerHTML = resumenHtml;
+
+        const listaEl = document.getElementById('pendientesLoginLista');
+        if (!lista.length) {
+            listaEl.innerHTML = '';
+        } else {
+            // Separadores: primero mover hoy, luego el resto
+            const urgentes = lista.filter(u => ordenPrioridadSla(u) <= 1);
+            const resto = lista.filter(u => ordenPrioridadSla(u) > 1);
+            const fila = (u) => {
+                const sla = nivelSlaEstatus(u);
+                const acc = etiquetaAccionSla(u);
+                const col = colorSla(sla).border;
+                return `<div onclick="cerrarModal('modalPendientesLogin'); abrirModalDetalle(${u.id})"
+                    style="padding:10px; margin-bottom:6px; border-radius:10px; background:var(--detalle-item,#f8f9fa); border-left:4px solid ${col}; cursor:pointer; font-size:13px;">
+                    <div style="display:flex; justify-content:space-between; gap:6px; flex-wrap:wrap; align-items:center;">
+                        <strong>${u.no_unidad || '—'}</strong>
+                        <span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; background:${acc.bg}; color:${acc.color};">${acc.badge}</span>
+                    </div>
+                    <div style="color:#555; margin-top:2px;">${u.cliente || '—'}${u.modelo ? ' · ' + u.modelo : ''}</div>
+                    <div style="color:#666; font-size:12px; margin-top:2px;">${u.estatus} · ${textoTiempoEnEstatus(u)}</div>
+                </div>`;
+            };
+            listaEl.innerHTML =
+                (urgentes.length ? `<div style="font-size:12px; font-weight:600; color:#721c24; margin:4px 0 6px;">📌 Mover / priorizar hoy (${urgentes.length})</div>` + urgentes.map(fila).join('') : '') +
+                (resto.length ? `<div style="font-size:12px; font-weight:600; color:#155724; margin:10px 0 6px;">📋 Resto de tu área (${resto.length})</div>` + resto.map(fila).join('') : '');
+        }
         modal.style.display = 'flex';
+    }
+
+    function abrirMiDia() {
+        mostrarPanelPendientesLogin(true);
+        try { cerrarMenuPrincipal(); } catch (e) {}
     }
 
     // 0-2 verde | 3-4 amarillo | 5+ rojo
