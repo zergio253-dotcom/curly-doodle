@@ -1155,6 +1155,15 @@
                             </select>
                         </div>
                     </div>
+                    <div class="form-group" id="adminRolTecnicoBox">
+                        <label>Tipo de técnico (Mantenimiento)</label>
+                        <select id="adminUserRolTecnico">
+                            <option value="ambos">Diagnosticador y Reparador</option>
+                            <option value="diagnosticador">Solo Diagnosticador</option>
+                            <option value="reparador">Solo Reparador</option>
+                        </select>
+                        <small style="color:#666;">El diagnosticador elige al reparador al mandar a Reparando.</small>
+                    </div>
                     <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:10px; cursor:pointer;">
                         <input type="checkbox" id="adminUserPermisoTotal"> Permiso total (puede mover a cualquier estatus, como Gerencia)
                     </label>
@@ -1241,6 +1250,15 @@
             <div class="form-group">
                 <label>Problema / Descripción</label>
                 <textarea id="problemaNueva" rows="2" placeholder="Describe el problema..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>📍 Lugar del trabajo *</label>
+                <select id="ubicacionTrabajoNueva" style="width:100%; padding:10px; border-radius:8px;">
+                    <option value="Taller" selected>🏭 Taller (unidad viene al taller)</option>
+                    <option value="Kuzzy">Kuzzy (caja / en sitio → Cotizar → Finalizar)</option>
+                    <option value="Rescate">🚨 Rescates fuera de taller (Recibir → Reparar → Finalizar)</option>
+                </select>
+                <small style="color:#666; font-size:11px;">Taller = flujo completo · Kuzzy = cotizar · Rescate = reparar en sitio</small>
             </div>
             <div class="form-group" id="boxAsesorNueva">
                 <label>💰 Asesor de ventas *</label>
@@ -1342,6 +1360,14 @@
             <div class="form-group">
                 <label>Problema / Descripción</label>
                 <textarea id="problemaEditar" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+                <label>📍 Lugar del trabajo</label>
+                <select id="ubicacionTrabajoEditar" style="width:100%; padding:10px; border-radius:8px;">
+                    <option value="Taller">🏭 Taller (unidad en taller)</option>
+                    <option value="Kuzzy">Kuzzy (caja / en sitio)</option>
+                    <option value="Rescate">🚨 Rescates fuera de taller</option>
+                </select>
             </div>
             <div class="form-group" id="boxAsesorEditar">
                 <label>💰 Asesor de ventas</label>
@@ -1453,15 +1479,19 @@
         </div>
 
         <div id="boxMotivoRetorno" style="display:none; margin-bottom:12px; padding:12px; background:#f8d7da; border-radius:10px;">
-            <label style="font-weight:700; display:block; margin-bottom:6px;">↩️ Motivo de regreso a Cotizando *</label>
+            <label style="font-weight:700; display:block; margin-bottom:6px;">↩️ Motivo de regreso a Diagnosticando *</label>
             <select id="motivoRetornoCambio" style="width:100%; padding:8px; border-radius:8px;">
                 <option value="">Selecciona el motivo...</option>
-                <option value="Otra falla detectada">Otra falla detectada</option>
-                <option value="Faltan más piezas">Faltan más piezas</option>
-                <option value="Cliente no autorizó / cambió alcance">Cliente no autorizó / cambió alcance</option>
-                <option value="Requiere recotizar">Requiere recotizar</option>
+                <option value="Equipo sigue fallando">Equipo sigue fallando</option>
+                <option value="Otra falla detectada en prueba">Otra falla detectada en prueba</option>
+                <option value="Reparación incompleta / requiere nuevo diagnóstico">Reparación incompleta / requiere nuevo diagnóstico</option>
+                <option value="Falla intermitente no resuelta">Falla intermitente no resuelta</option>
                 <option value="Otro">Otro</option>
             </select>
+            <div class="form-group" style="margin-top:8px; margin-bottom:0;">
+                <label>Detalle del motivo (opcional)</label>
+                <input type="text" id="motivoRetornoDetalle" placeholder="Describe brevemente el problema..." style="width:100%; padding:8px; border-radius:8px;">
+            </div>
         </div>
 
         <div id="boxDetalleRefacciones" style="display:none; margin-bottom:12px; padding:12px; background:#fff4e5; border-radius:10px; border:1px solid #fd7e14;">
@@ -1676,6 +1706,42 @@
     </div>
 </div>
 
+<!-- ===== CHECKLIST ANTES DE FINALIZAR ===== -->
+<div class="modal" id="modalChecklistFinal">
+    <div class="modal-content">
+        <h3>✅ Checklist antes de Finalizar</h3>
+        <p id="infoChecklistFinal" style="font-weight:bold; color:#1a3a5c; margin-bottom:10px;"></p>
+        <p style="font-size:13px; color:#666; margin-bottom:12px;">Completa todos los puntos. La foto de temperatura de la caja es obligatoria.</p>
+        <div style="padding:10px; background:#f8f9fa; border-radius:10px; margin-bottom:12px; font-size:13px;">
+            <label style="display:flex; gap:8px; align-items:flex-start; margin-bottom:8px; cursor:pointer;">
+                <input type="checkbox" id="chkFinalPrueba"> <span>Prueba de la unidad realizada (caja / equipo verificado)</span>
+            </label>
+            <label style="display:flex; gap:8px; align-items:flex-start; margin-bottom:8px; cursor:pointer;">
+                <input type="checkbox" id="chkFinalPiezas"> <span>Piezas instaladas o N/A (si no llevaba refacciones)</span>
+            </label>
+            <label style="display:flex; gap:8px; align-items:flex-start; margin-bottom:8px; cursor:pointer;">
+                <input type="checkbox" id="chkFinalDatos"> <span>Datos completos (OT, hoja de servicio, serie, placas, técnico)</span>
+            </label>
+            <label style="display:flex; gap:8px; align-items:flex-start; margin-bottom:8px; cursor:pointer;">
+                <input type="checkbox" id="chkFinalLimpieza"> <span>Unidad lista para entrega / área de trabajo en orden</span>
+            </label>
+        </div>
+        <div class="form-group">
+            <label>🌡️ Temperatura de la caja (después de prueba) *</label>
+            <input type="text" id="tempCajaFinal" placeholder="Ej. -18 °C  o  0 °F" inputmode="text">
+        </div>
+        <div class="form-group">
+            <label>📷 Foto de la temperatura / display de la caja *</label>
+            <input type="file" id="fotoTempCajaFinal" accept="image/*" capture="environment">
+            <small style="color:#888; font-size:11px;">Se guarda en este dispositivo junto a la unidad.</small>
+            <div id="previewFotoTempFinal" style="margin-top:8px;"></div>
+        </div>
+        <div id="checklistFinalErrores" style="display:none; color:#dc3545; font-size:13px; margin-bottom:8px;"></div>
+        <button class="btn-modal success" onclick="confirmarChecklistYFinalizar()">✅ Completar y finalizar</button>
+        <button class="btn-modal danger" onclick="cerrarModal('modalChecklistFinal')">Cancelar</button>
+    </div>
+</div>
+
 <!-- ===== MODAL PDF + FIRMA ===== -->
 <div class="modal" id="modalPDF">
     <div class="modal-content">
@@ -1717,6 +1783,12 @@
     // ============================================================
     const SUPABASE_URL = 'https://xklztdkpkwsfqhlzntcv.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrbHp0ZGtwa3dzZnFobHpudGN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MjY0OTksImV4cCI6MjEwMzQwMjQ5OX0.l9sQ7Icgi8jfZfn1y2L65kIcWwqbyR8lk7ODsDACGL4';
+
+    const ICONO_KUZZY = "data:image/jpeg;base64,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";
+    function htmlIconoKuzzy(size) {
+        size = size || 16;
+        return '<img src="' + ICONO_KUZZY + '" alt="Kuzzy" title="Kuzzy" style="height:' + size + 'px;width:auto;vertical-align:middle;border-radius:3px;margin-left:4px;">';
+    }
 
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1786,19 +1858,19 @@
 
     // Lista editable de usuarios (fuente de verdad)
     let listaUsuarios = [
-        { id: 'u_luis_n', nombre: 'Luis Solís', area: 'Gerencia', taller: 'Noroeste', nivel: '', permiso_total: true },
-        { id: 'u_marcos', nombre: 'Marcos Sifuentes', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Máster', permiso_total: false },
-        { id: 'u_sergio', nombre: 'Sergio Holguín', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Profesional', permiso_total: false },
-        { id: 'u_miguel', nombre: 'Miguel Arredondo', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Profesional', permiso_total: false },
-        { id: 'u_alfredo_m', nombre: 'Alfredo', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Aprendiz', permiso_total: false },
-        { id: 'u_romina_n', nombre: 'Romina', area: 'Ventas', taller: 'Noroeste', nivel: '', permiso_total: false },
-        { id: 'u_jesus_n', nombre: 'Jesús', area: 'Ventas', taller: 'Noroeste', nivel: '', permiso_total: false },
-        { id: 'u_alfredo_c', nombre: 'Alfredo', area: 'Compras', taller: 'Noroeste', nivel: '', permiso_total: false },
-        { id: 'u_luis_j', nombre: 'Luis Solís', area: 'Gerencia', taller: 'Juarez', nivel: '', permiso_total: true },
-        { id: 'u_abel', nombre: 'Abel', area: 'Mantenimiento', taller: 'Juarez', nivel: 'Profesional', permiso_total: true },
-        { id: 'u_romina_j', nombre: 'Romina', area: 'Ventas', taller: 'Juarez', nivel: '', permiso_total: false },
-        { id: 'u_jesus_j', nombre: 'Jesús', area: 'Ventas', taller: 'Juarez', nivel: '', permiso_total: false },
-        { id: 'u_abel_c', nombre: 'Abel', area: 'Compras', taller: 'Juarez', nivel: '', permiso_total: true }
+        { id: 'u_luis_n', nombre: 'Luis Solís', area: 'Gerencia', taller: 'Noroeste', nivel: '', permiso_total: true, rol_tecnico: '' },
+        { id: 'u_marcos', nombre: 'Marcos Sifuentes', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Máster', permiso_total: false, rol_tecnico: 'ambos' },
+        { id: 'u_sergio', nombre: 'Sergio Holguín', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Profesional', permiso_total: false, rol_tecnico: 'diagnosticador' },
+        { id: 'u_miguel', nombre: 'Miguel Arredondo', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Profesional', permiso_total: false, rol_tecnico: 'reparador' },
+        { id: 'u_alfredo_m', nombre: 'Alfredo', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Aprendiz', permiso_total: false, rol_tecnico: 'reparador' },
+        { id: 'u_romina_n', nombre: 'Romina', area: 'Ventas', taller: 'Noroeste', nivel: '', permiso_total: false, rol_tecnico: '' },
+        { id: 'u_jesus_n', nombre: 'Jesús', area: 'Ventas', taller: 'Noroeste', nivel: '', permiso_total: false, rol_tecnico: '' },
+        { id: 'u_alfredo_c', nombre: 'Alfredo', area: 'Compras', taller: 'Noroeste', nivel: '', permiso_total: false, rol_tecnico: '' },
+        { id: 'u_luis_j', nombre: 'Luis Solís', area: 'Gerencia', taller: 'Juarez', nivel: '', permiso_total: true, rol_tecnico: '' },
+        { id: 'u_abel', nombre: 'Abel', area: 'Mantenimiento', taller: 'Juarez', nivel: 'Profesional', permiso_total: true, rol_tecnico: 'ambos' },
+        { id: 'u_romina_j', nombre: 'Romina', area: 'Ventas', taller: 'Juarez', nivel: '', permiso_total: false, rol_tecnico: '' },
+        { id: 'u_jesus_j', nombre: 'Jesús', area: 'Ventas', taller: 'Juarez', nivel: '', permiso_total: false, rol_tecnico: '' },
+        { id: 'u_abel_c', nombre: 'Abel', area: 'Compras', taller: 'Juarez', nivel: '', permiso_total: true, rol_tecnico: '' }
     ];
 
     // Compatibilidad: personasPorArea del taller de la sesión
@@ -1850,8 +1922,13 @@
         if (tienePermisoTotal()) return true;
         const permisos = typeof permisosCambio !== 'undefined' ? permisosCambio[sesion.area] : null;
         if (!permisos) return false;
-        const destinos = permisos[u.estatus];
-        return Array.isArray(destinos) && destinos.length > 0;
+        const destinosBase = permisos[u.estatus];
+        if (!Array.isArray(destinosBase) || !destinosBase.length) return false;
+        // Respeta flujo Taller vs Kuzzy
+        if (typeof filtrarDestinosPorUbicacion === 'function') {
+            return filtrarDestinosPorUbicacion(u, destinosBase, sesion.area).length > 0;
+        }
+        return true;
     }
 
     function avisoSoloLecturaArea(u) {
@@ -1927,17 +2004,61 @@
             .filter(Boolean);
     }
 
-    function llenarSelectPersonas(selectId, area, valorActual) {
+    function rolTecnicoUsuario(nombre, taller) {
+        const n = (nombre || '').trim();
+        const t = taller || getTallerActual();
+        const u = (listaUsuarios || []).find(x =>
+            (x.nombre || '').trim() === n &&
+            x.area === 'Mantenimiento' &&
+            idsEquivalentesTaller(x.taller, t)
+        );
+        return (u && u.rol_tecnico) ? u.rol_tecnico : 'ambos';
+    }
+
+    function puedeDiagnosticar(nombre) {
+        const r = rolTecnicoUsuario(nombre);
+        return r === 'diagnosticador' || r === 'ambos' || r === '';
+    }
+
+    function puedeReparar(nombre) {
+        const r = rolTecnicoUsuario(nombre);
+        return r === 'reparador' || r === 'ambos' || r === '';
+    }
+
+    function nombresDiagnosticadores() {
+        return listaTecnicosOrdenada().filter(p =>
+            esUsuarioRegistrado(p, 'Mantenimiento') && puedeDiagnosticar(p)
+        );
+    }
+
+    function nombresReparadores() {
+        return listaTecnicosOrdenada().filter(p =>
+            esUsuarioRegistrado(p, 'Mantenimiento') && puedeReparar(p)
+        );
+    }
+
+    // area: 'Ventas' | 'Mantenimiento' | 'Compras' | 'Gerencia'
+    // filtroTecnico: 'diagnosticador' | 'reparador' | null
+    function llenarSelectPersonas(selectId, area, valorActual, filtroTecnico) {
         const sel = document.getElementById(selectId);
         if (!sel) return;
-        // Solo usuarios registrados (sin "Otro...")
-        const personas = area === 'Mantenimiento'
-            ? listaTecnicosOrdenada().filter(p => esUsuarioRegistrado(p, 'Mantenimiento'))
-            : nombresRegistradosArea(area);
+        let personas;
+        if (area === 'Mantenimiento') {
+            if (filtroTecnico === 'diagnosticador') personas = nombresDiagnosticadores();
+            else if (filtroTecnico === 'reparador') personas = nombresReparadores();
+            else personas = listaTecnicosOrdenada().filter(p => esUsuarioRegistrado(p, 'Mantenimiento'));
+        } else {
+            personas = nombresRegistradosArea(area);
+        }
         const actual = (valorActual || '').trim();
         let html = '<option value="">Selecciona...</option>';
         personas.forEach(p => {
-            const label = area === 'Mantenimiento' ? etiquetaTecnico(p) : p;
+            let label = area === 'Mantenimiento' ? etiquetaTecnico(p) : p;
+            if (area === 'Mantenimiento') {
+                const rol = rolTecnicoUsuario(p);
+                if (rol === 'diagnosticador') label += ' · Diag.';
+                else if (rol === 'reparador') label += ' · Rep.';
+            }
             html += `<option value="${p.replace(/"/g, '&quot;')}">${label}</option>`;
         });
         sel.innerHTML = html;
@@ -1946,7 +2067,6 @@
         if (actual && personas.includes(actual)) {
             sel.value = actual;
         } else if (actual && !personas.includes(actual)) {
-            // Nombre viejo no registrado: no se puede elegir; dejar vacío
             sel.value = '';
         } else if (sesion && sesion.area === area && personas.includes(sesion.persona)) {
             sel.value = sesion.persona;
@@ -2120,9 +2240,9 @@
         const diagActual = (u.diagnosticador || '').trim();
         const puedeDiag = full || (est === 'Diagnosticando' && (area === 'Mantenimiento' || area === 'Gerencia'));
         if (puedeDiag) {
-            llenarSelectPersonas('diagnosticadorEditar', 'Mantenimiento', diagActual);
+            llenarSelectPersonas('diagnosticadorEditar', 'Mantenimiento', diagActual, 'diagnosticador');
             setCampoPersonaEditable('diagnosticadorEditar', true, '', 'hintDiagEditar',
-                full ? 'Permiso total: puedes asignar diagnosticador.' : 'Solo se elige o cambia en Diagnosticando.');
+                full ? 'Permiso total: puedes asignar diagnosticador.' : 'Solo diagnosticadores · se elige en Diagnosticando.');
         } else {
             setCampoPersonaEditable('diagnosticadorEditar', false, diagActual, 'hintDiagEditar',
                 est === 'Diagnosticando' ? 'Solo Mantenimiento o Gerencia pueden asignarlo aquí.' : 'Solo se asigna en Diagnosticando.');
@@ -2132,9 +2252,9 @@
         const repActual = (u.reparador || '').trim();
         const puedeRep = full || (est === 'Reparando' && (area === 'Mantenimiento' || area === 'Gerencia'));
         if (puedeRep) {
-            llenarSelectPersonas('reparadorEditar', 'Mantenimiento', repActual);
+            llenarSelectPersonas('reparadorEditar', 'Mantenimiento', repActual, 'reparador');
             setCampoPersonaEditable('reparadorEditar', true, '', 'hintRepEditar',
-                full ? 'Permiso total: puedes asignar reparador.' : 'Solo se elige o cambia en Reparando.');
+                full ? 'Permiso total: puedes asignar reparador.' : 'Solo reparadores · el diagnosticador lo elige al mandar a Reparando.');
         } else {
             setCampoPersonaEditable('reparadorEditar', false, repActual, 'hintRepEditar',
                 est === 'Reparando' ? 'Solo Mantenimiento o Gerencia pueden asignarlo aquí.' : 'Solo se asigna en Reparando.');
@@ -2389,23 +2509,103 @@
     }
 
     // ===== PERMISOS DE CAMBIO DE ESTATUS (editables en Admin) =====
+    // Taller: recibe → Diagnosticando → (piezas? Cotizando→Espera : Reparando) → Finalizada
+    // Kuzzy: recibe → Cotizando → Finalizada (sin diagnosticador ni reparador)
     let permisosCambio = {
         'Gerencia': null,
         'Mantenimiento': {
             'Recibida': ['Diagnosticando'],
             'Diagnosticando': ['Cotizando', 'Reparando'],
-            'Reparando': ['Finalizada', 'Cotizando', 'Espera de refacciones']
+            'Reparando': ['Finalizada', 'Diagnosticando']
         },
         'Ventas': {
             'Agenda': ['Recibida'],
-            'Recibida': ['Diagnosticando', 'Agenda'],
+            'Recibida': ['Diagnosticando', 'Cotizando', 'Agenda'],
             'Cotizando': ['Espera de refacciones', 'Reparando', 'Finalizada'],
-            'Reparando': ['Cotizando']
+            'Espera de refacciones': ['Reparando', 'Cotizando'],
+            'Finalizada': []
         },
         'Compras': {
             'Espera de refacciones': ['Reparando', 'Cotizando']
         }
     };
+
+    function normalizarUbicacionTrabajo(val) {
+        const v = String(val || 'Taller').trim();
+        if (v === 'Kuzzy') return 'Kuzzy';
+        if (v === 'Rescate' || /^rescate/i.test(v)) return 'Rescate';
+        return 'Taller';
+    }
+
+    function ubicacionTrabajoUnidad(u) {
+        return normalizarUbicacionTrabajo(u && u.ubicacion_trabajo);
+    }
+
+    function esTrabajoKuzzy(u) {
+        return ubicacionTrabajoUnidad(u) === 'Kuzzy';
+    }
+
+    function esTrabajoRescate(u) {
+        return ubicacionTrabajoUnidad(u) === 'Rescate';
+    }
+
+    function esTrabajoFueraTaller(u) {
+        return esTrabajoKuzzy(u) || esTrabajoRescate(u);
+    }
+
+    function badgeUbicacionHtml(u) {
+        const ubi = ubicacionTrabajoUnidad(u);
+        if (ubi === 'Kuzzy') return htmlIconoKuzzy(14);
+        if (ubi === 'Rescate') {
+            return ' <span style="font-size:10px;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;font-weight:700;">🚨 Rescate</span>';
+        }
+        return ' <span style="font-size:10px;background:#e8f5e9;color:#1b5e20;padding:1px 6px;border-radius:8px;">🏭 Taller</span>';
+    }
+
+    // Filtra destinos según Taller / Kuzzy / Rescate
+    function filtrarDestinosPorUbicacion(u, opciones, area) {
+        let lista = (opciones || []).slice();
+        if (!u) return lista;
+        if (esTrabajoKuzzy(u)) {
+            // Kuzzy: Recibida → Cotizando → Finalizada
+            const permitidos = {
+                'Agenda': ['Recibida'],
+                'Recibida': ['Cotizando', 'Agenda'],
+                'Cotizando': ['Finalizada'],
+                'Finalizada': []
+            };
+            const est = u.estatus;
+            if (permitidos[est]) lista = lista.filter(d => permitidos[est].includes(d));
+            if (area === 'Mantenimiento' || area === 'Compras') lista = [];
+        } else if (esTrabajoRescate(u)) {
+            // Rescate fuera de taller: Recibida → Reparando → Finalizada
+            const permitidos = {
+                'Agenda': ['Recibida'],
+                'Recibida': ['Reparando', 'Agenda'],
+                'Reparando': ['Finalizada'],
+                'Finalizada': []
+            };
+            const est = u.estatus;
+            if (permitidos[est]) lista = lista.filter(d => permitidos[est].includes(d));
+            // Ventas y Mantenimiento pueden mover; Compras no
+            if (area === 'Compras') lista = [];
+            // Asegurar destinos de rescate aunque el mapa base de Ventas no tenga Reparando desde Recibida
+            if (area === 'Ventas' || area === 'Mantenimiento') {
+                if (est === 'Recibida' && !lista.includes('Reparando')) lista.push('Reparando');
+                if (est === 'Reparando' && !lista.includes('Finalizada')) lista.push('Finalizada');
+                lista = lista.filter(d => (permitidos[est] || []).includes(d));
+            }
+        } else {
+            // Taller
+            if (u.estatus === 'Recibida') {
+                lista = lista.filter(d => d !== 'Cotizando' && d !== 'Reparando');
+            }
+            if (u.estatus === 'Cotizando' && area === 'Ventas') {
+                lista = lista.filter(d => d !== 'Finalizada');
+            }
+        }
+        return lista;
+    }
 
     const ESTATUS_TODOS_ADMIN = ['Agenda', 'Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada'];
     const CONFIG_ADMIN_KEY = 'thermocontrol_admin_config';
@@ -2426,6 +2626,24 @@
         if (cfg.permisosCambio && typeof cfg.permisosCambio === 'object') {
             permisosCambio = cfg.permisosCambio;
             if (permisosCambio.Gerencia === undefined) permisosCambio.Gerencia = null;
+            // Asegurar flujo: Ventas en Espera + Mantenimiento Reparando → Diagnosticando
+            if (permisosCambio.Ventas && typeof permisosCambio.Ventas === 'object') {
+                if (!permisosCambio.Ventas['Espera de refacciones']) {
+                    permisosCambio.Ventas['Espera de refacciones'] = ['Reparando', 'Cotizando'];
+                }
+                if (!permisosCambio.Ventas['Cotizando']) {
+                    permisosCambio.Ventas['Cotizando'] = ['Espera de refacciones', 'Reparando', 'Finalizada'];
+                } else if (!permisosCambio.Ventas['Cotizando'].includes('Finalizada')) {
+                    permisosCambio.Ventas['Cotizando'].push('Finalizada');
+                }
+                if (permisosCambio.Ventas['Recibida'] && !permisosCambio.Ventas['Recibida'].includes('Cotizando')) {
+                    permisosCambio.Ventas['Recibida'].push('Cotizando');
+                }
+            }
+            if (permisosCambio.Mantenimiento && typeof permisosCambio.Mantenimiento === 'object') {
+                permisosCambio.Mantenimiento['Reparando'] = ['Finalizada', 'Diagnosticando'];
+                permisosCambio.Mantenimiento['Diagnosticando'] = ['Cotizando', 'Reparando'];
+            }
         }
         if (cfg.clavesPorArea && typeof cfg.clavesPorArea === 'object') {
             clavesPorArea = { ...clavesPorArea, ...cfg.clavesPorArea };
@@ -2620,6 +2838,8 @@
         document.getElementById('adminUserArea').value = 'Mantenimiento';
         document.getElementById('adminUserTaller').value = 'Noroeste';
         document.getElementById('adminUserNivel').value = '';
+        const rol = document.getElementById('adminUserRolTecnico');
+        if (rol) rol.value = 'ambos';
         document.getElementById('adminUserPermisoTotal').checked = false;
     }
 
@@ -2640,7 +2860,7 @@
                 <div style="flex:1; min-width:140px;">
                     <strong>${u.nombre || '—'}</strong>
                     ${u.permiso_total ? ' <span style="font-size:11px; background:#d4edda; color:#155724; padding:2px 6px; border-radius:8px;">Permiso total</span>' : ''}
-                    <div style="font-size:12px; color:#666;">${u.area || ''} · ${etiquetaTaller(u.taller)}${u.nivel ? ' · ' + u.nivel : ''}</div>
+                    <div style="font-size:12px; color:#666;">${u.area || ''} · ${etiquetaTaller(u.taller)}${u.nivel ? ' · ' + u.nivel : ''}${u.area === 'Mantenimiento' && u.rol_tecnico ? ' · ' + (u.rol_tecnico === 'diagnosticador' ? 'Diagnosticador' : u.rol_tecnico === 'reparador' ? 'Reparador' : 'Diag.+Rep.') : ''}</div>
                 </div>
                 <div style="display:flex; gap:4px;">
                     <button class="btn-accion" onclick="editarUsuarioAdmin('${u.id}')">✏️</button>
@@ -2658,6 +2878,8 @@
         document.getElementById('adminUserArea').value = u.area || 'Mantenimiento';
         document.getElementById('adminUserTaller').value = u.taller || 'Noroeste';
         document.getElementById('adminUserNivel').value = u.nivel || '';
+        const rol = document.getElementById('adminUserRolTecnico');
+        if (rol) rol.value = u.rol_tecnico || 'ambos';
         document.getElementById('adminUserPermisoTotal').checked = !!u.permiso_total;
     }
 
@@ -2668,6 +2890,8 @@
         const area = document.getElementById('adminUserArea').value;
         const taller = document.getElementById('adminUserTaller').value;
         const nivel = document.getElementById('adminUserNivel').value || '';
+        const rolEl = document.getElementById('adminUserRolTecnico');
+        const rol_tecnico = area === 'Mantenimiento' ? ((rolEl && rolEl.value) || 'ambos') : '';
         const permiso_total = document.getElementById('adminUserPermisoTotal').checked;
         if (!nombre) {
             alert('El nombre es obligatorio.');
@@ -2675,12 +2899,12 @@
         }
         if (id) {
             listaUsuarios = listaUsuarios.map(u => String(u.id) === String(id)
-                ? { ...u, nombre, area, taller, nivel, permiso_total }
+                ? { ...u, nombre, area, taller, nivel, rol_tecnico, permiso_total }
                 : u);
         } else {
             listaUsuarios.push({
                 id: 'u_' + Date.now(),
-                nombre, area, taller, nivel, permiso_total
+                nombre, area, taller, nivel, rol_tecnico, permiso_total
             });
         }
         rebuildPersonasDesdeUsuarios();
@@ -2775,17 +2999,32 @@
         'Agenda': [
             { campo: 'fecha_agenda', nombre: 'Fecha de llegada programada' }
         ],
-        'Diagnosticando': [
+        // Al recibir (Ventas): datos mínimos del cliente y unidad
+        'Recibida': [
+            { campo: 'cliente', nombre: 'Cliente' },
+            { campo: 'modelo', nombre: 'Modelo' },
+            { campo: 'no_unidad', nombre: 'Número de unidad' },
+            { campo: 'placas', nombre: 'No. de placas' },
             { campo: 'problema', nombre: 'Problema / descripción' }
         ],
+        'Diagnosticando': [
+            { campo: 'cliente', nombre: 'Cliente' },
+            { campo: 'modelo', nombre: 'Modelo' },
+            { campo: 'no_unidad', nombre: 'Número de unidad' },
+            { campo: 'placas', nombre: 'No. de placas' },
+            { campo: 'problema', nombre: 'Problema / descripción' }
+        ],
+        // Cotizando: OT + hoja de servicio (diagnóstico/técnicos solo en flujo Taller, se valida aparte)
         'Cotizando': [
             { campo: 'problema', nombre: 'Problema / descripción' },
-            { campo: 'diagnostico_detalle', nombre: 'Diagnóstico detallado (o PDF)' },
-            { campo: 'diagnosticador', nombre: 'Diagnosticador' }
+            { campo: 'folio', nombre: 'Orden de trabajo' },
+            { campo: 'hoja_servicio', nombre: 'Hoja de servicio / orden de servicio' }
         ],
         'Espera de refacciones': [
             { campo: 'problema', nombre: 'Problema / descripción' },
-            { campo: 'diagnostico_detalle', nombre: 'Diagnóstico detallado (o PDF)' }
+            { campo: 'diagnostico_detalle', nombre: 'Diagnóstico detallado (o PDF)' },
+            { campo: 'folio', nombre: 'Orden de trabajo' },
+            { campo: 'hoja_servicio', nombre: 'Hoja de servicio / orden de servicio' }
         ],
         'Reparando': [
             { campo: 'problema', nombre: 'Problema / descripción' },
@@ -3829,11 +4068,16 @@
             diagnosticadas: 0,
             reparadas: 0,
             finalizadas: 0,
+            finalizadasComoReparador: 0,
+            finalizadasConSuDiag: 0,
+            entregasComoAsesor: 0,
             cotizadas: 0,
             recibidas: 0,
             ventasMov: 0,
             comprasMov: 0,
             esperaRefacciones: 0,
+            liberacionesRef: 0,
+            garantias: 0,
             retrabajos: 0,
             msEsperaRefacciones: 0,
             msDiagnostico: 0,
@@ -3911,9 +4155,45 @@
                 }
                 if (area === 'Compras' && est !== 'Espera de refacciones') st.comprasMov++;
 
-                // Retrabajo: paso a Cotizando desde Reparando
-                if (est === 'Cotizando' && i > 0 && tiempos[i - 1].estatus === 'Reparando') {
-                    st.retrabajos++;
+                // Retrabajo: regreso desde reparación (Cotizando o Diagnosticando)
+                if (i > 0 && tiempos[i - 1].estatus === 'Reparando') {
+                    if (est === 'Cotizando' || est === 'Diagnosticando') st.retrabajos++;
+                }
+                // Liberación de refacciones (Espera → Reparando) cuenta para quien movió
+                if (est === 'Reparando' && i > 0 && tiempos[i - 1].estatus === 'Espera de refacciones') {
+                    st.liberacionesRef = (st.liberacionesRef || 0) + 1;
+                    if (area === 'Compras' || area === 'Ventas' || area === 'Gerencia') st.comprasMov++;
+                }
+            });
+        });
+
+        // Atribución extra: finalizada cuenta al reparador; diagnóstico al diagnosticador
+        unidades.forEach(u => {
+            if (u.eliminado) return;
+            const hist = u.historial || [];
+            hist.forEach(h => {
+                if (h.estatus !== 'Finalizada') return;
+                const d = parseFechaHistorial(h.fecha);
+                if (!d) return;
+                const t = d.getTime();
+                if (t < rango.inicio || t > rango.fin) return;
+                const rep = (u.reparador || '').trim();
+                if (rep && esUsuarioRegistrado(rep, 'Mantenimiento')) {
+                    const st = getStats(rep, 'Mantenimiento');
+                    st.finalizadasComoReparador = (st.finalizadasComoReparador || 0) + 1;
+                    st.unidades.add(u.id);
+                    if (u.es_garantia || u.es_reingreso) st.garantias = (st.garantias || 0) + 1;
+                }
+                const diag = (u.diagnosticador || '').trim();
+                if (diag && esUsuarioRegistrado(diag, 'Mantenimiento')) {
+                    const st = getStats(diag, 'Mantenimiento');
+                    st.finalizadasConSuDiag = (st.finalizadasConSuDiag || 0) + 1;
+                }
+                const asesor = (u.asesor_ventas || '').trim();
+                if (asesor && esUsuarioRegistrado(asesor, 'Ventas')) {
+                    const st = getStats(asesor, 'Ventas');
+                    st.entregasComoAsesor = (st.entregasComoAsesor || 0) + 1;
+                    st.unidades.add(u.id);
                 }
             });
         });
@@ -3921,20 +4201,65 @@
         Object.keys(porPersona).forEach(k => {
             const st = porPersona[k];
             if (st.area === 'Ventas') {
-                st.ventasMov = st.cotizadas + st.finalizadas + st.esperaRefacciones;
+                st.ventasMov = (st.recibidas || 0) + st.cotizadas + (st.entregasComoAsesor || st.finalizadas || 0);
             }
             st.unidadesCount = st.unidades.size;
             st.tiempoTexto = formatearDuracion(st.msTotal);
             st.tiempoEsperaTexto = formatearDuracion(st.msEsperaRefacciones);
             st.tiempoDiagTexto = formatearDuracion(st.msDiagnostico);
             st.tiempoRepTexto = formatearDuracion(st.msReparacion);
-            // Eficiencia simple: finalizadas / (finalizadas + retrabajos)
-            const base = st.finalizadas + st.retrabajos;
-            st.eficiencia = base > 0 ? Math.round((st.finalizadas / base) * 100) : null;
+            st.promedioDiagMs = st.diagnosticadas > 0 ? Math.round(st.msDiagnostico / st.diagnosticadas) : 0;
+            st.promedioRepMs = st.reparadas > 0 ? Math.round(st.msReparacion / st.reparadas) : 0;
+            st.promedioDiagTexto = st.promedioDiagMs ? formatearDuracion(st.promedioDiagMs) : '—';
+            st.promedioRepTexto = st.promedioRepMs ? formatearDuracion(st.promedioRepMs) : '—';
+            // Eficiencia: finalizadas / (finalizadas + retrabajos)
+            const finRep = st.finalizadasComoReparador || st.finalizadas || 0;
+            const base = finRep + st.retrabajos;
+            st.eficiencia = base > 0 ? Math.round((finRep / base) * 100) : null;
+            // Puntuación de desempeño 0–100 por rol
+            st.score = calcularScoreDesempeno(st);
+            st.scoreLabel = etiquetaScoreDesempeno(st.score);
             delete st.unidades;
         });
 
-        return Object.values(porPersona).sort((a, b) => b.finalizadas - a.finalizadas || b.msTotal - a.msTotal);
+        return Object.values(porPersona).sort((a, b) => (b.score || 0) - (a.score || 0) || b.finalizadas - a.finalizadas);
+    }
+
+    function calcularScoreDesempeno(st) {
+        if (!st) return 0;
+        let score = 40; // base
+        if (st.area === 'Mantenimiento') {
+            const fin = st.finalizadasComoReparador || st.finalizadas || 0;
+            score += Math.min(30, fin * 6);
+            score += Math.min(15, (st.diagnosticadas || 0) * 3);
+            score -= Math.min(25, (st.retrabajos || 0) * 8);
+            if (st.eficiencia != null) score += Math.round((st.eficiencia - 70) / 5); // bonus si >70%
+            // Premio tiempos razonables de reparación (<2 días promedio)
+            if (st.promedioRepMs > 0 && st.promedioRepMs < 2 * 24 * 3600 * 1000) score += 5;
+            if (st.promedioRepMs > 5 * 24 * 3600 * 1000) score -= 5;
+        } else if (st.area === 'Ventas') {
+            score += Math.min(20, (st.recibidas || 0) * 3);
+            score += Math.min(20, (st.cotizadas || 0) * 4);
+            score += Math.min(15, (st.entregasComoAsesor || st.finalizadas || 0) * 3);
+            score += Math.min(10, (st.liberacionesRef || 0) * 4);
+        } else if (st.area === 'Compras') {
+            score += Math.min(35, (st.liberacionesRef || 0) * 10);
+            score += Math.min(15, (st.comprasMov || 0) * 2);
+            // Penaliza mucho tiempo acumulado en espera si hay muchas unidades
+            if (st.esperaRefacciones > 0 && st.msEsperaRefacciones > st.esperaRefacciones * 5 * 24 * 3600 * 1000) score -= 10;
+        } else {
+            score += Math.min(20, (st.finalizadas || 0) * 2);
+            score += Math.min(15, (st.recibidas || 0) + (st.cotizadas || 0));
+        }
+        return Math.max(0, Math.min(100, Math.round(score)));
+    }
+
+    function etiquetaScoreDesempeno(score) {
+        if (score >= 85) return { texto: 'Excelente', color: '#28a745', emoji: '🌟' };
+        if (score >= 70) return { texto: 'Bueno', color: '#17a2b8', emoji: '👍' };
+        if (score >= 50) return { texto: 'Regular', color: '#ffc107', emoji: '➖' };
+        if (score >= 30) return { texto: 'Bajo', color: '#fd7e14', emoji: '⚠️' };
+        return { texto: 'Crítico', color: '#dc3545', emoji: '🔻' };
     }
 
     // Ranking solo técnicos: finalizadas (reparador) y diagnosticadas (diagnosticador)
@@ -4304,26 +4629,28 @@
             </tr>`;
         }).join('');
 
-        // Tarjetas solo con métricas de la responsabilidad de cada área
         function cardPersonaDepto(st) {
             const colorArea = st.area === 'Mantenimiento' ? '#17a2b8'
                 : st.area === 'Ventas' ? '#28a745'
                 : st.area === 'Compras' ? '#fd7e14'
                 : st.area === 'Gerencia' ? '#1a3a5c' : '#6c757d';
+            const sc = st.scoreLabel || etiquetaScoreDesempeno(st.score || 0);
+            const finRep = st.finalizadasComoReparador || st.finalizadas || 0;
             let metricsHtml = '';
             if (st.area === 'Mantenimiento') {
-                const progresoMeta = Math.min(100, Math.round((st.finalizadas / meta) * 100));
+                const progresoMeta = Math.min(100, Math.round((finRep / meta) * 100));
                 metricsHtml = `
                     <div>🔍 Diagnosticó: <strong>${st.diagnosticadas}</strong></div>
-                    <div>🔧 Reparó: <strong>${st.reparadas}</strong></div>
-                    <div>✅ Finalizó: <strong>${st.finalizadas}</strong></div>
-                    <div>↩️ Retrabajos: <strong>${st.retrabajos}</strong></div>
-                    <div>📈 Eficiencia: <strong>${st.eficiencia != null ? st.eficiencia + '%' : '—'}</strong></div>
-                    <div style="grid-column:1/-1;">⏱️ Diag: <strong>${st.tiempoDiagTexto || '—'}</strong> · Rep: <strong>${st.tiempoRepTexto || '—'}</strong></div>
+                    <div>🔧 En reparación: <strong>${st.reparadas}</strong></div>
+                    <div>✅ Cerró como reparador: <strong>${finRep}</strong></div>
+                    <div>↩️ Retrabajos: <strong style="color:${st.retrabajos ? '#dc3545' : 'inherit'}">${st.retrabajos}</strong></div>
+                    <div>📈 Primera vez bien: <strong>${st.eficiencia != null ? st.eficiencia + '%' : '—'}</strong></div>
+                    <div>🛡️ Garantías tocadas: <strong>${st.garantias || 0}</strong></div>
+                    <div style="grid-column:1/-1;">⏱️ Prom. diag: <strong>${st.promedioDiagTexto || '—'}</strong> · Prom. rep: <strong>${st.promedioRepTexto || '—'}</strong></div>
                     <div style="grid-column:1/-1;">
                         <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
                             <span>🎯 Meta finalizadas (${meta})</span>
-                            <span>${st.finalizadas}/${meta} (${progresoMeta}%)</span>
+                            <span>${finRep}/${meta} (${progresoMeta}%)</span>
                         </div>
                         <div style="height:8px; background:#e9ecef; border-radius:6px; overflow:hidden;">
                             <div style="height:100%; width:${progresoMeta}%; background:${progresoMeta >= 100 ? '#28a745' : '#17a2b8'};"></div>
@@ -4331,33 +4658,41 @@
                     </div>`;
             } else if (st.area === 'Ventas') {
                 metricsHtml = `
-                    <div>📥 Recibidas: <strong>${st.recibidas || 0}</strong></div>
+                    <div>📥 Recibió: <strong>${st.recibidas || 0}</strong></div>
                     <div>💰 Cotizó: <strong>${st.cotizadas}</strong></div>
-                    <div>✅ Entregas (fin.): <strong>${st.finalizadas}</strong></div>
+                    <div>✅ Entregas (asesor): <strong>${st.entregasComoAsesor || st.finalizadas || 0}</strong></div>
                     <div>📦 A espera refacc.: <strong>${st.esperaRefacciones}</strong></div>
-                    <div style="grid-column:1/-1;">📊 Movimientos ventas: <strong>${st.ventasMov || 0}</strong></div>
+                    <div>✅ Liberó a reparar: <strong>${st.liberacionesRef || 0}</strong></div>
+                    <div>📊 Movimientos: <strong>${st.ventasMov || 0}</strong></div>
                     <div style="grid-column:1/-1; color:#666;">Unidades tocadas: <strong>${st.unidadesCount}</strong></div>`;
             } else if (st.area === 'Compras') {
                 metricsHtml = `
-                    <div>📦 En espera refacc.: <strong>${st.esperaRefacciones}</strong></div>
+                    <div>📦 Pasos en espera: <strong>${st.esperaRefacciones}</strong></div>
+                    <div>✅ Liberó a reparar: <strong>${st.liberacionesRef || 0}</strong></div>
                     <div>🛒 Movimientos: <strong>${st.comprasMov}</strong></div>
-                    <div style="grid-column:1/-1;">⏳ Tiempo en espera: <strong>${st.tiempoEsperaTexto || '—'}</strong></div>
+                    <div style="grid-column:1/-1;">⏳ Tiempo acumulado espera: <strong>${st.tiempoEsperaTexto || '—'}</strong></div>
                     <div style="grid-column:1/-1; color:#666;">Unidades tocadas: <strong>${st.unidadesCount}</strong></div>`;
             } else {
-                // Gerencia u otros: resumen general
                 metricsHtml = `
                     <div>📥 Recibidas: <strong>${st.recibidas || 0}</strong></div>
                     <div>🔍 Diag.: <strong>${st.diagnosticadas}</strong></div>
                     <div>💰 Cotizó: <strong>${st.cotizadas}</strong></div>
                     <div>✅ Finalizó: <strong>${st.finalizadas}</strong></div>
-                    <div>🛒 Compras: <strong>${st.comprasMov}</strong></div>
-                    <div style="grid-column:1/-1;">⏱️ Tiempo total pasos: <strong>${st.tiempoTexto}</strong></div>`;
+                    <div style="grid-column:1/-1;">⏱️ Tiempo en pasos: <strong>${st.tiempoTexto}</strong></div>`;
             }
             return `
             <div style="border:1px solid var(--border,#e9ecef); border-radius:12px; padding:12px; margin-bottom:10px; border-left:5px solid ${colorArea};">
-                <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
                     <strong style="font-size:15px;">👤 ${st.persona}${st.nivel ? ' <span style="font-size:12px;color:#666;">(' + st.nivel + ')</span>' : ''}</strong>
                     <span style="font-size:12px; background:${colorArea}; color:#fff; padding:3px 10px; border-radius:12px;">${st.area || '—'}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                    <span style="background:${sc.color}; color:#fff; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700;">
+                        ${sc.emoji} ${st.score || 0}/100 · ${sc.texto}
+                    </span>
+                    <div style="flex:1; min-width:80px; height:8px; background:#e9ecef; border-radius:6px; overflow:hidden;">
+                        <div style="height:100%; width:${Math.min(100, st.score || 0)}%; background:${sc.color};"></div>
+                    </div>
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:13px;">
                     ${metricsHtml}
@@ -4379,13 +4714,24 @@
         }
 
         const listaMant = lista.filter(s => s.area === 'Mantenimiento')
-            .sort((a, b) => b.finalizadas - a.finalizadas || b.diagnosticadas - a.diagnosticadas);
+            .sort((a, b) => (b.score || 0) - (a.score || 0) || (b.finalizadasComoReparador || b.finalizadas) - (a.finalizadasComoReparador || a.finalizadas));
         const listaVentas = lista.filter(s => s.area === 'Ventas')
-            .sort((a, b) => (b.recibidas || 0) - (a.recibidas || 0) || b.cotizadas - a.cotizadas);
+            .sort((a, b) => (b.score || 0) - (a.score || 0) || (b.recibidas || 0) - (a.recibidas || 0));
         const listaCompras = lista.filter(s => s.area === 'Compras')
-            .sort((a, b) => b.esperaRefacciones - a.esperaRefacciones || b.comprasMov - a.comprasMov);
+            .sort((a, b) => (b.score || 0) - (a.score || 0) || (b.liberacionesRef || 0) - (a.liberacionesRef || 0));
         const listaGerencia = lista.filter(s => s.area === 'Gerencia')
-            .sort((a, b) => b.finalizadas - a.finalizadas);
+            .sort((a, b) => (b.score || 0) - (a.score || 0));
+
+        // Ranking general de desempeño (top 10)
+        const rankingScore = lista.slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 10);
+        const rankingScoreHtml = rankingScore.map((st, i) => {
+            const med = medallas[i] || ((i + 1) + '.');
+            const sc = st.scoreLabel || etiquetaScoreDesempeno(st.score || 0);
+            return `<div style="display:flex; justify-content:space-between; gap:8px; align-items:center; padding:8px 10px; background:${i < 3 ? '#fff8e6' : 'var(--detalle-item,#f8f9fa)'}; border-radius:8px; margin-bottom:4px; font-size:13px; border-left:4px solid ${sc.color};">
+                <span>${med} <strong>${st.persona}</strong> <span style="color:#666;font-size:11px;">${st.area || ''}${st.nivel ? ' · ' + st.nivel : ''}</span></span>
+                <span style="font-weight:700; color:${sc.color};">${sc.emoji} ${st.score || 0}</span>
+            </div>`;
+        }).join('') || '<span style="color:#888;">Sin datos de desempeño en este periodo</span>';
 
         const cardsPorDepto = (listaMant.length || listaVentas.length || listaCompras.length || listaGerencia.length)
             ? (
@@ -4460,6 +4806,14 @@
                 <div>
                     <strong style="font-size:12px; display:block; margin-bottom:6px;">Unidades más estancadas (clic para abrir)</strong>
                     ${estancadasHtml}
+                </div>
+            </div>
+
+            <div style="margin-bottom:14px; padding:12px; background:#1a3a5c; color:#fff; border-radius:10px;">
+                <strong style="display:block; margin-bottom:6px;">🏅 Ranking de desempeño (score 0–100)</strong>
+                <small style="display:block; opacity:0.85; margin-bottom:8px;">Evalúa volumen, calidad (pocos retrabajos), tiempos y liberaciones según el rol</small>
+                <div style="background:#fff; color:#333; border-radius:8px; padding:8px;">
+                    ${rankingScoreHtml}
                 </div>
             </div>
 
@@ -4628,7 +4982,7 @@
     const SLA_POR_ESTATUS = {
         'Cotizando': { verdeMax: 1, amarilloMax: 3, area: 'Ventas' },
         'Recibida': { verdeMax: 1, amarilloMax: 2, area: 'Mantenimiento' },
-        'Espera de refacciones': { verdeMax: 2, amarilloMax: 4, area: 'Compras' },
+        'Espera de refacciones': { verdeMax: 2, amarilloMax: 4, area: 'Compras', areasExtra: ['Ventas'] },
         'Diagnosticando': { verdeMax: 1, amarilloMax: 3, area: 'Mantenimiento' },
         'Reparando': { verdeMax: 2, amarilloMax: 5, area: 'Mantenimiento' },
         'Agenda': { verdeMax: 0, amarilloMax: 0, area: 'Ventas' }
@@ -4791,8 +5145,10 @@
             if (sesion.area === 'Mantenimiento' && cfg.area !== 'Mantenimiento') return false;
             return nivelSlaEstatus(u) === 'rojo';
         });
+        // Solo toast discreto (sin alert molesto). Gerencia solo ve el badge 🔥 atrasadas.
         mostrarToastApp('📋 ' + r.texto, atrasadasRojas.length ? '#dc3545' : '#1a3a5c');
-        if (atrasadasRojas.length && (sesion.area === 'Ventas' || sesion.area === 'Compras' || sesion.area === 'Gerencia')) {
+        // Alert emergente solo para Ventas/Compras (no Gerencia)
+        if (atrasadasRojas.length && (sesion.area === 'Ventas' || sesion.area === 'Compras')) {
             setTimeout(() => {
                 alert(
                     '⚠️ Unidades atrasadas (SLA)\n\n' +
@@ -5000,7 +5356,9 @@
                         ${u.no_unidad || '—'}
                         ${u.es_garantia || u.es_reingreso ? ' <span style="font-size:10px;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;">🛡️</span>' : ''}
                     </div>
-                    <div class="cliente">${u.cliente || '—'} ${u.modelo ? '· '+u.modelo : ''} ${textoBadgeGarantia(u)}</div>
+                    <div class="cliente">${u.cliente || '—'} ${u.modelo ? '· '+u.modelo : ''} ${textoBadgeGarantia(u)}
+                        ${badgeUbicacionHtml(u)}
+                    </div>
                     <div class="fechas">
                         📅 Llegada: ${formatearFecha(u.fecha_llegada)}
                         ${u.fecha_salida ? ' | 🚚 Salida: '+formatearFecha(u.fecha_salida) : ''}
@@ -5243,8 +5601,8 @@
             }
         }
         toggleCamposAgendaNueva();
-        llenarSelectPersonas('diagnosticadorNueva', 'Mantenimiento', '');
-        llenarSelectPersonas('reparadorNueva', 'Mantenimiento', '');
+        llenarSelectPersonas('diagnosticadorNueva', 'Mantenimiento', '', 'diagnosticador');
+        llenarSelectPersonas('reparadorNueva', 'Mantenimiento', '', 'reparador');
         llenarSelectPersonas('asesorVentasNueva', 'Ventas', '');
         actualizarCamposPersonasNueva();
         document.getElementById('modalNueva').style.display = 'flex';
@@ -5285,6 +5643,10 @@
                 <div class="valor">${u.cliente || '—'}</div>
             </div>
             <div class="detalle-item">
+                <div class="label">📍 Lugar del trabajo</div>
+                <div class="valor">${ubicacionTrabajoUnidad(u) === 'Kuzzy' ? (htmlIconoKuzzy(20) + ' Kuzzy (caja / en sitio)') : (ubicacionTrabajoUnidad(u) === 'Rescate' ? '🚨 Rescates fuera de taller' : '🏭 Taller')}</div>
+            </div>
+            <div class="detalle-item">
                 <div class="label">Modelo</div>
                 <div class="valor">${u.modelo || '—'}</div>
             </div>
@@ -5312,6 +5674,12 @@
                 <div class="label">Reparador</div>
                 <div class="valor">${u.reparador ? etiquetaTecnico(u.reparador) : '—'}</div>
             </div>
+            ${u.prueba_caja_ok || u.temperatura_caja ? `
+            <div class="detalle-item" style="grid-column:1/-1; background:#d4edda; border-radius:10px;">
+                <div class="label">Prueba de caja / temperatura</div>
+                <div class="valor">✅ Prueba registrada · Temp: <strong>${u.temperatura_caja || '—'}</strong>
+                ${u.checklist_final_at ? '<br><small>' + new Date(u.checklist_final_at).toLocaleString() + '</small>' : ''}</div>
+            </div>` : ''}
             <div class="detalle-item">
                 <div class="label">Asesor de ventas</div>
                 <div class="valor">${u.asesor_ventas || '—'}</div>
@@ -5454,11 +5822,14 @@
             }
             if (puede && u.estatus === 'Espera de refacciones' && sesion && (sesion.area === 'Compras' || sesion.area === 'Gerencia' || sesion.area === 'Ventas' || tienePermisoTotal())) {
                 extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirModalRefacciones(${id})">🛒 Gestionar refacciones</button>`;
+                extraBtns += `<button class="btn-modal primary" style="flex:1;" onclick="piezasListasAReparando(${id})">✅ Piezas listas → Reparando</button>`;
             }
             // Ver diagnóstico / PDF: lectura permitida; editar diagnóstico solo si puede modificar
-            if (u.estatus === 'Diagnosticando' || u.estatus === 'Reparando') {
+            // Diagnosticar (PDF/texto/TK) SOLO en Diagnosticando
+            if (u.estatus === 'Diagnosticando') {
                 if (puede) extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirTkDiag(${id})">🔍 Diagnóstico TK</button>`;
-            } else if (u.estatus === 'Cotizando' || u.diagnostico_detalle) {
+                if (puede) extraBtns += `<button class="btn-modal secondary" style="flex:1;" onclick="abrirModalDiagnostico(${id})">📝 Diagnóstico</button>`;
+            } else if (u.diagnostico_detalle || u.diagnostico_pdf_url) {
                 extraBtns += `<button class="btn-modal secondary" style="flex:1;" onclick="abrirModalDiagnostico(${id})">🔍 Ver diagnóstico</button>`;
             }
             if (u.estatus === 'Finalizada' || u.estatus === 'Espera de refacciones') {
@@ -5512,6 +5883,23 @@
         let asesor = '';
         let diagnosticador = '';
         let reparador = '';
+
+        // Al recibir: Ventas debe llenar cliente, modelo, no. unidad, placas y problema
+        if (estatusInicial === 'Recibida' || estatusInicial === 'Diagnosticando') {
+            const faltRec = [];
+            if (!(document.getElementById('clienteNueva').value || '').trim()) faltRec.push('Cliente');
+            if (!(document.getElementById('modeloNueva').value || '').trim()) faltRec.push('Modelo');
+            if (!(document.getElementById('noUnidadNueva').value || '').trim()) faltRec.push('Número de unidad');
+            if (!(document.getElementById('placasNueva').value || '').trim()) faltRec.push('No. de placas');
+            const probNueva = (document.getElementById('problemaNueva').value || '').trim() ||
+                (document.getElementById('fallaLlegadaNueva') && document.getElementById('fallaLlegadaNueva').value || '').trim();
+            if (!probNueva) faltRec.push('Problema / descripción');
+            if (faltRec.length) {
+                alert('⚠️ Al recibir la unidad debes llenar:\n\n• ' + faltRec.join('\n• '));
+                return;
+            }
+        }
+
         if (estatusInicial === 'Recibida') {
             if (sesion.area === 'Ventas' || sesion.area === 'Gerencia' || tienePermisoTotal()) {
                 asesor = valorPersonaSelect('asesorVentasNueva');
@@ -5543,6 +5931,7 @@
         const clienteVal = document.getElementById('clienteNueva').value.trim();
         const placasVal = document.getElementById('placasNueva').value.trim();
         const noSerieVal = document.getElementById('noSerieNueva').value.trim();
+        const ubicacionTrabajo = normalizarUbicacionTrabajo(document.getElementById('ubicacionTrabajoNueva')?.value);
 
         // Garantía / reingreso (misma serie, placas o no. unidad finalizada en los últimos N días)
         let garantiaInfo = null;
@@ -5577,6 +5966,7 @@
             hoja_servicio: document.getElementById('hojaServicioNueva').value.trim(),
             folio: document.getElementById('folioNueva').value.trim(),
             problema: fallaLlegada || problemaBase,
+            ubicacion_trabajo: ubicacionTrabajo,
             diagnosticador: diagnosticador,
             reparador: reparador,
             asesor_ventas: asesor,
@@ -5633,6 +6023,8 @@
         document.getElementById('ordenCompraEditar').value = u.orden_compra || '';
         document.getElementById('hojaServicioEditar').value = u.hoja_servicio || '';
         document.getElementById('problemaEditar').value = u.problema || '';
+        const ubiEd = document.getElementById('ubicacionTrabajoEditar');
+        if (ubiEd) ubiEd.value = ubicacionTrabajoUnidad(u);
         aplicarReglasCamposEditar(u);
         document.getElementById('fechaSalidaEditar').value = u.fecha_salida || '';
         document.getElementById('fotosEditar').value = '';
@@ -5657,6 +6049,7 @@
             orden_compra: document.getElementById('ordenCompraEditar').value.trim(),
             hoja_servicio: document.getElementById('hojaServicioEditar').value.trim(),
             problema: document.getElementById('problemaEditar').value.trim(),
+            ubicacion_trabajo: normalizarUbicacionTrabajo(document.getElementById('ubicacionTrabajoEditar')?.value),
             fecha_salida: document.getElementById('fechaSalidaEditar').value || null
         };
 
@@ -5783,7 +6176,6 @@
         let opcionesPermitidas = [];
 
         if (area === 'Gerencia' || (sesion && sesion.persona === 'Abel')) {
-            // Gerencia y Abel: cualquier estatus
             opcionesPermitidas = Object.keys(nombresEstatus);
             ayuda.textContent = sesion && sesion.persona === 'Abel'
                 ? '🔧 Abel puede cambiar a cualquier estatus (encargado Juárez).'
@@ -5791,13 +6183,26 @@
         } else {
             const permisosArea = permisosCambio[area];
             if (permisosArea && estatusActual && permisosArea[estatusActual]) {
-                opcionesPermitidas = permisosArea[estatusActual];
-                ayuda.textContent = `✅ Desde "${estatusActual}" puedes pasar a: ${opcionesPermitidas.join(', ')}`;
+                opcionesPermitidas = permisosArea[estatusActual].slice();
             } else {
                 ayuda.textContent = `⚠️ El área ${area} no tiene permisos para mover unidades desde el estatus actual "${estatusActual}".`;
                 select.innerHTML = '<option value="">Sin movimientos permitidos</option>';
                 return;
             }
+        }
+
+        // Filtrar por Taller / Kuzzy / Rescate
+        opcionesPermitidas = filtrarDestinosPorUbicacion(u, opcionesPermitidas, area);
+        if (esTrabajoKuzzy(u)) {
+            ayuda.textContent = '🚚 Kuzzy: Recibida → Cotizando → Finalizada. Destinos: ' +
+                (opcionesPermitidas.join(', ') || 'ninguno');
+        } else if (esTrabajoRescate(u)) {
+            ayuda.textContent = '🚨 Rescate fuera de taller: Recibida → Reparando → Finalizada. Destinos: ' +
+                (opcionesPermitidas.join(', ') || 'ninguno');
+        } else if (opcionesPermitidas.length) {
+            ayuda.textContent = `🏭 Taller · Desde "${estatusActual}" puedes pasar a: ${opcionesPermitidas.join(', ')}`;
+        } else {
+            ayuda.textContent = `⚠️ Sin movimientos permitidos desde "${estatusActual}" para ${area}.`;
         }
 
         // Agenda solo Ventas / Gerencia (ocultar para el resto aunque Gerencia/Abel sí ven)
@@ -5968,21 +6373,44 @@
             }
         }
 
-        // Motivo obligatorio Reparando → Cotizando
+        // Motivo obligatorio Reparando → Diagnosticando (sigue fallando / otro problema)
         let motivoRetorno = '';
         const boxMotVisible = document.getElementById('boxMotivoRetorno')?.style.display !== 'none';
-        if (boxMotVisible || (estatusAnterior === 'Reparando' && nuevoEstatus === 'Cotizando')) {
+        if (boxMotVisible || (estatusAnterior === 'Reparando' && nuevoEstatus === 'Diagnosticando')) {
             motivoRetorno = document.getElementById('motivoRetornoCambio')?.value || '';
+            const detMot = (document.getElementById('motivoRetornoDetalle')?.value || '').trim();
             if (!motivoRetorno) {
-                alert('⚠️ Selecciona el motivo de regreso a Cotizando.');
+                alert('⚠️ Selecciona el motivo de regreso a Diagnosticando.');
                 return;
             }
-            comentario = (comentario ? comentario + ' · ' : '') + 'Motivo: ' + motivoRetorno;
+            comentario = (comentario ? comentario + ' · ' : '') +
+                'Regreso a diagnóstico · Motivo: ' + motivoRetorno + (detMot ? ' · ' + detMot : '');
         }
 
-        // Al recibir (desde Agenda u otro): inicia conteo de días en taller
+        // Al recibir (desde Agenda u otro): datos mínimos + inicia conteo de días
         if (nuevoEstatus === 'Recibida') {
             datosFechaLlegadaRecibida = fechaHoyISO();
+            const faltRec = [];
+            if (!(u.cliente || '').toString().trim()) faltRec.push('Cliente');
+            if (!(u.modelo || '').toString().trim()) faltRec.push('Modelo');
+            if (!(u.no_unidad || '').toString().trim()) faltRec.push('Número de unidad');
+            if (!(u.placas || '').toString().trim()) faltRec.push('No. de placas');
+            if (!(u.problema || u.falla_llegada || '').toString().trim()) faltRec.push('Problema / descripción');
+            if (faltRec.length) {
+                alert('⚠️ Al recibir la unidad Ventas debe completar en Editar:\n\n• ' + faltRec.join('\n• '));
+                return;
+            }
+        }
+
+        // Al pasar a Cotizando: orden de trabajo + hoja de servicio obligatorias
+        if (nuevoEstatus === 'Cotizando') {
+            const faltCot = [];
+            if (!(u.folio || '').toString().trim()) faltCot.push('Orden de trabajo');
+            if (!(u.hoja_servicio || '').toString().trim()) faltCot.push('Hoja de servicio / orden de servicio');
+            if (faltCot.length) {
+                alert('⚠️ En Cotizando Ventas debe tener capturado:\n\n• ' + faltCot.join('\n• ') + '\n\nComplétalos en Editar antes de cotizar.');
+                return;
+            }
         }
 
         // Asesor obligatorio al pasar a Recibida (solo usuarios registrados de Ventas)
@@ -6000,40 +6428,100 @@
             datosAsesor = elegido.trim();
         }
 
-        // Diagnosticador: solo usuarios registrados de Mantenimiento
+        // Diagnosticador: solo usuarios tipo Diagnosticador / Ambos
         if (nuevoEstatus === 'Diagnosticando' && (area === 'Mantenimiento' || area === 'Gerencia')) {
             if (!(u.diagnosticador || '').toString().trim()) {
-                const nombres = nombresRegistradosArea('Mantenimiento');
-                const elegido = prompt('🔧 Elige el Diagnosticador (solo registrados):\n\n' + nombres.join('\n'), sesion.persona || '');
-                if (!elegido || !elegido.trim() || !esUsuarioRegistrado(elegido.trim(), 'Mantenimiento')) {
-                    alert('⚠️ Debes asignar un diagnosticador registrado de Mantenimiento.');
+                const nombres = nombresDiagnosticadores();
+                if (!nombres.length) {
+                    alert('⚠️ No hay técnicos tipo Diagnosticador. Configúralos en Administración.');
+                    return;
+                }
+                const sugerido = sesion.area === 'Mantenimiento' && puedeDiagnosticar(sesion.persona) ? sesion.persona : nombres[0];
+                const elegido = prompt('🔧 Elige el Diagnosticador:\n\n' + nombres.join('\n') + '\n\nNombre exacto:', sugerido || '');
+                if (!elegido || !elegido.trim() || !nombres.includes(elegido.trim())) {
+                    alert('⚠️ Debes asignar un diagnosticador de la lista.');
                     return;
                 }
                 datosDiagnosticador = elegido.trim();
             }
         }
         if (estatusAnterior === 'Diagnosticando' && nuevoEstatus === 'Cotizando') {
-            if (!tieneDiagnosticoCompleto(u)) {
-                alert('⚠️ Antes de cotizar se necesita diagnóstico (texto o PDF).\nÁbrelo en Diagnóstico TK o completa el diagnóstico.');
+            // Solo aplica flujo Taller (diagnóstico obligatorio)
+            if (!esTrabajoFueraTaller(u)) {
+                if (!tieneDiagnosticoCompleto(u)) {
+                    alert('⚠️ Antes de cotizar se necesita diagnóstico (texto o PDF).\nÁbrelo en Diagnóstico TK o completa el diagnóstico.');
+                    return;
+                }
+                if (!(u.diagnosticador || '').toString().trim() && !datosDiagnosticador) {
+                    alert('⚠️ Falta el diagnosticador. Asígnolo en Editar estando en Diagnosticando.');
+                    return;
+                }
+                let piezas = (document.getElementById('refaccionesEsperadasCambio')?.value || '').trim() || (u.refacciones_esperadas || '').trim();
+                if (!piezas) {
+                    piezas = (prompt(
+                        '🛒 Lista de piezas / refacciones a cotizar (obligatorio):\n\nEj. Compresor, filtro, oring...',
+                        u.refacciones_esperadas || ''
+                    ) || '').trim();
+                }
+                if (!piezas) {
+                    alert('⚠️ Debes indicar las piezas pendientes para pasar a Cotizando.\nSi no requiere piezas, manda directo a Reparando.');
+                    return;
+                }
+                window._piezasCotizarPendiente = piezas;
+                requiereRef = 'si';
+            }
+        }
+
+        // Kuzzy / Rescate: flujos cortos sin diagnóstico de taller
+        if (esTrabajoKuzzy(u)) {
+            if (nuevoEstatus === 'Diagnosticando' || nuevoEstatus === 'Reparando' || nuevoEstatus === 'Espera de refacciones') {
+                alert('🚚 Este trabajo es Kuzzy.\nFlujo: Recibida → Cotizando → Finalizada.');
                 return;
             }
-            if (!(u.diagnosticador || '').toString().trim() && !datosDiagnosticador) {
-                alert('⚠️ Falta el diagnosticador. Asígnolo en Editar estando en Diagnosticando.');
+        }
+        if (esTrabajoRescate(u)) {
+            if (nuevoEstatus === 'Diagnosticando' || nuevoEstatus === 'Cotizando' || nuevoEstatus === 'Espera de refacciones') {
+                alert('🚨 Rescate fuera de taller.\nFlujo: Recibida → Reparando → Finalizada.');
                 return;
             }
         }
 
-        // Reparador: solo usuarios registrados de Mantenimiento
-        if (nuevoEstatus === 'Reparando' && (area === 'Mantenimiento' || area === 'Gerencia')) {
-            if (!(u.reparador || '').toString().trim()) {
-                const nombres = nombresRegistradosArea('Mantenimiento');
-                const elegido = prompt('🛠️ Elige el Reparador (solo registrados):\n\n' + nombres.join('\n'), sesion.persona || '');
-                if (!elegido || !elegido.trim() || !esUsuarioRegistrado(elegido.trim(), 'Mantenimiento')) {
-                    alert('⚠️ Debes asignar un reparador registrado de Mantenimiento.');
-                    return;
+        // Reparador: en Taller lo elige el diagnosticador; en Rescate no es obligatorio
+        if (nuevoEstatus === 'Reparando' && !esTrabajoRescate(u) && !esTrabajoKuzzy(u)) {
+            const puedeElegirRep = area === 'Mantenimiento' || area === 'Gerencia' || tienePermisoTotal();
+            const vieneDeDiag = estatusAnterior === 'Diagnosticando';
+            const yaTieneRep = !!(u.reparador || '').toString().trim();
+            if (vieneDeDiag || !yaTieneRep) {
+                if (!puedeElegirRep && !yaTieneRep) {
+                    alert('⚠️ El diagnosticador debe elegir al reparador al mandar la unidad a Reparando.\nSi vienes de Cotizando/Espera, el reparador debió asignarse antes o asignarlo Mantenimiento/Gerencia.');
+                    if (!yaTieneRep) return;
                 }
-                datosReparador = elegido.trim();
+                if (puedeElegirRep) {
+                    const nombres = nombresReparadores();
+                    if (!nombres.length) {
+                        alert('⚠️ No hay técnicos tipo Reparador registrados. Configúralos en Administración.');
+                        return;
+                    }
+                    const sugerido = yaTieneRep ? u.reparador : (sesion.area === 'Mantenimiento' && puedeReparar(sesion.persona) ? sesion.persona : nombres[0]);
+                    const elegido = prompt(
+                        '🛠️ El DIAGNOSTICADOR elige al REPARADOR:\n\n' +
+                        nombres.map((n, i) => (i + 1) + '. ' + n + (nivelTecnico(n) ? ' (' + nivelTecnico(n) + ')' : '')).join('\n') +
+                        '\n\nEscribe el nombre exacto:',
+                        sugerido || ''
+                    );
+                    if (!elegido || !elegido.trim() || !nombres.includes(elegido.trim())) {
+                        alert('⚠️ Debes elegir un reparador de la lista (solo usuarios tipo Reparador o Ambos).');
+                        return;
+                    }
+                    datosReparador = elegido.trim();
+                }
             }
+        }
+
+        // Piezas pendientes: Ventas/Compras pueden capturarlas en Cotizando y Espera
+        if ((nuevoEstatus === 'Cotizando' || nuevoEstatus === 'Espera de refacciones') &&
+            (area === 'Ventas' || area === 'Compras' || area === 'Gerencia')) {
+            // se maneja en box de refacciones más abajo / al confirmar
         }
 
         // Si pasa a Recibida y aún no está marcada, detectar garantía/reingreso
@@ -6065,11 +6553,58 @@
 
         // Flujo avanzado: campos obligatorios según estatus destino
         if (nuevoEstatus === 'Finalizada') {
-            const faltantes = validarCamposParaFinalizar(u);
-            if (faltantes.length > 0) {
-                alert('⚠️ No se puede finalizar. Faltan estos datos:\n\n• ' + faltantes.join('\n• ') + '\n\nComplétalos en Editar antes de finalizar.');
+            const fuera = esTrabajoFueraTaller(u);
+            const faltantesBase = [
+                { campo: 'no_unidad', nombre: 'Número de unidad' },
+                { campo: 'cliente', nombre: 'Cliente' },
+                { campo: 'modelo', nombre: 'Modelo' },
+                { campo: 'placas', nombre: 'No. de placas' },
+                { campo: 'problema', nombre: 'Problema' }
+            ];
+            // OT y hoja de servicio: recomendados; en Kuzzy/cotización sí suelen ir
+            if (!esTrabajoRescate(u)) {
+                faltantesBase.push({ campo: 'folio', nombre: 'Orden de trabajo' });
+                faltantesBase.push({ campo: 'hoja_servicio', nombre: 'Hoja de servicio' });
+            }
+            if (!fuera) {
+                faltantesBase.push({ campo: 'no_serie', nombre: 'No. de serie' });
+                faltantesBase.push({ campo: 'diagnosticador', nombre: 'Diagnosticador' });
+                faltantesBase.push({ campo: 'reparador', nombre: 'Reparador' });
+            }
+            const falt = faltantesBase.filter(r => !(u[r.campo] || '').toString().trim()).map(r => r.nombre);
+            if (falt.length) {
+                alert('⚠️ Antes de finalizar completa en Editar:\n\n• ' + falt.join('\n• '));
                 return;
             }
+            if (fuera) {
+                const tipo = esTrabajoKuzzy(u) ? 'Kuzzy' : 'Rescate fuera de taller';
+                const historialK = (u.historial || []).slice();
+                historialK.push({
+                    fecha: fechaHistorialAhora(),
+                    estatus: 'Finalizada',
+                    area: area,
+                    persona: persona,
+                    comentario: (comentario || ('Finalizado ' + tipo)) + ' · ' + tipo + ' (sin flujo de diagnóstico de taller)'
+                });
+                const resK = await actualizarUnidad(u.id, {
+                    estatus: 'Finalizada',
+                    historial: historialK,
+                    fecha_salida: u.fecha_salida || fechaHoyISO()
+                });
+                if (resK.success) {
+                    cerrarModal('modalCambio');
+                    cerrarModal('modalDetalle');
+                    alert('✅ Trabajo ' + tipo + ' finalizado.');
+                    actualizarNotificaciones();
+                }
+                return;
+            }
+            abrirChecklistFinalizar({
+                area: area,
+                persona: persona,
+                comentario: comentario || ('Cambio de ' + estatusAnterior + ' a Finalizada')
+            });
+            return; // el modal checklist hace el update
         } else if (nuevoEstatus !== 'Agenda') {
             const faltantes = validarCamposParaEstatus(u, nuevoEstatus);
             if (faltantes.length > 0) {
@@ -6113,6 +6648,27 @@
             datos.fecha_estimada_refacciones = fechaEstimadaRef;
             datos.requiere_refacciones = 'si';
             datos.refacciones_estado = 'pendiente';
+        }
+        // Ventas/Compras pueden actualizar piezas pendientes también en Cotizando o al liberar a Reparando
+        if (nuevoEstatus === 'Cotizando' || (estatusAnterior === 'Espera de refacciones' && nuevoEstatus === 'Reparando') ||
+            (estatusAnterior === 'Cotizando' && nuevoEstatus === 'Reparando') ||
+            (estatusAnterior === 'Diagnosticando' && nuevoEstatus === 'Cotizando')) {
+            let piezasTxt = (document.getElementById('refaccionesEsperadasCambio')?.value || '').trim();
+            if (window._piezasCotizarPendiente) {
+                piezasTxt = piezasTxt || window._piezasCotizarPendiente;
+                window._piezasCotizarPendiente = null;
+            }
+            const fp2 = normalizarFechaISO(document.getElementById('fechaPedidoRefaccionesCambio')?.value || '') || '';
+            const fe2 = normalizarFechaISO(document.getElementById('fechaEstimadaRefaccionesCambio')?.value || '') || '';
+            if (piezasTxt) datos.refacciones_esperadas = piezasTxt;
+            if (fp2) datos.fecha_pedido_refacciones = fp2;
+            if (fe2) datos.fecha_estimada_refacciones = fe2;
+            if (nuevoEstatus === 'Reparando' && estatusAnterior === 'Espera de refacciones') {
+                datos.refacciones_estado = 'completa';
+            }
+            if (estatusAnterior === 'Diagnosticando' && nuevoEstatus === 'Cotizando' && piezasTxt) {
+                datos.requiere_refacciones = 'si';
+            }
         }
 
         // Al pasar a Agenda: pedir fecha de llegada programada si falta
@@ -6354,24 +6910,234 @@
     }
 
     function validarCamposParaFinalizar(u) {
+        const fuera = esTrabajoFueraTaller(u);
         const requeridos = [
             { campo: 'no_unidad', nombre: 'Número de unidad' },
-            { campo: 'folio', nombre: 'Orden de trabajo' },
             { campo: 'cliente', nombre: 'Cliente' },
             { campo: 'modelo', nombre: 'Modelo' },
             { campo: 'placas', nombre: 'No. de placas' },
-            { campo: 'no_serie', nombre: 'No. de serie del equipo' },
-            { campo: 'hoja_servicio', nombre: 'Hoja de servicio' },
-            { campo: 'diagnosticador', nombre: 'Diagnosticador' },
-            { campo: 'reparador', nombre: 'Reparador' },
             { campo: 'problema', nombre: 'Problema / descripción' }
         ];
+        if (!esTrabajoRescate(u)) {
+            requeridos.push({ campo: 'folio', nombre: 'Orden de trabajo' });
+            requeridos.push({ campo: 'hoja_servicio', nombre: 'Hoja de servicio' });
+        }
+        // Taller: serie + técnicos + checklist
+        if (!fuera) {
+            requeridos.push({ campo: 'no_serie', nombre: 'No. de serie del equipo' });
+            requeridos.push({ campo: 'diagnosticador', nombre: 'Diagnosticador' });
+            requeridos.push({ campo: 'reparador', nombre: 'Reparador' });
+        }
         const faltantes = [];
         requeridos.forEach(r => {
             const val = (u[r.campo] || '').toString().trim();
             if (!val) faltantes.push(r.nombre);
         });
+        if (!fuera) {
+            if (!(u.temperatura_caja || '').toString().trim()) {
+                faltantes.push('Temperatura de la caja (prueba)');
+            }
+            if (!u.prueba_caja_ok) {
+                faltantes.push('Checklist de prueba / foto de temperatura');
+            }
+        }
         return faltantes;
+    }
+
+    let _pendienteFinalizar = null; // { area, persona, comentario, datos parciales }
+
+    async function guardarFotoPruebaLocal(unidadId, base64, meta) {
+        if (!unidadId || !base64) return;
+        const key = 'prueba_' + String(unidadId);
+        try {
+            const db = await openFotoDB();
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).put({ data: base64, meta: meta || {}, ts: Date.now() }, key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        } catch (e) {
+            console.warn('No se pudo guardar foto de prueba', e);
+        }
+    }
+
+    async function obtenerFotoPruebaLocal(unidadId) {
+        if (!unidadId) return null;
+        try {
+            const db = await openFotoDB();
+            return await new Promise((resolve) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const req = tx.objectStore(STORE_NAME).get('prueba_' + String(unidadId));
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => resolve(null);
+            });
+        } catch {
+            return null;
+        }
+    }
+
+    function abrirChecklistFinalizar(ctx) {
+        const u = unidades.find(x => x.id === unidadEnEdicion);
+        if (!u) return;
+        _pendienteFinalizar = ctx || {};
+        document.getElementById('infoChecklistFinal').textContent =
+            (u.no_unidad || '') + ' · ' + (u.cliente || '');
+        document.getElementById('chkFinalPrueba').checked = !!u.prueba_caja_ok;
+        document.getElementById('chkFinalPiezas').checked = false;
+        document.getElementById('chkFinalDatos').checked = false;
+        document.getElementById('chkFinalLimpieza').checked = false;
+        document.getElementById('tempCajaFinal').value = u.temperatura_caja || '';
+        document.getElementById('fotoTempCajaFinal').value = '';
+        document.getElementById('previewFotoTempFinal').innerHTML = '';
+        document.getElementById('checklistFinalErrores').style.display = 'none';
+        // Preview si ya hay foto
+        obtenerFotoPruebaLocal(u.id).then(f => {
+            if (f && f.data) {
+                document.getElementById('previewFotoTempFinal').innerHTML =
+                    '<img src="' + f.data + '" style="max-width:100%; max-height:160px; border-radius:8px; border:1px solid #ddd;">' +
+                    (f.meta && f.meta.temp ? '<div style="font-size:12px;margin-top:4px;">Temp. registrada: ' + f.meta.temp + '</div>' : '');
+            }
+        });
+        document.getElementById('fotoTempCajaFinal').onchange = function() {
+            const file = this.files && this.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                document.getElementById('previewFotoTempFinal').innerHTML =
+                    '<img src="' + ev.target.result + '" style="max-width:100%; max-height:160px; border-radius:8px; border:1px solid #ddd;">';
+            };
+            reader.readAsDataURL(file);
+        };
+        document.getElementById('modalChecklistFinal').style.display = 'flex';
+    }
+
+    async function confirmarChecklistYFinalizar() {
+        const u = unidades.find(x => x.id === unidadEnEdicion);
+        if (!u) return;
+        const errBox = document.getElementById('checklistFinalErrores');
+        const errores = [];
+        if (!document.getElementById('chkFinalPrueba').checked) errores.push('Marca: prueba realizada');
+        if (!document.getElementById('chkFinalPiezas').checked) errores.push('Marca: piezas instaladas o N/A');
+        if (!document.getElementById('chkFinalDatos').checked) errores.push('Marca: datos completos');
+        if (!document.getElementById('chkFinalLimpieza').checked) errores.push('Marca: lista para entrega');
+        const temp = (document.getElementById('tempCajaFinal').value || '').trim();
+        if (!temp) errores.push('Indica la temperatura de la caja');
+        const fileInput = document.getElementById('fotoTempCajaFinal');
+        const file = fileInput && fileInput.files && fileInput.files[0];
+        const fotoExistente = await obtenerFotoPruebaLocal(u.id);
+        if (!file && !(fotoExistente && fotoExistente.data)) {
+            errores.push('Sube la foto de la temperatura de la caja');
+        }
+        // Datos base
+        const faltantesDatos = [
+            { campo: 'no_unidad', nombre: 'Número de unidad' },
+            { campo: 'folio', nombre: 'Orden de trabajo' },
+            { campo: 'cliente', nombre: 'Cliente' },
+            { campo: 'modelo', nombre: 'Modelo' },
+            { campo: 'placas', nombre: 'Placas' },
+            { campo: 'no_serie', nombre: 'No. de serie' },
+            { campo: 'hoja_servicio', nombre: 'Hoja de servicio' },
+            { campo: 'diagnosticador', nombre: 'Diagnosticador' },
+            { campo: 'reparador', nombre: 'Reparador' },
+            { campo: 'problema', nombre: 'Problema' }
+        ].filter(r => !(u[r.campo] || '').toString().trim()).map(r => r.nombre);
+        if (faltantesDatos.length) errores.push('Faltan datos: ' + faltantesDatos.join(', '));
+
+        if (errores.length) {
+            errBox.style.display = 'block';
+            errBox.innerHTML = '⚠️ ' + errores.join('<br>⚠️ ');
+            return;
+        }
+
+        let fotoB64 = fotoExistente && fotoExistente.data;
+        if (file) {
+            fotoB64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+        await guardarFotoPruebaLocal(u.id, fotoB64, { temp: temp, tipo: 'temperatura_caja' });
+
+        const ctx = _pendienteFinalizar || {};
+        const historial = (u.historial || []).slice();
+        historial.push({
+            fecha: fechaHistorialAhora(),
+            estatus: 'Finalizada',
+            area: ctx.area || (sesion && sesion.area) || '',
+            persona: ctx.persona || (sesion && sesion.persona) || '',
+            comentario: (ctx.comentario ? ctx.comentario + ' · ' : '') +
+                'Checklist OK · Temp. caja: ' + temp + ' · Foto de prueba guardada'
+        });
+        const resultado = await actualizarUnidad(u.id, {
+            estatus: 'Finalizada',
+            historial,
+            fecha_salida: u.fecha_salida || fechaHoyISO(),
+            temperatura_caja: temp,
+            prueba_caja_ok: true,
+            checklist_final_at: new Date().toISOString()
+        });
+        if (resultado.success) {
+            cerrarModal('modalChecklistFinal');
+            cerrarModal('modalCambio');
+            cerrarModal('modalDetalle');
+            alert('✅ Unidad finalizada.\nTemperatura caja: ' + temp + '\nFoto de prueba guardada en este dispositivo.');
+            actualizarNotificaciones();
+        }
+    }
+
+    async function piezasListasAReparando(id) {
+        if (!requerirSesion()) return;
+        const u = unidades.find(x => x.id === id);
+        if (!u || u.estatus !== 'Espera de refacciones') return;
+        if (sesion.area !== 'Ventas' && sesion.area !== 'Compras' && sesion.area !== 'Gerencia' && !tienePermisoTotal()) {
+            alert('Solo Ventas, Compras o Gerencia pueden liberar piezas a Reparando.');
+            return;
+        }
+        if (!puedeModificarUnidad(u) && !tienePermisoTotal()) {
+            avisoSoloLecturaArea(u);
+            return;
+        }
+        const ok = confirm(
+            '✅ ¿Confirmar que las piezas ya están listas y pasar a Reparando?\n\n' +
+            (u.no_unidad || '') + ' · ' + (u.cliente || '') + '\n' +
+            'Piezas: ' + (u.refacciones_esperadas || '—') + '\n\n' +
+            (u.reparador ? 'Reparador: ' + u.reparador : 'Si no hay reparador, el diagnosticador/Gerencia deberá asignarlo.')
+        );
+        if (!ok) return;
+
+        let reparador = (u.reparador || '').trim();
+        if (!reparador) {
+            const nombres = nombresReparadores();
+            const elegido = prompt('🛠️ Elige el reparador:\n\n' + nombres.join('\n'), nombres[0] || '');
+            if (!elegido || !nombres.includes(elegido.trim())) {
+                alert('Debes elegir un reparador de la lista.');
+                return;
+            }
+            reparador = elegido.trim();
+        }
+
+        const historial = (u.historial || []).slice();
+        historial.push({
+            fecha: fechaHistorialAhora(),
+            estatus: 'Reparando',
+            area: sesion.area,
+            persona: sesion.persona,
+            comentario: 'Piezas listas → Reparando · ' + (u.refacciones_esperadas || '')
+        });
+        const resultado = await actualizarUnidad(id, {
+            estatus: 'Reparando',
+            reparador,
+            refacciones_estado: 'completa',
+            historial
+        });
+        if (resultado.success) {
+            cerrarModal('modalDetalle');
+            alert('✅ Unidad pasada a Reparando.');
+            actualizarNotificaciones();
+        }
     }
 
     function validarCamposParaEstatus(u, estatus) {
@@ -6416,22 +7182,38 @@
             }
         }
 
-        // Motivo al regresar de Reparando → Cotizando
-        const preguntaMot = (u.estatus === 'Reparando' && nuevo === 'Cotizando');
+        // Motivo al regresar de Reparando → Diagnosticando
+        const preguntaMot = (u.estatus === 'Reparando' && nuevo === 'Diagnosticando');
         boxMot.style.display = preguntaMot ? 'block' : 'none';
+        if (preguntaMot) {
+            const selMot = document.getElementById('motivoRetornoCambio');
+            const detMot = document.getElementById('motivoRetornoDetalle');
+            if (selMot) selMot.value = '';
+            if (detMot) detMot.value = '';
+        }
 
-        // Detalle de refacciones al pasar a Espera de refacciones
+        // Detalle de piezas pendientes: Cotizando y Espera (Ventas/Compras capturan piezas)
         const boxDet = document.getElementById('boxDetalleRefacciones');
         if (boxDet) {
-            const esEspera = (nuevo === 'Espera de refacciones');
-            boxDet.style.display = esEspera ? 'block' : 'none';
-            if (esEspera) {
+            const capturaPiezas = (nuevo === 'Espera de refacciones' || nuevo === 'Cotizando' ||
+                (u.estatus === 'Espera de refacciones' && nuevo === 'Reparando') ||
+                (u.estatus === 'Cotizando' && (nuevo === 'Espera de refacciones' || nuevo === 'Reparando')));
+            boxDet.style.display = capturaPiezas ? 'block' : 'none';
+            if (capturaPiezas) {
                 const ta = document.getElementById('refaccionesEsperadasCambio');
                 const fp = document.getElementById('fechaPedidoRefaccionesCambio');
                 const fe = document.getElementById('fechaEstimadaRefaccionesCambio');
-                if (ta && !ta.value) ta.value = u.refacciones_esperadas || '';
+                const lab = boxDet.querySelector('label') || boxDet.querySelector('strong');
+                if (ta) {
+                    if (!ta.value) ta.value = u.refacciones_esperadas || '';
+                    ta.placeholder = 'Lista de piezas pendientes / faltantes...';
+                }
                 if (fp && !fp.value) fp.value = u.fecha_pedido_refacciones || fechaHoyISO();
                 if (fe && !fe.value) fe.value = u.fecha_estimada_refacciones || '';
+                // Si va a Reparando desde Espera: opcional actualizar estado piezas
+                if (nuevo === 'Reparando' && u.estatus === 'Espera de refacciones') {
+                    if (ta && !ta.value) ta.value = u.refacciones_esperadas || 'Piezas listas para reparación';
+                }
             }
         }
 
@@ -6740,6 +7522,14 @@
             }
         }
 
+        let ubicacion = normalizarUbicacionTrabajo(u.ubicacion_trabajo || 'Taller');
+        const ubiAsk = prompt(
+            '📍 ¿Dónde se realiza el trabajo?\n\nEscribe:\nTaller  ·  Kuzzy  ·  Rescate',
+            ubicacion
+        );
+        if (ubiAsk === null) return;
+        ubicacion = normalizarUbicacionTrabajo(ubiAsk);
+
         const hoy = fechaHoyISO();
         const historial = (u.historial || []).slice();
         historial.push({
@@ -6748,12 +7538,14 @@
             area: sesion.area,
             persona: sesion.persona,
             comentario: 'Llegada confirmada por Ventas. Antes en Agenda' + (u.fecha_agenda ? ' (' + u.fecha_agenda + ')' : '') +
+                ' · Lugar: ' + ubicacion +
                 (garantiaPatch.es_garantia ? ' · 🛡️ Reingreso/garantía' : '')
         });
 
         const resultado = await actualizarUnidad(id, {
             estatus: 'Recibida',
             fecha_llegada: hoy,
+            ubicacion_trabajo: ubicacion,
             historial: historial,
             ...garantiaPatch
         });
@@ -7213,11 +8005,15 @@
                 }
             }
 
-            // SLA estricto Ventas (Cotizando) y Compras (Espera de refacciones)
+            // SLA estricto Ventas (Cotizando) y Compras/Ventas (Espera de refacciones)
             const slaNiv = nivelSlaEstatus(u);
             if (slaNiv === 'rojo' || slaNiv === 'amarillo') {
                 const slaCfg = SLA_POR_ESTATUS[u.estatus];
-                if (slaCfg && notifRelevanteParaArea(slaCfg.area, areaSesion)) {
+                const areaOk = slaCfg && (
+                    notifRelevanteParaArea(slaCfg.area, areaSesion) ||
+                    (slaCfg.areasExtra && slaCfg.areasExtra.includes(areaSesion))
+                );
+                if (areaOk) {
                     const dueno = duenoVisibleUnidad(u);
                     notifs.push({
                         tipo: slaNiv === 'rojo' ? 'urgente' : 'aviso',
@@ -7337,7 +8133,7 @@
             const cfg = SLA_POR_ESTATUS[u.estatus];
             if (!cfg) return false;
             if (area === 'Gerencia') return niv === 'rojo' || cfg.area === 'Ventas' || cfg.area === 'Compras';
-            if (area === 'Ventas') return cfg.area === 'Ventas';
+            if (area === 'Ventas') return cfg.area === 'Ventas' || (cfg.areasExtra && cfg.areasExtra.includes('Ventas'));
             if (area === 'Compras') return cfg.area === 'Compras';
             if (area === 'Mantenimiento') return cfg.area === 'Mantenimiento';
             return false;
@@ -7628,11 +8424,6 @@
         if (modoCliente) return;
         const u = unidades.find(item => item.id === id);
         if (!u) return;
-        // En Diagnosticando / Reparando abrir TK Diag directamente
-        if (u.estatus === 'Diagnosticando' || u.estatus === 'Reparando') {
-            abrirTkDiag(id);
-            return;
-        }
         unidadEnEdicion = id;
         document.getElementById('infoDiagnostico').textContent = `${u.no_unidad} - ${u.cliente}`;
         document.getElementById('diagnosticoDetalle').value = u.diagnostico_detalle || '';
@@ -7644,7 +8435,18 @@
             pdfActual.innerHTML = '<span style="color:#888;">Ningún PDF subido todavía</span>';
         }
         const btnTk = document.getElementById('btnAbrirTkDiag');
-        if (btnTk) btnTk.style.display = 'none';
+        const puedeEditarDiag = u.estatus === 'Diagnosticando' && (puedeModificarUnidad(u) || tienePermisoTotal());
+        if (btnTk) btnTk.style.display = puedeEditarDiag ? 'block' : 'none';
+        const ta = document.getElementById('diagnosticoDetalle');
+        const filePdf = document.getElementById('diagnosticoPdfFile');
+        if (ta) ta.readOnly = !puedeEditarDiag;
+        if (filePdf) filePdf.disabled = !puedeEditarDiag;
+        // Botones guardar/subir solo en Diagnosticando
+        document.querySelectorAll('#modalDiagnostico .btn-modal.primary, #modalDiagnostico .btn-modal.secondary').forEach(btn => {
+            if (btn.textContent && (btn.textContent.includes('Guardar') || btn.textContent.includes('Subir'))) {
+                btn.style.display = puedeEditarDiag ? '' : 'none';
+            }
+        });
         document.getElementById('modalDiagnostico').style.display = 'flex';
     }
 
@@ -7657,8 +8459,12 @@
         if (!requerirSesion()) return;
         const u = unidades.find(item => item.id === id);
         if (!u) return;
-        if (u.estatus !== 'Diagnosticando' && u.estatus !== 'Reparando') {
-            alert('⚠️ TK Diag está disponible cuando la unidad está en Diagnosticando o Reparando.');
+        if (u.estatus !== 'Diagnosticando') {
+            alert('⚠️ El diagnóstico (TK Diag / texto / PDF) solo se realiza en estatus Diagnosticando.');
+            return;
+        }
+        if (!puedeModificarUnidad(u) && !tienePermisoTotal()) {
+            avisoSoloLecturaArea(u);
             return;
         }
         unidadEnEdicion = id;
@@ -7766,12 +8572,16 @@
     async function guardarDiagnostico() {
         const id = unidadEnEdicion;
         if (!id) return;
+        const u = unidades.find(item => item.id === id);
+        if (!u || u.estatus !== 'Diagnosticando') {
+            alert('⚠️ Solo se puede guardar o modificar el diagnóstico en estatus Diagnosticando.');
+            return;
+        }
         const texto = document.getElementById('diagnosticoDetalle').value.trim();
         if (!texto) {
             alert('⚠️ Escribe el diagnóstico detallado');
             return;
         }
-        const u = unidades.find(item => item.id === id);
         const historial = (u && u.historial) ? [...u.historial] : [];
         historial.push({
             fecha: fechaHistorialAhora(),
