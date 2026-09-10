@@ -2009,7 +2009,7 @@
     // Lista editable de usuarios (fuente de verdad)
     let listaUsuarios = [
         { id: 'u_luis_n', nombre: 'Luis Solís', area: 'Gerencia', taller: 'Noroeste', nivel: '', permiso_total: true, rol_tecnico: '' },
-        { id: 'u_marcos', nombre: 'Marcos Sifuentes', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Máster', permiso_total: false, rol_tecnico: 'ambos' },
+        { id: 'u_marcos', nombre: 'Marcos Sifuentes', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Máster', permiso_total: false, rol_tecnico: 'diagnosticador' },
         { id: 'u_sergio', nombre: 'Sergio Holguín', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Profesional', permiso_total: false, rol_tecnico: 'diagnosticador' },
         { id: 'u_miguel', nombre: 'Miguel Arredondo', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Profesional', permiso_total: false, rol_tecnico: 'reparador' },
         { id: 'u_alfredo_m', nombre: 'Alfredo', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Aprendiz', permiso_total: false, rol_tecnico: 'reparador' },
@@ -5111,8 +5111,9 @@
                     else if (est === 'Cotizando' || est === 'Recibida' || est === 'Finalizada') area = 'Ventas';
                     else if (est === 'Espera de refacciones') area = 'Compras';
                 }
-                // Solo usuarios registrados del taller cuentan en producción / ranking
+                // Solo usuarios registrados del taller cuentan; Gerencia no entra al ranking
                 if (!persona || !esUsuarioRegistrado(persona)) return;
+                if ((area || '') === 'Gerencia') return;
                 const st = getStats(persona, area || '');
 
                 st.unidades.add(u.id);
@@ -5283,7 +5284,9 @@
             delete st.unidades;
         });
 
-        return Object.values(porPersona).sort((a, b) => (b.score || 0) - (a.score || 0) || b.finalizadas - a.finalizadas);
+        return Object.values(porPersona)
+            .filter(st => st.area && st.area !== 'Gerencia')
+            .sort((a, b) => (b.score || 0) - (a.score || 0) || b.finalizadas - a.finalizadas);
     }
 
     function calcularScoreDesempeno(st, periodo) {
@@ -5292,22 +5295,50 @@
         const per = periodo || '7';
         let score = 35;
         if (st.area === 'Mantenimiento') {
-            // Finalizadas (reparador) + finalizadas con su diagnóstico + diag correcto + PDF − garantías − retrabajos
+            // Peso según rol real: diagnosticador vs reparador
+            let rol = (typeof rolTecnicoUsuario === 'function' ? rolTecnicoUsuario(st.persona) : 'ambos') || 'ambos';
+            // Roles fijos de ranking (diagnóstico vs reparación)
+            const nom = (st.persona || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+            if (nom.indexOf('sergio holguin') >= 0 || nom.indexOf('marcos sifuentes') >= 0) rol = 'diagnosticador';
+            else if (nom === 'miguel arredondo' || nom === 'alfredo' || (nom.indexOf('miguel') >= 0 && nom.indexOf('arredondo') >= 0)) {
+                if (rol === 'ambos' || !rol) rol = 'reparador';
+            }
+            st.rolRanking = rol;
             const finRep = st.finalizadasComoReparador || 0;
             const finDiag = st.finalizadasComoDiagnosticador || st.finalizadasConSuDiag || 0;
             const metaFin = escalarMetaSemanal(metas.mantenimiento.finalizadas, per);
             const metaDiag = escalarMetaSemanal(metas.mantenimiento.diagnosticos, per);
-            score = 15;
-            score += Math.min(25, Math.round((finRep / Math.max(1, metaFin)) * 25));
-            score += Math.min(20, Math.round((finDiag / Math.max(1, metaFin)) * 20));
-            score += Math.min(15, Math.round(((st.diagCorrecto || 0) / Math.max(1, metaDiag)) * 15));
-            score += Math.min(12, Math.round(((st.diagnosticosPdf || 0) / Math.max(1, metaDiag)) * 12));
-            score += Math.min(10, Math.round(((st.diagnosticadas || 0) / Math.max(1, metaDiag)) * 10));
-            score -= Math.min(20, (st.retrabajos || 0) * 8);
-            score -= Math.min(20, (st.garantias || 0) * 10); // garantías restan fuerte
-            if (st.eficiencia != null) score += Math.round((st.eficiencia - 70) / 6);
-            if (st.promedioRepMs > 0 && st.promedioRepMs < 2 * MS_DIA_LABORAL) score += 4;
-            if (st.promedioRepMs > 5 * MS_DIA_LABORAL) score -= 5;
+            score = 10;
+
+            if (rol === 'diagnosticador') {
+                // Marcos / Sergio: desempeño por diagnósticos, PDF y a la 1ª
+                score += Math.min(30, Math.round(((st.diagnosticadas || 0) / Math.max(1, metaDiag)) * 30));
+                score += Math.min(25, Math.round(((st.diagnosticosPdf || 0) / Math.max(1, metaDiag)) * 25));
+                score += Math.min(25, Math.round(((st.diagCorrecto || 0) / Math.max(1, metaDiag)) * 25));
+                score += Math.min(10, Math.round((finDiag / Math.max(1, metaFin)) * 10)); // unidad que cerró con su diag
+                score -= Math.min(20, (st.retrabajos || 0) * 8);
+                score -= Math.min(15, (st.garantias || 0) * 8);
+            } else if (rol === 'reparador') {
+                // Resto de técnicos: desempeño por Reparando → Finalizada
+                score += Math.min(50, Math.round((finRep / Math.max(1, metaFin)) * 50));
+                score += Math.min(15, Math.round(((st.reparadas || 0) / Math.max(1, metaFin * 2)) * 15));
+                score += Math.min(10, Math.round(((st.diagCorrecto || 0) / Math.max(1, metaDiag)) * 5)); // poco peso
+                score -= Math.min(25, (st.retrabajos || 0) * 10);
+                score -= Math.min(20, (st.garantias || 0) * 10);
+                if (st.eficiencia != null) score += Math.round((st.eficiencia - 70) / 5);
+                if (st.promedioRepMs > 0 && st.promedioRepMs < 2 * MS_DIA_LABORAL) score += 8;
+                if (st.promedioRepMs > 5 * MS_DIA_LABORAL) score -= 8;
+            } else {
+                // Ambos (p.ej. Abel Juárez): balanceado
+                score += Math.min(25, Math.round((finRep / Math.max(1, metaFin)) * 25));
+                score += Math.min(15, Math.round((finDiag / Math.max(1, metaFin)) * 15));
+                score += Math.min(15, Math.round(((st.diagnosticadas || 0) / Math.max(1, metaDiag)) * 15));
+                score += Math.min(12, Math.round(((st.diagnosticosPdf || 0) / Math.max(1, metaDiag)) * 12));
+                score += Math.min(12, Math.round(((st.diagCorrecto || 0) / Math.max(1, metaDiag)) * 12));
+                score -= Math.min(20, (st.retrabajos || 0) * 8);
+                score -= Math.min(20, (st.garantias || 0) * 10);
+                if (st.eficiencia != null) score += Math.round((st.eficiencia - 70) / 6);
+            }
         } else if (st.area === 'Ventas') {
             // Ranking solo: recibidas + cotizadas + ventas realizadas
             const metaRec = escalarMetaSemanal(metas.ventas.recibidas, per);
@@ -5932,9 +5963,12 @@
             let metricsHtml = '';
             if (st.area === 'Mantenimiento') {
                 const finDiag = st.finalizadasComoDiagnosticador || st.finalizadasConSuDiag || 0;
+                const rolR = st.rolRanking || (typeof rolTecnicoUsuario === 'function' ? rolTecnicoUsuario(st.persona) : '');
+                const rolLabel = rolR === 'diagnosticador' ? '🔍 Diagnosticador' : (rolR === 'reparador' ? '🔧 Reparador' : '🔍🔧 Ambos');
                 const pFin = progresoMeta(finRep, metaFinEsc);
                 const pDiag = progresoMeta(st.diagnosticadas || 0, metaDiagEsc);
                 metricsHtml = `
+                    <div style="grid-column:1/-1;font-size:12px;color:#1a3a5c;font-weight:600;">Rol medido: ${rolLabel}</div>
                     <div>✅ Finalizó (reparador): <strong>${finRep}</strong></div>
                     <div>✅ Finalizó (su diagnóstico): <strong>${finDiag}</strong></div>
                     <div>🎯 Diag. a la 1ª: <strong style="color:${(st.diagCorrecto||0) ? '#28a745' : 'inherit'}">${st.diagCorrecto || 0}</strong></div>
