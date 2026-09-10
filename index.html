@@ -1996,7 +1996,7 @@
             'Gerencia': ['Luis Solís'],
             'Mantenimiento': ['Marcos Sifuentes', 'Sergio Holguín', 'Miguel Arredondo', 'Alfredo'],
             'Ventas': ['Romina', 'Jesús'],
-            'Compras': ['Alfredo']
+            'Compras': ['Alfredo Hernández']
         },
         'Juarez': {
             'Gerencia': ['Luis Solís'],
@@ -2015,7 +2015,7 @@
         { id: 'u_alfredo_m', nombre: 'Alfredo', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Aprendiz', permiso_total: false, rol_tecnico: 'reparador' },
         { id: 'u_romina_n', nombre: 'Romina', area: 'Ventas', taller: 'Noroeste', nivel: '', permiso_total: false, rol_tecnico: '' },
         { id: 'u_jesus_n', nombre: 'Jesús', area: 'Ventas', taller: 'Noroeste', nivel: '', permiso_total: false, rol_tecnico: '' },
-        { id: 'u_alfredo_c', nombre: 'Alfredo', area: 'Compras', taller: 'Noroeste', nivel: '', permiso_total: false, rol_tecnico: '' },
+        { id: 'u_alfredo_c', nombre: 'Alfredo Hernández', area: 'Compras', taller: 'Noroeste', nivel: '', permiso_total: true, rol_tecnico: '' },
         { id: 'u_luis_j', nombre: 'Luis Solís', area: 'Gerencia', taller: 'Juarez', nivel: '', permiso_total: true, rol_tecnico: '' },
         { id: 'u_abel', nombre: 'Abel', area: 'Mantenimiento', taller: 'Juarez', nivel: 'Profesional', permiso_total: true, rol_tecnico: 'ambos' },
         { id: 'u_romina_j', nombre: 'Romina', area: 'Ventas', taller: 'Juarez', nivel: '', permiso_total: false, rol_tecnico: '' },
@@ -2054,14 +2054,18 @@
     function tienePermisoTotal() {
         if (!sesion) return false;
         if (sesion.area === 'Gerencia') return true;
-        const u = (listaUsuarios || []).find(x =>
-            x.nombre === sesion.persona &&
-            (x.taller === sesion.taller || !sesion.taller) &&
-            x.permiso_total
-        );
+        const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+        const nomSes = norm(sesion.persona);
+        const u = (listaUsuarios || []).find(x => {
+            if (!x.permiso_total) return false;
+            const mismoNombre = x.nombre === sesion.persona || norm(x.nombre) === nomSes;
+            const mismoTaller = !sesion.taller || x.taller === sesion.taller ||
+                (typeof idsEquivalentesTaller === 'function' && idsEquivalentesTaller(x.taller, sesion.taller));
+            return mismoNombre && mismoTaller;
+        });
         if (u) return true;
-        // Compatibilidad
-        if (sesion.persona === 'Abel') return true;
+        if (sesion.persona === 'Abel' || nomSes === 'abel') return true;
+        if (nomSes.indexOf('alfredo hernandez') >= 0) return true;
         return false;
     }
 
@@ -2909,9 +2913,8 @@
             if (u.estatus === 'Recibida') {
                 lista = lista.filter(d => d !== 'Cotizando' && d !== 'Reparando');
             }
-            if (u.estatus === 'Cotizando' && area === 'Ventas') {
-                lista = lista.filter(d => d !== 'Finalizada');
-            }
+            // Ventas puede finalizar desde Cotizando si el cliente no acepta el trabajo
+            // (antes se bloqueaba Finalizada; ahora se permite)
             // Mantenimiento puede mandar de Reparando a Espera de refacciones (faltan piezas)
             if (area === 'Mantenimiento' && u.estatus === 'Reparando' && !lista.includes('Espera de refacciones')) {
                 lista.push('Espera de refacciones');
@@ -2934,6 +2937,10 @@
         }
         if (Array.isArray(cfg.usuarios) && cfg.usuarios.length) {
             listaUsuarios = cfg.usuarios;
+            listaUsuarios.forEach(u => {
+                const n = String(u.nombre || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+                if (n.indexOf('alfredo hernandez') >= 0) u.permiso_total = true;
+            });
         }
         rebuildPersonasDesdeUsuarios();
         if (cfg.permisosCambio && typeof cfg.permisosCambio === 'object') {
@@ -4282,39 +4289,86 @@
         mostrarToastApp('📴 Sin conexión · los cambios se guardarán localmente', '#fd7e14');
     });
 
+    // Columnas opcionales: si no existen en Supabase, se quitan y se reintenta
+    const COLUMNAS_OPCIONALES_UNIDAD = [
+        'tipo_servicio', 'tipo_servicio_codigo', 'pct_avance',
+        'venta_refacciones', 'pausa_compras', 'pausa_compras_nota', 'pausa_compras_desde',
+        'espera_cliente', 'espera_cliente_nota', 'espera_cliente_desde',
+        'es_garantia', 'es_reingreso', 'unidad_origen_id', 'dias_desde_fin_prev'
+    ];
+
+    function quitarColumnasDesconocidas(datos, mensajeError) {
+        const msg = String(mensajeError || '');
+        const limpio = { ...datos };
+        let quitadas = [];
+        // "Could not find the 'col' column of 'unidades'"
+        const m = msg.match(/Could not find the '([^']+)' column/i);
+        if (m && m[1]) {
+            delete limpio[m[1]];
+            quitadas.push(m[1]);
+        }
+        COLUMNAS_OPCIONALES_UNIDAD.forEach(c => {
+            if (c in limpio && /schema cache|Could not find/i.test(msg)) {
+                // si el error es de schema, quitar opcionales que aún queden
+                if (m && m[1] === c) return;
+            }
+        });
+        return { limpio, quitadas };
+    }
+
     async function actualizarUnidad(id, datos) {
         // Offline: aplica local y encola
         if (typeof navigator !== 'undefined' && navigator.onLine === false) {
             encolarCambioOffline(id, datos);
             return { success: true, offline: true };
         }
+        let payload = { ...datos };
         try {
-            const { data, error } = await supabaseClient
-                .from('unidades')
-                .update(datos)
-                .eq('id', id)
-                .select();
-            
-            if (error) throw error;
-            
-            const index = unidades.findIndex(u => u.id === id);
-            if (index !== -1) {
-                unidades[index] = { ...unidades[index], ...datos };
-                delete unidades[index]._offline;
+            for (let intento = 0; intento < 6; intento++) {
+                const { data, error } = await supabaseClient
+                    .from('unidades')
+                    .update(payload)
+                    .eq('id', id)
+                    .select();
+
+                if (!error) {
+                    const index = unidades.findIndex(u => u.id === id);
+                    if (index !== -1) {
+                        // Fusionar datos originales (incluye opcionales en memoria local)
+                        unidades[index] = { ...unidades[index], ...datos };
+                        delete unidades[index]._offline;
+                    }
+                    renderizarTablero();
+                    actualizarStats();
+                    return { success: true, data: data && data[0] };
+                }
+
+                const msg = (error && error.message) || '';
+                if (/Could not find the '.+' column|schema cache/i.test(msg)) {
+                    const { limpio, quitadas } = quitarColumnasDesconocidas(payload, msg);
+                    // Quitar también todas las opcionales conocidas si sigue fallando
+                    if (intento >= 1) {
+                        COLUMNAS_OPCIONALES_UNIDAD.forEach(c => { delete limpio[c]; });
+                    }
+                    if (quitadas.length) console.warn('Columna no existe en Supabase, se omite:', quitadas.join(', '));
+                    // Si no cambió el payload, no reintentar en bucle
+                    const antes = JSON.stringify(payload);
+                    payload = limpio;
+                    if (JSON.stringify(payload) === antes && intento >= 1) throw error;
+                    continue;
+                }
+                throw error;
             }
-            renderizarTablero();
-            actualizarStats();
-            return { success: true, data: data[0] };
+            throw new Error('No se pudo actualizar la unidad tras reintentos');
         } catch (error) {
             console.error('Error al actualizar:', error);
-            // Si falla por red, encola
             const msg = (error && error.message) || '';
             if (/network|fetch|Failed to fetch|offline/i.test(msg) || (typeof navigator !== 'undefined' && !navigator.onLine)) {
                 encolarCambioOffline(id, datos);
                 return { success: true, offline: true };
             }
-            alert('❌ Error al actualizar: ' + error.message);
-            return { success: false, error: error.message };
+            alert('❌ Error al actualizar: ' + msg);
+            return { success: false, error: msg };
         }
     }
 
@@ -8405,11 +8459,16 @@
 
         let opcionesPermitidas = [];
 
-        if (area === 'Gerencia' || (sesion && sesion.persona === 'Abel')) {
+        if (area === 'Gerencia' || (sesion && (sesion.persona === 'Abel' || tienePermisoTotal()))) {
             opcionesPermitidas = Object.keys(nombresEstatus);
+            const esAlfredo = sesion && /alfredo\s*hern[aá]ndez/i.test(sesion.persona || '');
             ayuda.textContent = sesion && sesion.persona === 'Abel'
                 ? '🔧 Abel puede cambiar a cualquier estatus (encargado Juárez).'
-                : '👔 Gerencia puede cambiar a cualquier estatus.';
+                : (esAlfredo
+                    ? '🔧 Alfredo Hernández puede cambiar cualquier unidad a cualquier estatus.'
+                    : (tienePermisoTotal() && area !== 'Gerencia'
+                        ? '🔧 Permiso total: puedes cambiar a cualquier estatus.'
+                        : '👔 Gerencia puede cambiar a cualquier estatus.'));
         } else {
             const permisosArea = permisosCambio[area];
             if (permisosArea && estatusActual && permisosArea[estatusActual]) {
@@ -8564,6 +8623,21 @@
                 return;
             }
             requiereRef = v;
+        }
+
+
+        // Ventas finaliza desde Cotizando (cliente no acepta)
+        if (estatusAnterior === 'Cotizando' && nuevoEstatus === 'Finalizada' &&
+            (area === 'Ventas' || area === 'Gerencia' || tienePermisoTotal())) {
+            if (!esTrabajoKuzzy(u) && !esTrabajoVentasRefacciones(u)) {
+                const motivo = (prompt(
+                    '📋 Motivo de cierre sin reparación (opcional):\n\nEj. Cliente no autorizó, solo cotización, precio, etc.',
+                    'Cliente no autorizó el trabajo'
+                ) || '').trim();
+                if (motivo) {
+                    comentario = (comentario ? comentario + ' · ' : '') + 'Cierre desde cotización: ' + motivo;
+                }
+            }
         }
 
         // Bifurcación Cotizando → destino coherente con refacciones
