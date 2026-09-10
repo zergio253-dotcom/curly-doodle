@@ -2756,7 +2756,7 @@
         'Mantenimiento': {
             'Recibida': ['Diagnosticando'],
             'Diagnosticando': ['Cotizando', 'Reparando'],
-            'Reparando': ['Finalizada', 'Diagnosticando']
+            'Reparando': ['Finalizada', 'Diagnosticando', 'Espera de refacciones']
         },
         'Ventas': {
             'Agenda': ['Recibida'],
@@ -2912,6 +2912,10 @@
             if (u.estatus === 'Cotizando' && area === 'Ventas') {
                 lista = lista.filter(d => d !== 'Finalizada');
             }
+            // Mantenimiento puede mandar de Reparando a Espera de refacciones (faltan piezas)
+            if (area === 'Mantenimiento' && u.estatus === 'Reparando' && !lista.includes('Espera de refacciones')) {
+                lista.push('Espera de refacciones');
+            }
         }
         return lista;
     }
@@ -2950,7 +2954,8 @@
                 }
             }
             if (permisosCambio.Mantenimiento && typeof permisosCambio.Mantenimiento === 'object') {
-                permisosCambio.Mantenimiento['Reparando'] = ['Finalizada', 'Diagnosticando'];
+                // Mantenimiento: de Reparando puede pedir refacciones si faltan piezas
+                permisosCambio.Mantenimiento['Reparando'] = ['Finalizada', 'Diagnosticando', 'Espera de refacciones'];
                 permisosCambio.Mantenimiento['Diagnosticando'] = ['Cotizando', 'Reparando'];
             }
         }
@@ -9985,7 +9990,15 @@
                 .eq('fecha', fecha)
                 .order('orden', { ascending: true });
             if (error) throw error;
-            trabajoHoy = data || [];
+            trabajoHoy = (data || []).map(row => {
+                let pct = parseInt(row.pct_avance, 10);
+                if (isNaN(pct) && row.nota) {
+                    const m = String(row.nota).match(/\[Avance:\s*(\d+)%\]/);
+                    if (m) pct = parseInt(m[1], 10);
+                }
+                if (isNaN(pct)) pct = 0;
+                return { ...row, pct_avance: Math.max(0, Math.min(100, pct)) };
+            });
         } catch (e) {
             console.warn('Trabajar hoy:', e);
             trabajoHoy = [];
@@ -10043,6 +10056,26 @@
             const u = unidades.find(x => x.id === t.unidad_id);
             const nombre = u ? `${u.no_unidad || '—'} — ${u.cliente || '—'}` : `Unidad #${t.unidad_id}`;
             const extra = u ? `${u.estatus || ''}` : '';
+            const pct = Math.max(0, Math.min(100, parseInt(t.pct_avance, 10) || 0));
+            const pctColor = pct >= 100 ? '#28a745' : (pct >= 50 ? '#17a2b8' : (pct > 0 ? '#ffc107' : '#adb5bd'));
+            const barra = `
+                <div style="margin-top:6px;">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
+                        <span>🔧 Avance trabajo</span>
+                        <strong style="color:${pctColor}">${pct}%</strong>
+                    </div>
+                    <div style="height:8px; background:#e9ecef; border-radius:6px; overflow:hidden;">
+                        <div style="height:100%; width:${pct}%; background:${pctColor}; transition:width .2s;"></div>
+                    </div>
+                    ${sesion && !modoCliente && sesion.area === 'Mantenimiento' ? `
+                    <div style="display:flex; gap:6px; align-items:center; margin-top:6px;" onclick="event.stopPropagation()">
+                        <input type="range" min="0" max="100" step="5" value="${pct}"
+                            style="flex:1;"
+                            onchange="actualizarPctTrabajoHoy(${t.id}, this.value)"
+                            oninput="this.nextElementSibling.textContent=this.value+'%'">
+                        <span style="font-size:12px; min-width:36px; text-align:right;">${pct}%</span>
+                    </div>` : ''}
+                </div>`;
             const nota = t.nota ? `<div style="font-size:12px; color:#1a3a5c; margin-top:2px;">📝 ${t.nota}</div>` : '';
             const quien = (t.created_by_persona || t.creado_por)
                 ? `<div style="font-size:11px; color:#666; margin-top:2px;">👤 Armó: ${t.created_by_persona || t.creado_por}${t.created_by_area ? ' (' + t.created_by_area + ')' : ''}</div>`
@@ -10073,6 +10106,7 @@
                     <strong>${nombre}</strong>
                     <span>${extra}</span>
                     ${nota}
+                    ${barra}
                     ${quien}
                     ${cuando}
                     ${atendida}
@@ -10132,6 +10166,48 @@
         }
     }
 
+
+
+    async function actualizarPctTrabajoHoy(id, valor) {
+        if (!requerirSesion()) return;
+        if (!sesion || sesion.area !== 'Mantenimiento') {
+            alert('⚠️ Solo Mantenimiento puede actualizar el porcentaje de avance.');
+            return;
+        }
+        const pct = Math.max(0, Math.min(100, parseInt(valor, 10) || 0));
+        try {
+            const patch = { pct_avance: pct };
+            if (pct >= 100) {
+                // opcional: no auto-atender; solo avance
+            }
+            const { error } = await supabaseClient.from('trabajo_hoy').update(patch).eq('id', id);
+            if (error) {
+                // Si la columna no existe, guardar en local + nota
+                console.warn('pct_avance:', error.message);
+                const item = trabajoHoy.find(x => x.id === id);
+                if (item) {
+                    item.pct_avance = pct;
+                    // intentar guardar en nota como respaldo
+                    const notaBase = (item.nota || '').replace(/\s*\[Avance:\s*\d+%\]\s*/g, '').trim();
+                    const nuevaNota = (notaBase ? notaBase + ' ' : '') + '[Avance: ' + pct + '%]';
+                    try {
+                        await supabaseClient.from('trabajo_hoy').update({ nota: nuevaNota }).eq('id', id);
+                        item.nota = nuevaNota;
+                    } catch (e2) {}
+                }
+                renderListaTrabajoHoy();
+                mostrarToastApp('Avance ' + pct + '% (guarda local si falta columna pct_avance)', '#17a2b8');
+                return;
+            }
+            const item = trabajoHoy.find(x => x.id === id);
+            if (item) item.pct_avance = pct;
+            renderListaTrabajoHoy();
+            mostrarToastApp('🔧 Avance actualizado: ' + pct + '%', '#28a745');
+        } catch (e) {
+            console.error(e);
+            alert('No se pudo guardar el avance: ' + (e.message || e));
+        }
+    }
 
     async function marcarTrabajoHoyAtendido(id) {
         if (!requerirSesion()) return;
