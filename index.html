@@ -5100,7 +5100,14 @@
             nPausaCompras: 0,
             msDiagnostico: 0,
             msReparacion: 0,
+            msCotizando: 0,
+            msRecibida: 0,
             msTotal: 0,
+            // contribucion ponderada por unidad (suma de % de tiempo en cada unidad)
+            contribucionUnidades: 0,
+            unidadesIdsFinRep: new Set(),
+            unidadesIdsFinDiag: new Set(),
+            unidadesIdsDiag: new Set(),
             unidades: new Set()
         };
     }
@@ -5168,6 +5175,7 @@
 
                 if (est === 'Recibida') {
                     st.recibidas++;
+                    st.msRecibida = (st.msRecibida || 0) + (h.duracionMs || 0);
                     if (area === 'Ventas') st.ventasMov++;
                 }
                 if (est === 'Diagnosticando') {
@@ -5187,6 +5195,7 @@
                 }
                 if (est === 'Cotizando') {
                     st.cotizadas++;
+                    st.msCotizando = (st.msCotizando || 0) + (h.duracionMs || 0);
                     if (area === 'Ventas') st.ventasMov++;
                 }
                 if (est === 'Espera de refacciones') {
@@ -5239,34 +5248,49 @@
             }
             if (!eventosFin.length) return;
 
-            eventosFin.forEach(() => {
+            // Una sola vez por unidad (no por cada evento Finalizada duplicado)
+            if (eventosFin.length) {
                 const repU = resolverUsuarioRegistrado(u.reparador, 'Mantenimiento');
                 if (repU && repU.area === 'Mantenimiento') {
                     const st = getStats(repU.nombre, 'Mantenimiento');
-                    st.finalizadasComoReparador = (st.finalizadasComoReparador || 0) + 1;
-                    st.unidades.add(u.id);
-                    if (u.es_garantia || u.es_reingreso) st.garantias = (st.garantias || 0) + 1;
+                    if (!st.unidadesIdsFinRep.has(u.id)) {
+                        st.unidadesIdsFinRep.add(u.id);
+                        st.finalizadasComoReparador = (st.finalizadasComoReparador || 0) + 1;
+                        st.unidades.add(u.id);
+                        if (u.es_garantia || u.es_reingreso) st.garantias = (st.garantias || 0) + 1;
+                    }
                 }
                 const diagU = resolverUsuarioRegistrado(u.diagnosticador, 'Mantenimiento');
                 if (diagU && diagU.area === 'Mantenimiento') {
                     const st = getStats(diagU.nombre, 'Mantenimiento');
-                    st.finalizadasConSuDiag = (st.finalizadasConSuDiag || 0) + 1;
-                    st.finalizadasComoDiagnosticador = (st.finalizadasComoDiagnosticador || 0) + 1;
-                    st.unidades.add(u.id);
-                    if (vecesDiag <= 1) st.diagCorrecto = (st.diagCorrecto || 0) + 1;
-                    if (tienePdf) st.diagnosticosPdf = (st.diagnosticosPdf || 0) + 1;
-                    if (u.es_garantia || u.es_reingreso) st.garantias = (st.garantias || 0) + 1;
+                    if (!st.unidadesIdsFinDiag.has(u.id)) {
+                        st.unidadesIdsFinDiag.add(u.id);
+                        st.finalizadasConSuDiag = (st.finalizadasConSuDiag || 0) + 1;
+                        st.finalizadasComoDiagnosticador = (st.finalizadasComoDiagnosticador || 0) + 1;
+                        st.unidades.add(u.id);
+                        if (vecesDiag <= 1) st.diagCorrecto = (st.diagCorrecto || 0) + 1;
+                        if (tienePdf) st.diagnosticosPdf = (st.diagnosticosPdf || 0) + 1;
+                        if (u.es_garantia || u.es_reingreso) st.garantias = (st.garantias || 0) + 1;
+                    }
                 }
                 const asesU = resolverUsuarioRegistrado(u.asesor_ventas, 'Ventas');
                 if (asesU && asesU.area === 'Ventas') {
                     const st = getStats(asesU.nombre, 'Ventas');
-                    st.entregasComoAsesor = (st.entregasComoAsesor || 0) + 1;
-                    st.unidades.add(u.id);
-                    if (esTrabajoVentasRefacciones(u) && u.venta_refacciones === true) {
-                        st.refaccionesVendidas = (st.refaccionesVendidas || 0) + 1;
+                    if (!st.unidades.has(u.id) || true) {
+                        // entregas: una por unidad finalizada
+                        const keyEnt = '_ent_' + u.id;
+                        if (!st['_entregasSet']) st['_entregasSet'] = new Set();
+                        if (!st['_entregasSet'].has(u.id)) {
+                            st['_entregasSet'].add(u.id);
+                            st.entregasComoAsesor = (st.entregasComoAsesor || 0) + 1;
+                            st.unidades.add(u.id);
+                            if (esTrabajoVentasRefacciones(u) && u.venta_refacciones === true) {
+                                st.refaccionesVendidas = (st.refaccionesVendidas || 0) + 1;
+                            }
+                        }
                     }
                 }
-            });
+            }
         });
 
         // Tiempos espera cliente / pausa compras (también unidades archivadas)
@@ -5297,10 +5321,58 @@
             }
         });
 
+
+        // ===== % de trabajo por persona en cada unidad (tiempo propio / tiempo total de la unidad en periodo) =====
+        unidades.forEach(u => {
+            const hist = Array.isArray(u.historial) ? u.historial : [];
+            if (!hist.length) return;
+            const tiempos = calcularTiemposHistorial(hist);
+            let msUnidadPeriodo = 0;
+            const msPorPersona = {};
+            tiempos.forEach(h => {
+                const d = parseFechaHistorial(h.fecha);
+                if (!d) return;
+                const tms = d.getTime();
+                if (tms < rango.inicio || tms > rango.fin) return;
+                const est = h.estatus || '';
+                if (est === 'Agenda') return;
+                const ms = h.duracionMs || 0;
+                if (ms <= 0) return;
+                msUnidadPeriodo += ms;
+                let persona = (h.persona || '').trim();
+                let area = (h.area || '').trim();
+                if (!persona) {
+                    if (est === 'Diagnosticando') persona = (u.diagnosticador || '').trim();
+                    else if (est === 'Reparando') persona = (u.reparador || '').trim();
+                    else if (est === 'Cotizando' || est === 'Recibida') persona = (u.asesor_ventas || '').trim();
+                }
+                const usr = resolverUsuarioRegistrado(persona, area || null);
+                if (!usr || usr.area === 'Gerencia') return;
+                const key = usr.nombre + '|' + (usr.area || '');
+                msPorPersona[key] = (msPorPersona[key] || 0) + ms;
+            });
+            if (msUnidadPeriodo <= 0) return;
+            Object.keys(msPorPersona).forEach(key => {
+                const parts = key.split('|');
+                const st = getStats(parts[0], parts[1] || '');
+                const pct = msPorPersona[key] / msUnidadPeriodo; // 0–1
+                st.contribucionUnidades = (st.contribucionUnidades || 0) + pct;
+            });
+        });
+
+        // Totales por área para % de carga del equipo
+        const msTotalPorArea = {};
+        const unidadesPorArea = {};
+        Object.keys(porPersona).forEach(k => {
+            const st = porPersona[k];
+            if (!st.area || st.area === 'Gerencia') return;
+            msTotalPorArea[st.area] = (msTotalPorArea[st.area] || 0) + (st.msTotal || 0);
+            unidadesPorArea[st.area] = (unidadesPorArea[st.area] || 0) + (st.unidades ? st.unidades.size : 0);
+        });
+
         Object.keys(porPersona).forEach(k => {
             const st = porPersona[k];
             if (st.area === 'Ventas') {
-                // Ventas realizadas = refacciones CON VENTA + entregas/finalizadas como asesor
                 st.ventasRealizadas = (st.refaccionesVendidas || 0) + (st.entregasComoAsesor || 0);
                 st.ventasMov = (st.recibidas || 0) + (st.cotizadas || 0) + (st.ventasRealizadas || 0);
             }
@@ -5317,15 +5389,32 @@
                 ? Math.round(((st.liberacionesRapidas || 0) / st.liberacionesRef) * 100) : null;
             st.tiempoDiagTexto = formatearDuracion(st.msDiagnostico);
             st.tiempoRepTexto = formatearDuracion(st.msReparacion);
+            st.tiempoCotTexto = formatearDuracion(st.msCotizando || 0);
             st.promedioDiagMs = st.diagnosticadas > 0 ? Math.round(st.msDiagnostico / st.diagnosticadas) : 0;
             st.promedioRepMs = st.reparadas > 0 ? Math.round(st.msReparacion / st.reparadas) : 0;
+            st.promedioCotMs = st.cotizadas > 0 ? Math.round((st.msCotizando || 0) / st.cotizadas) : 0;
             st.promedioDiagTexto = st.promedioDiagMs ? formatearDuracion(st.promedioDiagMs) : '—';
             st.promedioRepTexto = st.promedioRepMs ? formatearDuracion(st.promedioRepMs) : '—';
-            // Eficiencia: finalizadas / (finalizadas + retrabajos)
+            st.promedioCotTexto = st.promedioCotMs ? formatearDuracion(st.promedioCotMs) : '—';
+            st.promedioPorUnidadMs = st.unidadesCount > 0 ? Math.round(st.msTotal / st.unidadesCount) : 0;
+            st.promedioPorUnidadTexto = st.promedioPorUnidadMs ? formatearDuracion(st.promedioPorUnidadMs) : '—';
+            // % carga del equipo (tiempo de esta persona / tiempo total del área)
+            const msArea = msTotalPorArea[st.area] || 0;
+            st.pctCargaEquipo = msArea > 0 ? Math.round((st.msTotal / msArea) * 1000) / 10 : 0;
+            // Unidades equivalentes (suma de % de trabajo en cada unidad)
+            st.unidadesEquivalentes = Math.round((st.contribucionUnidades || 0) * 10) / 10;
+            // % éxito diagnósticos (a la 1ª / finalizadas con su diag)
+            const baseDiag = st.finalizadasComoDiagnosticador || st.finalizadasConSuDiag || st.diagnosticadas || 0;
+            st.tasaExitoDiag = baseDiag > 0 ? Math.round(((st.diagCorrecto || 0) / baseDiag) * 100) : null;
+            // Eficiencia reparación
             const finRep = st.finalizadasComoReparador || st.finalizadas || 0;
             const base = finRep + st.retrabajos;
             st.eficiencia = base > 0 ? Math.round((finRep / base) * 100) : null;
-            // Puntuación de desempeño 0–100 por rol (vs metas del periodo)
+            // limpiar sets antes de score
+            delete st.unidadesIdsFinRep;
+            delete st.unidadesIdsFinDiag;
+            delete st.unidadesIdsDiag;
+            delete st._entregasSet;
             st.score = calcularScoreDesempeno(st, periodo || 'semana');
             st.scoreLabel = etiquetaScoreDesempeno(st.score);
             delete st.unidades;
@@ -5339,93 +5428,90 @@
     function calcularScoreDesempeno(st, periodo) {
         if (!st) return 0;
         const metas = getMetasPorArea();
-        const per = periodo || '7';
-        let score = 35;
+        const per = periodo || 'semana';
+        let score = 0;
+
+        const uCount = st.unidadesCount || 0;
+        const carga = Math.min(40, st.pctCargaEquipo || 0);
+        const uEq = st.unidadesEquivalentes || 0;
+
         if (st.area === 'Mantenimiento') {
-            // Peso según rol real: diagnosticador vs reparador
             let rol = (typeof rolTecnicoUsuario === 'function' ? rolTecnicoUsuario(st.persona) : 'ambos') || 'ambos';
-            // Roles fijos de ranking (diagnóstico vs reparación)
             const nom = (st.persona || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
             if (nom.indexOf('sergio holguin') >= 0 || nom.indexOf('marcos sifuentes') >= 0) rol = 'diagnosticador';
-            else if (nom === 'miguel arredondo' || nom === 'alfredo' || (nom.indexOf('miguel') >= 0 && nom.indexOf('arredondo') >= 0)) {
-                if (rol === 'ambos' || !rol) rol = 'reparador';
+            else if (nom.indexOf('miguel') >= 0 || nom.indexOf('alfredo') === 0 || nom === 'alfredo') {
+                if (rol !== 'diagnosticador') rol = 'reparador';
             }
             st.rolRanking = rol;
             const finRep = st.finalizadasComoReparador || 0;
             const finDiag = st.finalizadasComoDiagnosticador || st.finalizadasConSuDiag || 0;
-            const metaFin = escalarMetaSemanal(metas.mantenimiento.finalizadas, per);
-            const metaDiag = escalarMetaSemanal(metas.mantenimiento.diagnosticos, per);
-            score = 10;
+            const metaFin = Math.max(1, escalarMetaSemanal(metas.mantenimiento.finalizadas, per));
+            const metaDiag = Math.max(1, escalarMetaSemanal(metas.mantenimiento.diagnosticos, per));
+
+            score += Math.min(25, Math.round(carga * 0.6));
+            score += Math.min(15, Math.round(Math.min(uEq, 15) * 1.2));
 
             if (rol === 'diagnosticador') {
-                // Marcos / Sergio: desempeño por diagnósticos, PDF y a la 1ª
-                score += Math.min(30, Math.round(((st.diagnosticadas || 0) / Math.max(1, metaDiag)) * 30));
-                score += Math.min(25, Math.round(((st.diagnosticosPdf || 0) / Math.max(1, metaDiag)) * 25));
-                score += Math.min(25, Math.round(((st.diagCorrecto || 0) / Math.max(1, metaDiag)) * 25));
-                score += Math.min(10, Math.round((finDiag / Math.max(1, metaFin)) * 10)); // unidad que cerró con su diag
+                score += Math.min(20, Math.round(((st.diagnosticadas || 0) / metaDiag) * 20));
+                score += Math.min(15, Math.round(((st.diagnosticosPdf || 0) / metaDiag) * 15));
+                if (st.tasaExitoDiag != null) score += Math.round((st.tasaExitoDiag / 100) * 20);
+                else score += Math.min(10, (st.diagCorrecto || 0) * 2);
+                score += Math.min(8, Math.round((finDiag / metaFin) * 8));
+                if (st.promedioDiagMs > 0 && st.promedioDiagMs < 1.5 * MS_DIA_LABORAL) score += 5;
+                if (st.promedioDiagMs > 3 * MS_DIA_LABORAL) score -= 6;
+                score -= Math.min(15, (st.retrabajos || 0) * 6);
+                score -= Math.min(12, (st.garantias || 0) * 6);
+            } else if (rol === 'reparador') {
+                score += Math.min(30, Math.round((finRep / metaFin) * 30));
+                score += Math.min(12, Math.round(((st.reparadas || 0) / Math.max(1, metaFin * 2)) * 12));
+                if (st.eficiencia != null) score += Math.round((st.eficiencia / 100) * 15);
+                if (st.promedioRepMs > 0 && st.promedioRepMs < 2 * MS_DIA_LABORAL) score += 8;
+                if (st.promedioRepMs > 4 * MS_DIA_LABORAL) score -= 10;
                 score -= Math.min(20, (st.retrabajos || 0) * 8);
                 score -= Math.min(15, (st.garantias || 0) * 8);
-            } else if (rol === 'reparador') {
-                // Resto de técnicos: desempeño por Reparando → Finalizada
-                score += Math.min(50, Math.round((finRep / Math.max(1, metaFin)) * 50));
-                score += Math.min(15, Math.round(((st.reparadas || 0) / Math.max(1, metaFin * 2)) * 15));
-                score += Math.min(10, Math.round(((st.diagCorrecto || 0) / Math.max(1, metaDiag)) * 5)); // poco peso
-                score -= Math.min(25, (st.retrabajos || 0) * 10);
-                score -= Math.min(20, (st.garantias || 0) * 10);
-                if (st.eficiencia != null) score += Math.round((st.eficiencia - 70) / 5);
-                if (st.promedioRepMs > 0 && st.promedioRepMs < 2 * MS_DIA_LABORAL) score += 8;
-                if (st.promedioRepMs > 5 * MS_DIA_LABORAL) score -= 8;
             } else {
-                // Ambos (p.ej. Abel Juárez): balanceado
-                score += Math.min(25, Math.round((finRep / Math.max(1, metaFin)) * 25));
-                score += Math.min(15, Math.round((finDiag / Math.max(1, metaFin)) * 15));
-                score += Math.min(15, Math.round(((st.diagnosticadas || 0) / Math.max(1, metaDiag)) * 15));
-                score += Math.min(12, Math.round(((st.diagnosticosPdf || 0) / Math.max(1, metaDiag)) * 12));
-                score += Math.min(12, Math.round(((st.diagCorrecto || 0) / Math.max(1, metaDiag)) * 12));
-                score -= Math.min(20, (st.retrabajos || 0) * 8);
-                score -= Math.min(20, (st.garantias || 0) * 10);
-                if (st.eficiencia != null) score += Math.round((st.eficiencia - 70) / 6);
+                score += Math.min(18, Math.round((finRep / metaFin) * 18));
+                score += Math.min(12, Math.round(((st.diagnosticadas || 0) / metaDiag) * 12));
+                score += Math.min(10, Math.round(((st.diagnosticosPdf || 0) / metaDiag) * 10));
+                if (st.tasaExitoDiag != null) score += Math.round((st.tasaExitoDiag / 100) * 12);
+                if (st.eficiencia != null) score += Math.round((st.eficiencia / 100) * 10);
+                score -= Math.min(15, (st.retrabajos || 0) * 6);
+                score -= Math.min(12, (st.garantias || 0) * 6);
             }
         } else if (st.area === 'Ventas') {
-            // Ranking solo: recibidas + cotizadas + ventas realizadas
-            const metaRec = escalarMetaSemanal(metas.ventas.recibidas, per);
-            const metaCot = escalarMetaSemanal(metas.ventas.cotizadas, per);
-            const metaVen = escalarMetaSemanal((metas.ventas.refacciones || 5) + 3, per); // meta ventas realizadas
-            const ventasRealizadas = (st.ventasRealizadas != null)
-                ? st.ventasRealizadas
-                : ((st.refaccionesVendidas || 0) + (st.entregasComoAsesor || 0));
-            score = 10;
-            score += Math.min(30, Math.round(((st.recibidas || 0) / Math.max(1, metaRec)) * 30));
-            score += Math.min(30, Math.round(((st.cotizadas || 0) / Math.max(1, metaCot)) * 30));
-            score += Math.min(30, Math.round((ventasRealizadas / Math.max(1, metaVen)) * 30));
+            const metaRec = Math.max(1, escalarMetaSemanal(metas.ventas.recibidas, per));
+            const metaCot = Math.max(1, escalarMetaSemanal(metas.ventas.cotizadas, per));
+            const metaVen = Math.max(1, escalarMetaSemanal((metas.ventas.refacciones || 5) + 3, per));
+            const vr = st.ventasRealizadas != null ? st.ventasRealizadas : ((st.refaccionesVendidas || 0) + (st.entregasComoAsesor || 0));
+            score += Math.min(20, Math.round(carga * 0.5));
+            score += Math.min(12, Math.round(Math.min(uEq, 12)));
+            score += Math.min(22, Math.round(((st.recibidas || 0) / metaRec) * 22));
+            score += Math.min(22, Math.round(((st.cotizadas || 0) / metaCot) * 22));
+            score += Math.min(22, Math.round((vr / metaVen) * 22));
+            if (st.promedioCotMs > 0 && st.promedioCotMs < 1 * MS_DIA_LABORAL) score += 6;
+            if (st.promedioCotMs > 3 * MS_DIA_LABORAL) score -= 6;
         } else if (st.area === 'Compras') {
-            // Exigente: liberaciones (Espera→Reparando) + rapidez + pocos atrasos
-            const metaLib = escalarMetaSemanal(metas.compras.liberaciones, per);
-            const metaMov = escalarMetaSemanal(metas.compras.movimientos, per);
+            const metaLib = Math.max(1, escalarMetaSemanal(metas.compras.liberaciones, per));
             const lib = st.liberacionesRef || 0;
-            score = 10;
-            score += Math.min(40, Math.round((lib / Math.max(1, metaLib)) * 40)); // peso fuerte en liberaciones
-            score += Math.min(15, Math.round(((st.comprasMov || 0) / Math.max(1, metaMov)) * 15));
-            // % liberaciones rápidas (≤2 días hábiles)
+            score += Math.min(15, Math.round(carga * 0.4));
+            score += Math.min(35, Math.round((lib / metaLib) * 35));
             if (lib > 0) {
                 const pctRap = ((st.liberacionesRapidas || 0) / lib) * 100;
-                score += Math.round((pctRap / 100) * 20); // hasta +20
-                score -= Math.min(20, (st.liberacionesLentas || 0) * 8); // lentas restan
+                score += Math.round((pctRap / 100) * 20);
+                score -= Math.min(18, (st.liberacionesLentas || 0) * 7);
             }
-            // Promedio de liberación: premio si < 2 días, castigo si > 4
             if (st.promedioLiberacionMs > 0) {
                 const diasProm = diasLaboralesDesdeMs(st.promedioLiberacionMs);
-                if (diasProm <= 2) score += 10;
-                else if (diasProm <= 3) score += 4;
+                if (diasProm <= 2) score += 12;
+                else if (diasProm <= 3) score += 5;
                 else if (diasProm >= 5) score -= 12;
                 else if (diasProm >= 4) score -= 6;
             }
-            // Espera activa larga (sin pausa proveedor)
             const msActiva = Math.max(0, (st.msEsperaRefacciones || 0) - (st.msPausaCompras || 0));
-            if (st.esperaRefacciones > 0 && msActiva > st.esperaRefacciones * 2.5 * MS_DIA_LABORAL) score -= 10;
+            if (st.esperaRefacciones > 0 && msActiva > st.esperaRefacciones * 2.5 * MS_DIA_LABORAL) score -= 8;
         } else {
-            score += Math.min(20, (st.finalizadas || 0) * 2);
-            score += Math.min(15, (st.recibidas || 0) + (st.cotizadas || 0));
+            score += Math.min(30, uCount * 3);
+            score += Math.min(20, Math.round(carga * 0.5));
         }
         return Math.max(0, Math.min(100, Math.round(score)));
     }
@@ -6016,14 +6102,19 @@
                 const pDiag = progresoMeta(st.diagnosticadas || 0, metaDiagEsc);
                 metricsHtml = `
                     <div style="grid-column:1/-1;font-size:12px;color:#1a3a5c;font-weight:600;">Rol medido: ${rolLabel}</div>
-                    <div>✅ Finalizó (reparador): <strong>${finRep}</strong></div>
-                    <div>✅ Finalizó (su diagnóstico): <strong>${finDiag}</strong></div>
-                    <div>🎯 Diag. a la 1ª: <strong style="color:${(st.diagCorrecto||0) ? '#28a745' : 'inherit'}">${st.diagCorrecto || 0}</strong></div>
+                    <div>📦 Unidades tocadas: <strong>${st.unidadesCount || 0}</strong></div>
+                    <div>⚖️ U. equivalentes: <strong>${st.unidadesEquivalentes != null ? st.unidadesEquivalentes : '—'}</strong></div>
+                    <div>📊 % carga equipo: <strong>${st.pctCargaEquipo != null ? st.pctCargaEquipo + '%' : '—'}</strong></div>
+                    <div>⏱️ Tiempo total: <strong>${st.tiempoTexto || '—'}</strong></div>
+                    <div>⏱️ Prom./unidad: <strong>${st.promedioPorUnidadTexto || '—'}</strong></div>
+                    <div>✅ Fin. reparador: <strong>${finRep}</strong></div>
+                    <div>✅ Fin. su diagnóstico: <strong>${finDiag}</strong></div>
+                    <div>🎯 Éxito diag.: <strong style="color:${(st.tasaExitoDiag!=null && st.tasaExitoDiag>=70)?'#28a745':((st.tasaExitoDiag!=null && st.tasaExitoDiag<50)?'#dc3545':'inherit')}">${st.tasaExitoDiag != null ? st.tasaExitoDiag + '%' : '—'}</strong></div>
                     <div>📄 PDF diagnóstico: <strong>${st.diagnosticosPdf || 0}</strong></div>
-                    <div>🔍 Pasos en Diagnosticando: <strong>${st.diagnosticadas}</strong></div>
-                    <div>🔧 Pasos en Reparando: <strong>${st.reparadas}</strong></div>
+                    <div>🔍 Pasos diag.: <strong>${st.diagnosticadas}</strong></div>
+                    <div>🔧 Pasos rep.: <strong>${st.reparadas}</strong></div>
                     <div>↩️ Retrabajos: <strong style="color:${st.retrabajos ? '#dc3545' : 'inherit'}">${st.retrabajos}</strong></div>
-                    <div>🛡️ Garantías (−pts): <strong style="color:${(st.garantias||0) ? '#dc3545' : 'inherit'}">${st.garantias || 0}</strong></div>
+                    <div>🛡️ Garantías: <strong style="color:${(st.garantias||0) ? '#dc3545' : 'inherit'}">${st.garantias || 0}</strong></div>
                     <div style="grid-column:1/-1;">⏱️ Prom. diag: <strong>${st.promedioDiagTexto || '—'}</strong> · Prom. rep: <strong>${st.promedioRepTexto || '—'}</strong></div>
                     <div style="grid-column:1/-1;">
                         <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
@@ -6048,10 +6139,13 @@
                 const pCot = progresoMeta(st.cotizadas || 0, metaCotEsc);
                 const pVen = progresoMeta(ventasReal, metaVenEsc);
                 metricsHtml = `
+                    <div>📦 Unidades: <strong>${st.unidadesCount || 0}</strong></div>
+                    <div>📊 % carga: <strong>${st.pctCargaEquipo != null ? st.pctCargaEquipo + '%' : '—'}</strong></div>
                     <div>📥 Recibidas: <strong>${st.recibidas || 0}</strong></div>
                     <div>💰 Cotizadas: <strong>${st.cotizadas || 0}</strong></div>
                     <div>🏷️ Ventas realizadas: <strong>${ventasReal}</strong></div>
-                    <div style="font-size:11px; color:#666;">· Refacc. con venta: ${st.refaccionesVendidas || 0} · Entregas asesor: ${st.entregasComoAsesor || 0}</div>
+                    <div>⏱️ Prom. cotizar: <strong>${st.promedioCotTexto || '—'}</strong></div>
+                    <div style="font-size:11px; color:#666;">· Refacc. con venta: ${st.refaccionesVendidas || 0} · Entregas: ${st.entregasComoAsesor || 0} · U.eq: ${st.unidadesEquivalentes || 0}</div>
                     <div>⏸️ Esp. cliente: <strong>${st.nEsperaCliente || 0}</strong></div>
                     <div style="grid-column:1/-1;">⏳ Tiempo espera cliente: <strong>${st.tiempoEsperaClienteTexto || '—'}</strong></div>
                     <div style="grid-column:1/-1;">
@@ -6081,6 +6175,8 @@
                 const pLib = progresoMeta(st.liberacionesRef || 0, metaLibEsc);
                 const pMov = progresoMeta(st.comprasMov || 0, metaMovEsc);
                 metricsHtml = `
+                    <div>📦 Unidades: <strong>${st.unidadesCount || 0}</strong></div>
+                    <div>📊 % carga: <strong>${st.pctCargaEquipo != null ? st.pctCargaEquipo + '%' : '—'}</strong></div>
                     <div>✅ Liberó a reparar: <strong>${st.liberacionesRef || 0}</strong></div>
                     <div>⚡ Rápidas (≤2d): <strong style="color:#28a745">${st.liberacionesRapidas || 0}</strong></div>
                     <div>🐢 Lentas (≥4d): <strong style="color:${(st.liberacionesLentas||0)?'#dc3545':'inherit'}">${st.liberacionesLentas || 0}</strong></div>
@@ -6222,15 +6318,16 @@
             <div style="margin-bottom:14px; padding:12px; background:#e7f1ff; border-radius:10px; font-size:13px;">
                 <strong>📊 Indicadores del periodo</strong>
                 <details style="margin:10px 0; padding:10px; background:#f0f4f8; border-radius:10px; font-size:12px; color:#333;">
-                    <summary style="cursor:pointer; font-weight:600;">ℹ️ ¿En qué se basa el ranking?</summary>
+                    <summary style="cursor:pointer; font-weight:600;">ℹ️ ¿Cómo es el ranking justo?</summary>
                     <ul style="margin:8px 0 0 16px; padding:0; line-height:1.5;">
-                        <li>Se usan <strong>todas las unidades</strong> del taller (activas + finalizadas + archivadas en historial).</li>
-                        <li>Cada <strong>paso del historial</strong> en el periodo suma a quien movió la unidad (nombre registrado).</li>
-                        <li><strong>Ventas:</strong> recibidas, cotizadas, entregas como asesor y refacciones <em>con venta</em>.</li>
-                        <li><strong>Mantenimiento:</strong> pasos en diagnosticando/reparando + finalizadas del reparador y del diagnosticador (PDF, a la 1ª).</li>
-                        <li><strong>Compras:</strong> liberaciones Espera→Reparando y tiempos de esas liberaciones.</li>
-                        <li>Si el historial no trae nombre, se usa diagnosticador / reparador / asesor de la unidad.</li>
-                        <li>Gerencia no entra al ranking. Periodo = semana laboral lun–vie (o el que elijas).</li>
+                        <li><strong>Unidades tocadas</strong> + <strong>unidades equivalentes</strong> (% de tiempo que pusiste en cada unidad).</li>
+                        <li><strong>% carga del equipo</strong>: tu tiempo laboral vs el total de tu área (quién está haciendo más).</li>
+                        <li><strong>Tiempos reales</strong> (jornada lun–vie): prom. diagnóstico, reparación, cotización, liberación de piezas.</li>
+                        <li><strong>Diagnosticadores</strong>: diagnósticos, PDF, % éxito a la 1ª (sin volver a Diagnosticando).</li>
+                        <li><strong>Reparadores</strong>: finalizadas + eficiencia + velocidad de reparación.</li>
+                        <li><strong>Ventas</strong>: recibidas, cotizadas, ventas realizadas + tiempo de cotizar.</li>
+                        <li><strong>Compras</strong>: liberaciones Espera→Reparando + rapidez (≤2 días) vs lentas (≥4).</li>
+                        <li>Historial completo (activas + archivadas). Gerencia no compite.</li>
                     </ul>
                 </details>
 
