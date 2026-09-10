@@ -897,6 +897,7 @@
                     <button type="button" class="menu-item" id="btnTrabajoHoy" onclick="abrirModalTrabajoHoy(); cerrarMenuPrincipal();" style="display:none;">📋 Trabajar hoy</button>
                     <button type="button" class="menu-item" id="btnMensaje" onclick="abrirModalMensaje(); cerrarMenuPrincipal();" style="display:none;">💬 Mensaje</button>
                     <button type="button" class="menu-item" id="btnProduccion" onclick="abrirModalProduccion(); cerrarMenuPrincipal();">📈 Producción</button>
+                    <button type="button" class="menu-item" id="btnMetasGerencia" style="display:none;" onclick="abrirModalMetasGerencia(); cerrarMenuPrincipal();">🎯 Metas</button>
                     <button type="button" class="menu-item" id="btnMiDia" onclick="abrirMiDia();">☀️ Mi día</button>
                     <button type="button" class="menu-item" id="btnInventario" onclick="abrirModalInventario(); cerrarMenuPrincipal();">📦 Inventario</button>
                     <button type="button" class="menu-item" id="btnReporteDiario" onclick="abrirReporteDiario(); cerrarMenuPrincipal();" style="display:none;">📊 Reporte diario</button>
@@ -1002,6 +1003,68 @@
 </div>
 
 <!-- ===== MODAL PRODUCCIÓN POR USUARIO ===== -->
+
+<!-- Metas por área (solo Gerencia) -->
+<div class="modal" id="modalMetasGerencia">
+    <div class="modal-content" style="max-width:480px;">
+        <div class="modal-header">
+            <h3>🎯 Metas semanales por área</h3>
+            <button class="close-modal" onclick="cerrarModal('modalMetasGerencia')">&times;</button>
+        </div>
+        <p style="font-size:13px; color:#666; margin:0 0 12px;">Define las metas del ranking. Se guardan en este dispositivo y aplican a Producción / Mi día. Puedes modificarlas cuando quieras.</p>
+        <div style="display:grid; gap:14px;">
+            <div style="padding:12px; background:#e8f7fa; border-radius:12px; border-left:4px solid #17a2b8;">
+                <strong style="color:#17a2b8;">🔧 Mantenimiento</strong>
+                <div class="grid-2" style="margin-top:8px;">
+                    <div class="form-group" style="margin:0;">
+                        <label>Finalizadas / técnico</label>
+                        <input type="number" id="gMetaMantFin" min="1" max="50" value="4">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Diagnósticos</label>
+                        <input type="number" id="gMetaMantDiag" min="1" max="50" value="8">
+                    </div>
+                </div>
+            </div>
+            <div style="padding:12px; background:#eafaf1; border-radius:12px; border-left:4px solid #28a745;">
+                <strong style="color:#28a745;">💰 Ventas</strong>
+                <div class="grid-2" style="margin-top:8px;">
+                    <div class="form-group" style="margin:0;">
+                        <label>Recibidas</label>
+                        <input type="number" id="gMetaVenRec" min="1" max="50" value="8">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Cotizadas</label>
+                        <input type="number" id="gMetaVenCot" min="1" max="50" value="10">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:8px;">
+                    <label>Ventas realizadas (base)</label>
+                    <input type="number" id="gMetaVenRef" min="0" max="50" value="5">
+                    <small style="color:#666;">Refacciones con venta + entregas como asesor</small>
+                </div>
+            </div>
+            <div style="padding:12px; background:#fff4e5; border-radius:12px; border-left:4px solid #fd7e14;">
+                <strong style="color:#fd7e14;">🛒 Compras</strong>
+                <div class="grid-2" style="margin-top:8px;">
+                    <div class="form-group" style="margin:0;">
+                        <label>Liberaciones a reparar</label>
+                        <input type="number" id="gMetaComLib" min="1" max="50" value="7">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Movimientos</label>
+                        <input type="number" id="gMetaComMov" min="1" max="50" value="12">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+            <button class="btn-modal primary" style="flex:1;" onclick="guardarMetasDesdeGerencia()">💾 Guardar metas</button>
+            <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalMetasGerencia')">Cerrar</button>
+        </div>
+    </div>
+</div>
+
 <div class="modal" id="modalProduccion">
     <div class="modal-content wide">
         <h3>📈 Producción y ranking</h3>
@@ -1208,6 +1271,11 @@
                             <option value="reparador">Solo Reparador</option>
                         </select>
                         <small style="color:#666;">El diagnosticador elige al reparador al mandar a Reparando.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>🎂 Cumpleaños</label>
+                        <input type="date" id="adminUserCumple" style="width:100%; padding:8px; border-radius:8px;">
+                        <small style="color:#666;">Día y mes se usan para la felicitación (el año no importa).</small>
                     </div>
                     <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:10px; cursor:pointer;">
                         <input type="checkbox" id="adminUserPermisoTotal"> Permiso total (puede mover a cualquier estatus, como Gerencia)
@@ -2478,6 +2546,7 @@
             show('btnVistaHistorial', true);
             show('btnTrabajoHoy', true);
             show('btnProduccion', true);
+            show('btnMetasGerencia', sesion.area === 'Gerencia' || tienePermisoTotal());
             show('btnInventario', true);
             show('btnReporteDiario', sesion.area === 'Gerencia' || sesion.persona === 'Abel');
             show('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
@@ -2626,6 +2695,7 @@
         };
         showMenu('btnReporteDiario', sesion.area === 'Gerencia' || (sesion && sesion.persona === 'Abel'));
         showMenu('btnProduccion', true);
+        showMenu('btnMetasGerencia', sesion && (sesion.area === 'Gerencia' || tienePermisoTotal()));
         showMenu('btnMiDia', sesion.area !== 'Gerencia' && sesion.area !== 'Cliente');
         showMenu('btnInventario', true);
         showMenu('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
@@ -3115,6 +3185,8 @@
         const rol = document.getElementById('adminUserRolTecnico');
         if (rol) rol.value = 'ambos';
         document.getElementById('adminUserPermisoTotal').checked = false;
+        const cum = document.getElementById('adminUserCumple');
+        if (cum) cum.value = '';
     }
 
     function renderListaUsuariosAdmin() {
@@ -3134,7 +3206,7 @@
                 <div style="flex:1; min-width:140px;">
                     <strong>${u.nombre || '—'}</strong>
                     ${u.permiso_total ? ' <span style="font-size:11px; background:#d4edda; color:#155724; padding:2px 6px; border-radius:8px;">Permiso total</span>' : ''}
-                    <div style="font-size:12px; color:#666;">${u.area || ''} · ${etiquetaTaller(u.taller)}${u.nivel ? ' · ' + u.nivel : ''}${u.area === 'Mantenimiento' && u.rol_tecnico ? ' · ' + (u.rol_tecnico === 'diagnosticador' ? 'Diagnosticador' : u.rol_tecnico === 'reparador' ? 'Reparador' : 'Diag.+Rep.') : ''}</div>
+                    <div style="font-size:12px; color:#666;">${u.area || ''} · ${etiquetaTaller(u.taller)}${u.nivel ? ' · ' + u.nivel : ''}${u.area === 'Mantenimiento' && u.rol_tecnico ? ' · ' + (u.rol_tecnico === 'diagnosticador' ? 'Diagnosticador' : u.rol_tecnico === 'reparador' ? 'Reparador' : 'Diag.+Rep.') : ''}${u.cumpleanos ? ' · 🎂 ' + formatearCumpleAdmin(u.cumpleanos) : ''}</div>
                 </div>
                 <div style="display:flex; gap:4px;">
                     <button class="btn-accion" onclick="editarUsuarioAdmin('${u.id}')">✏️</button>
@@ -3155,6 +3227,8 @@
         const rol = document.getElementById('adminUserRolTecnico');
         if (rol) rol.value = u.rol_tecnico || 'ambos';
         document.getElementById('adminUserPermisoTotal').checked = !!u.permiso_total;
+        const cum = document.getElementById('adminUserCumple');
+        if (cum) cum.value = (u.cumpleanos || '').toString().substring(0, 10);
     }
 
     function guardarUsuarioAdmin() {
@@ -3167,18 +3241,20 @@
         const rolEl = document.getElementById('adminUserRolTecnico');
         const rol_tecnico = area === 'Mantenimiento' ? ((rolEl && rolEl.value) || 'ambos') : '';
         const permiso_total = document.getElementById('adminUserPermisoTotal').checked;
+        const cumpleEl = document.getElementById('adminUserCumple');
+        const cumpleanos = (cumpleEl && cumpleEl.value) ? cumpleEl.value.substring(0, 10) : '';
         if (!nombre) {
             alert('El nombre es obligatorio.');
             return;
         }
         if (id) {
             listaUsuarios = listaUsuarios.map(u => String(u.id) === String(id)
-                ? { ...u, nombre, area, taller, nivel, rol_tecnico, permiso_total }
+                ? { ...u, nombre, area, taller, nivel, rol_tecnico, permiso_total, cumpleanos }
                 : u);
         } else {
             listaUsuarios.push({
                 id: 'u_' + Date.now(),
-                nombre, area, taller, nivel, rol_tecnico, permiso_total
+                nombre, area, taller, nivel, rol_tecnico, permiso_total, cumpleanos
             });
         }
         rebuildPersonasDesdeUsuarios();
@@ -3517,6 +3593,8 @@
             // Aviso de pendientes / SLA al cargar (Ventas, Compras, etc.)
             try { mostrarAvisoPendientesLogin(); } catch (e) {}
             try { intentarMostrarEmpleadoSemana(); } catch (e) {}
+            try { await archivarFinalizadasVencidas(); } catch (e) { console.warn('archivar', e); }
+            try { intentarMostrarCumpleanos(); } catch (e) {}
         } catch (error) {
             console.error('Error al cargar datos:', error);
             document.getElementById('statusConexion').innerHTML = '❌ Error: ' + (error.message || '').substring(0, 40);
@@ -3950,9 +4028,113 @@
         return movs;
     }
 
+
+    // ===== CANDADO ANTI-DUPLICADOS + ARCHIVO HISTORIAL =====
+    const ESTATUS_ACTIVOS_DUPLICADO = ['Agenda', 'Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando'];
+    const DIAS_HABILES_ARCHIVAR_FINALIZADA = 5;
+
+    function normalizarClaveDup(s) {
+        return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    /** Busca unidad activa mismo taller + mismo cliente + mismo no. económico */
+    function buscarDuplicadoActivo(cliente, noUnidad, excluirId) {
+        const c = normalizarClaveDup(cliente);
+        const n = normalizarClaveDup(noUnidad);
+        if (!c || !n) return null;
+        return (unidades || []).find(u => {
+            if (u.eliminado) return false;
+            if (excluirId && u.id === excluirId) return false;
+            if (!perteneceAlTallerActual(u.taller)) return false;
+            if (ESTATUS_ACTIVOS_DUPLICADO.indexOf(u.estatus) < 0) return false;
+            return normalizarClaveDup(u.cliente) === c && normalizarClaveDup(u.no_unidad) === n;
+        }) || null;
+    }
+
+    function fechaFinUnidad(u) {
+        if (!u) return null;
+        if (u.fecha_salida) {
+            const d = new Date(String(u.fecha_salida).substring(0, 10) + 'T12:00:00');
+            if (!isNaN(d.getTime())) return d;
+        }
+        const hist = (u.historial || []).slice().reverse();
+        for (let i = 0; i < hist.length; i++) {
+            if (hist[i].estatus === 'Finalizada') {
+                const d = parseFechaHistorial(hist[i].fecha);
+                if (d) return d;
+            }
+        }
+        if (u.updated_at) {
+            const d = new Date(u.updated_at);
+            if (!isNaN(d.getTime())) return d;
+        }
+        return null;
+    }
+
+    function diasHabilesEntre(desde, hasta) {
+        if (!desde || !hasta) return 0;
+        const a = desde instanceof Date ? desde : new Date(desde);
+        const b = hasta instanceof Date ? hasta : new Date(hasta);
+        if (isNaN(a.getTime()) || isNaN(b.getTime()) || b <= a) return 0;
+        return diasLaboralesDesdeMs(msJornadaLaboral(a, b));
+    }
+
+    function debeArchivarFinalizada(u) {
+        if (!u || u.eliminado || u.estatus !== 'Finalizada') return false;
+        const fin = fechaFinUnidad(u);
+        if (!fin) return false;
+        return diasHabilesEntre(fin, new Date()) >= DIAS_HABILES_ARCHIVAR_FINALIZADA;
+    }
+
+    async function archivarFinalizadasVencidas() {
+        const candidatas = (unidades || []).filter(debeArchivarFinalizada);
+        if (!candidatas.length) return 0;
+        let n = 0;
+        for (const u of candidatas) {
+            try {
+                const historial = (u.historial || []).slice();
+                historial.push({
+                    fecha: fechaHistorialAhora(),
+                    estatus: 'Finalizada',
+                    area: 'Sistema',
+                    persona: 'Sistema',
+                    comentario: '📦 Archivada automáticamente al historial tras ' + DIAS_HABILES_ARCHIVAR_FINALIZADA + ' días hábiles finalizada'
+                });
+                const res = await actualizarUnidad(u.id, {
+                    eliminado: true,
+                    historial
+                });
+                if (res && res.success) n++;
+                else {
+                    // fallback local
+                    const idx = unidades.findIndex(x => x.id === u.id);
+                    if (idx >= 0) {
+                        unidades[idx] = { ...unidades[idx], eliminado: true, historial };
+                        n++;
+                    }
+                }
+            } catch (e) {
+                console.warn('Archivar finalizada', u.id, e);
+            }
+        }
+        if (n > 0) {
+            try { mostrarToastApp('📦 ' + n + ' finalizada(s) pasaron al historial (5 días hábiles)', '#6c757d'); } catch (e) {}
+            renderizarTablero();
+            actualizarStats();
+        }
+        return n;
+    }
+
     async function agregarUnidad(nuevaUnidad) {
         try {
             if (!nuevaUnidad.taller) nuevaUnidad.taller = getTallerActual();
+            const dup = buscarDuplicadoActivo(nuevaUnidad.cliente, nuevaUnidad.no_unidad);
+            if (dup) {
+                alert('🔒 No se puede duplicar: ya hay una unidad activa con el mismo cliente y número económico.\n\n' +
+                    'Unidad: ' + (dup.no_unidad || '—') + '\nCliente: ' + (dup.cliente || '—') + '\nEstatus: ' + (dup.estatus || '—') +
+                    '\n\nSolo se permite otra si la anterior está Finalizada (en historial) o archivada.');
+                return { success: false, error: 'duplicado' };
+            }
             const { data, error } = await supabaseClient
                 .from('unidades')
                 .insert([nuevaUnidad])
@@ -4628,8 +4810,11 @@
         const sc = etiquetaScoreDesempeno(top.score || 0);
         let detalle = '';
         if (top.area === 'Mantenimiento') {
-            detalle = '✅ Finalizadas: ' + (top.finalizadasComoReparador || top.finalizadas || 0) +
-                ' · 🔍 Diagnósticos: ' + (top.diagnosticadas || 0);
+            detalle = '✅ Fin. rep: ' + (top.finalizadasComoReparador || 0) +
+                ' · Fin. diag: ' + (top.finalizadasComoDiagnosticador || top.finalizadasConSuDiag || 0) +
+                ' · 🎯 1ª vez: ' + (top.diagCorrecto || 0) +
+                ' · 📄 PDF: ' + (top.diagnosticosPdf || 0) +
+                ' · 🛡️ Garantías: ' + (top.garantias || 0);
         } else if (top.area === 'Ventas') {
             const vr = top.ventasRealizadas != null ? top.ventasRealizadas : ((top.refaccionesVendidas || 0) + (top.entregasComoAsesor || 0));
             detalle = '📥 Recibidas: ' + (top.recibidas || 0) + ' · 💰 Cotizadas: ' + (top.cotizadas || 0) + ' · 🏷️ Ventas: ' + vr;
@@ -4716,6 +4901,116 @@
         } catch (e) {}
     }
 
+
+    function formatearCumpleAdmin(iso) {
+        if (!iso) return '';
+        const p = String(iso).substring(0, 10).split('-');
+        if (p.length < 3) return iso;
+        return p[2] + '/' + p[1]; // DD/MM
+    }
+
+    function esCumpleanosHoy(iso) {
+        if (!iso) return false;
+        const p = String(iso).substring(0, 10).split('-');
+        if (p.length < 3) return false;
+        const hoy = new Date();
+        return (parseInt(p[1], 10) === (hoy.getMonth() + 1) && parseInt(p[2], 10) === hoy.getDate());
+    }
+
+    function cumpleanerosDeHoy() {
+        const tall = getTallerActual();
+        return (listaUsuarios || []).filter(u => {
+            if (!esCumpleanosHoy(u.cumpleanos)) return false;
+            // mismo taller o sin taller
+            if (u.taller && tall && u.taller !== tall && u.taller !== 'Ambos') {
+                // mostrar de ambos talleres para gerencia multi; filtrar por taller actual
+                return u.taller === tall;
+            }
+            return true;
+        });
+    }
+
+    function claveCumpleHoy(nombre) {
+        const d = fechaHoyISO();
+        const quien = sesion ? ((sesion.taller || '') + '|' + (sesion.persona || '')) : 'anon';
+        return 'thermocontrol_cumple_' + d + '_' + (nombre || '') + '_' + quien;
+    }
+
+    function mostrarFelicitacionCumpleanos(forzar) {
+        if (!sesion || sesion.area === 'Cliente' || modoCliente) return;
+        const lista = cumpleanerosDeHoy();
+        if (!lista.length) {
+            if (forzar) alert('Hoy no hay cumpleaños registrados.');
+            return;
+        }
+        // Uno por uno; preferir el de la sesión si es su día
+        let orden = lista.slice();
+        if (sesion.persona) {
+            orden.sort((a, b) => (a.nombre === sesion.persona ? -1 : 0) - (b.nombre === sesion.persona ? -1 : 0));
+        }
+        const u = orden[0];
+        if (!forzar) {
+            try {
+                if (localStorage.getItem(claveCumpleHoy(u.nombre)) === '1') return;
+            } catch (e) {}
+        }
+
+        const frases = [
+            '¡Feliz cumpleaños',
+            '¡Muchas felicidades en tu día',
+            '¡Que tengas un excelente cumpleaños',
+            '¡Felicidades en tu cumpleaños'
+        ];
+        const frase = frases[Math.floor(Math.random() * frases.length)];
+        const esEl = sesion.persona && u.nombre === sesion.persona;
+
+        let modal = document.getElementById('modalCumpleanos');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'modalCumpleanos';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width:420px; text-align:center; border:3px solid #e83e8c; box-shadow:0 12px 40px rgba(232,62,140,0.3); overflow:hidden;">
+                    <div style="background:linear-gradient(135deg,#e83e8c,#6f42c1); color:#fff; margin:-20px -20px 16px; padding:22px 16px; border-radius:12px 12px 0 0;">
+                        <div style="font-size:56px; line-height:1; animation:trofeoBounce 1s ease infinite alternate;">🎂</div>
+                        <div style="font-size:13px; letter-spacing:1px; opacity:0.95; margin-top:6px;">CELEBRACIÓN</div>
+                    </div>
+                    <p id="cumpleFrase" style="font-size:18px; color:#1a3a5c; font-weight:600; margin:0 0 8px;"></p>
+                    <div id="cumpleNombre" style="font-size:28px; font-weight:800; color:#e83e8c; margin:8px 0;"></div>
+                    <div id="cumpleArea" style="font-size:14px; color:#666;"></div>
+                    <p id="cumpleExtra" style="font-size:13px; color:#555; margin-top:14px;"></p>
+                    <button class="btn-modal success" style="width:100%; margin-top:16px; background:#e83e8c; border-color:#e83e8c;" onclick="cerrarFelicitacionCumple()">🎉 ¡Felicidades!</button>
+                </div>`;
+            document.body.appendChild(modal);
+        }
+        document.getElementById('cumpleFrase').textContent = frase + ',';
+        document.getElementById('cumpleNombre').textContent = u.nombre || '—';
+        document.getElementById('cumpleArea').textContent = (u.area || '') + (u.taller ? ' · ' + etiquetaTaller(u.taller) : '');
+        document.getElementById('cumpleExtra').textContent = esEl
+            ? 'Todo el equipo de Thermo King te desea un día increíble 🎈'
+            : 'Hoy celebramos a ' + (u.nombre || '') + ' en el taller. ¡Felicidades de parte de todos! 🎈';
+        modal.style.display = 'flex';
+        if (typeof lanzarConfetiPremiacion === 'function') lanzarConfetiPremiacion(5500);
+        try { localStorage.setItem(claveCumpleHoy(u.nombre), '1'); } catch (e) {}
+        try { mostrarToastApp('🎂 ' + frase + ' ' + (u.nombre || '') + '!', '#e83e8c'); } catch (e) {}
+    }
+
+    function cerrarFelicitacionCumple() {
+        cerrarModal('modalCumpleanos');
+        const c = document.getElementById('canvasConfetiPremio');
+        if (c) c.remove();
+        if (typeof _confetiAnimId !== 'undefined' && _confetiAnimId) {
+            cancelAnimationFrame(_confetiAnimId);
+            _confetiAnimId = null;
+        }
+    }
+
+    function intentarMostrarCumpleanos() {
+        if (!sesion || sesion.area === 'Cliente' || modoCliente) return;
+        setTimeout(() => mostrarFelicitacionCumpleanos(false), 2500);
+    }
+
+
     function rangoPeriodoProduccion(periodo) {
         const ahora = new Date();
         const fin = ahora.getTime();
@@ -4751,6 +5046,9 @@
             finalizadas: 0,
             finalizadasComoReparador: 0,
             finalizadasConSuDiag: 0,
+            finalizadasComoDiagnosticador: 0,
+            diagCorrecto: 0,
+            diagnosticosPdf: 0,
             entregasComoAsesor: 0,
             refaccionesVendidas: 0,
             cotizadas: 0,
@@ -4759,6 +5057,9 @@
             comprasMov: 0,
             esperaRefacciones: 0,
             liberacionesRef: 0,
+            liberacionesRapidas: 0,
+            liberacionesLentas: 0,
+            msTiempoLiberacion: 0,
             garantias: 0,
             retrabajos: 0,
             msEsperaRefacciones: 0,
@@ -4862,15 +5163,24 @@
                 // Liberación de refacciones (Espera → Reparando) cuenta para quien movió
                 if (est === 'Reparando' && i > 0 && tiempos[i - 1].estatus === 'Espera de refacciones') {
                     st.liberacionesRef = (st.liberacionesRef || 0) + 1;
+                    const msLib = tiempos[i - 1].duracionMs || 0;
+                    st.msTiempoLiberacion = (st.msTiempoLiberacion || 0) + msLib;
+                    // Rápida ≤ 2 días hábiles · Lenta ≥ 4 días hábiles (jornada)
+                    const diasLib = (typeof diasLaboralesDesdeMs === 'function') ? diasLaboralesDesdeMs(msLib) : (msLib / (8.5 * 3600000));
+                    if (diasLib <= 2) st.liberacionesRapidas = (st.liberacionesRapidas || 0) + 1;
+                    if (diasLib >= 4) st.liberacionesLentas = (st.liberacionesLentas || 0) + 1;
                     if (area === 'Compras' || area === 'Ventas' || area === 'Gerencia') st.comprasMov++;
                 }
             });
         });
 
-        // Atribución extra: finalizada cuenta al reparador; diagnóstico al diagnosticador
+        // Atribución Mantenimiento: finalizada suma a reparador Y diagnosticador
         unidades.forEach(u => {
             if (u.eliminado) return;
             const hist = u.historial || [];
+            // Veces que entró a Diagnosticando (retrabajo = 2+)
+            const vecesDiag = hist.filter(h => (h.estatus || '') === 'Diagnosticando').length;
+            const tienePdf = !!(u.diagnostico_pdf_url || u.diagnostico_pdf);
             hist.forEach(h => {
                 if (h.estatus !== 'Finalizada') return;
                 const d = parseFechaHistorial(h.fecha);
@@ -4888,6 +5198,13 @@
                 if (diag && esUsuarioRegistrado(diag, 'Mantenimiento')) {
                     const st = getStats(diag, 'Mantenimiento');
                     st.finalizadasConSuDiag = (st.finalizadasConSuDiag || 0) + 1;
+                    st.finalizadasComoDiagnosticador = (st.finalizadasComoDiagnosticador || 0) + 1;
+                    st.unidades.add(u.id);
+                    // Diagnóstico a la primera (no volvió a Diagnosticando)
+                    if (vecesDiag <= 1) st.diagCorrecto = (st.diagCorrecto || 0) + 1;
+                    // PDF de diagnóstico subido
+                    if (tienePdf) st.diagnosticosPdf = (st.diagnosticosPdf || 0) + 1;
+                    if (u.es_garantia || u.es_reingreso) st.garantias = (st.garantias || 0) + 1;
                 }
                 const asesor = (u.asesor_ventas || '').trim();
                 if (asesor && esUsuarioRegistrado(asesor, 'Ventas')) {
@@ -4944,6 +5261,12 @@
             st.tiempoEsperaTexto = formatearDuracion(st.msEsperaRefacciones);
             st.tiempoEsperaClienteTexto = formatearDuracion(st.msEsperaCliente || 0);
             st.tiempoPausaComprasTexto = formatearDuracion(st.msPausaCompras || 0);
+            st.promedioLiberacionMs = (st.liberacionesRef || 0) > 0
+                ? Math.round((st.msTiempoLiberacion || 0) / st.liberacionesRef) : 0;
+            st.promedioLiberacionTexto = st.promedioLiberacionMs
+                ? formatearDuracion(st.promedioLiberacionMs) : '—';
+            st.pctLiberacionesRapidas = (st.liberacionesRef || 0) > 0
+                ? Math.round(((st.liberacionesRapidas || 0) / st.liberacionesRef) * 100) : null;
             st.tiempoDiagTexto = formatearDuracion(st.msDiagnostico);
             st.tiempoRepTexto = formatearDuracion(st.msReparacion);
             st.promedioDiagMs = st.diagnosticadas > 0 ? Math.round(st.msDiagnostico / st.diagnosticadas) : 0;
@@ -4969,14 +5292,21 @@
         const per = periodo || '7';
         let score = 35;
         if (st.area === 'Mantenimiento') {
-            const fin = st.finalizadasComoReparador || st.finalizadas || 0;
+            // Finalizadas (reparador) + finalizadas con su diagnóstico + diag correcto + PDF − garantías − retrabajos
+            const finRep = st.finalizadasComoReparador || 0;
+            const finDiag = st.finalizadasComoDiagnosticador || st.finalizadasConSuDiag || 0;
             const metaFin = escalarMetaSemanal(metas.mantenimiento.finalizadas, per);
             const metaDiag = escalarMetaSemanal(metas.mantenimiento.diagnosticos, per);
-            score += Math.min(30, Math.round((fin / metaFin) * 30));
-            score += Math.min(15, Math.round(((st.diagnosticadas || 0) / metaDiag) * 15));
-            score -= Math.min(25, (st.retrabajos || 0) * 8);
-            if (st.eficiencia != null) score += Math.round((st.eficiencia - 70) / 5);
-            if (st.promedioRepMs > 0 && st.promedioRepMs < 2 * MS_DIA_LABORAL) score += 5;
+            score = 15;
+            score += Math.min(25, Math.round((finRep / Math.max(1, metaFin)) * 25));
+            score += Math.min(20, Math.round((finDiag / Math.max(1, metaFin)) * 20));
+            score += Math.min(15, Math.round(((st.diagCorrecto || 0) / Math.max(1, metaDiag)) * 15));
+            score += Math.min(12, Math.round(((st.diagnosticosPdf || 0) / Math.max(1, metaDiag)) * 12));
+            score += Math.min(10, Math.round(((st.diagnosticadas || 0) / Math.max(1, metaDiag)) * 10));
+            score -= Math.min(20, (st.retrabajos || 0) * 8);
+            score -= Math.min(20, (st.garantias || 0) * 10); // garantías restan fuerte
+            if (st.eficiencia != null) score += Math.round((st.eficiencia - 70) / 6);
+            if (st.promedioRepMs > 0 && st.promedioRepMs < 2 * MS_DIA_LABORAL) score += 4;
             if (st.promedioRepMs > 5 * MS_DIA_LABORAL) score -= 5;
         } else if (st.area === 'Ventas') {
             // Ranking solo: recibidas + cotizadas + ventas realizadas
@@ -4991,13 +5321,30 @@
             score += Math.min(30, Math.round(((st.cotizadas || 0) / Math.max(1, metaCot)) * 30));
             score += Math.min(30, Math.round((ventasRealizadas / Math.max(1, metaVen)) * 30));
         } else if (st.area === 'Compras') {
+            // Exigente: liberaciones (Espera→Reparando) + rapidez + pocos atrasos
             const metaLib = escalarMetaSemanal(metas.compras.liberaciones, per);
             const metaMov = escalarMetaSemanal(metas.compras.movimientos, per);
-            score += Math.min(35, Math.round(((st.liberacionesRef || 0) / metaLib) * 35));
-            score += Math.min(20, Math.round(((st.comprasMov || 0) / metaMov) * 20));
-            // No penalizar tiempo en pausa; solo espera activa larga
+            const lib = st.liberacionesRef || 0;
+            score = 10;
+            score += Math.min(40, Math.round((lib / Math.max(1, metaLib)) * 40)); // peso fuerte en liberaciones
+            score += Math.min(15, Math.round(((st.comprasMov || 0) / Math.max(1, metaMov)) * 15));
+            // % liberaciones rápidas (≤2 días hábiles)
+            if (lib > 0) {
+                const pctRap = ((st.liberacionesRapidas || 0) / lib) * 100;
+                score += Math.round((pctRap / 100) * 20); // hasta +20
+                score -= Math.min(20, (st.liberacionesLentas || 0) * 8); // lentas restan
+            }
+            // Promedio de liberación: premio si < 2 días, castigo si > 4
+            if (st.promedioLiberacionMs > 0) {
+                const diasProm = diasLaboralesDesdeMs(st.promedioLiberacionMs);
+                if (diasProm <= 2) score += 10;
+                else if (diasProm <= 3) score += 4;
+                else if (diasProm >= 5) score -= 12;
+                else if (diasProm >= 4) score -= 6;
+            }
+            // Espera activa larga (sin pausa proveedor)
             const msActiva = Math.max(0, (st.msEsperaRefacciones || 0) - (st.msPausaCompras || 0));
-            if (st.esperaRefacciones > 0 && msActiva > st.esperaRefacciones * 3 * MS_DIA_LABORAL) score -= 8;
+            if (st.esperaRefacciones > 0 && msActiva > st.esperaRefacciones * 2.5 * MS_DIA_LABORAL) score -= 10;
         } else {
             score += Math.min(20, (st.finalizadas || 0) * 2);
             score += Math.min(15, (st.recibidas || 0) + (st.cotizadas || 0));
@@ -5269,6 +5616,66 @@
     }
 
     const META_PROD_KEY = 'thermocontrol_meta_semanal';
+
+    function abrirModalMetasGerencia() {
+        if (!sesion || (sesion.area !== 'Gerencia' && !tienePermisoTotal())) {
+            alert('Solo Gerencia puede modificar las metas.');
+            return;
+        }
+        cargarMetasEnFormularioGerencia();
+        document.getElementById('modalMetasGerencia').style.display = 'flex';
+    }
+
+    function cargarMetasEnFormularioGerencia() {
+        const m = getMetasPorArea();
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = String(v); };
+        set('gMetaMantFin', m.mantenimiento.finalizadas);
+        set('gMetaMantDiag', m.mantenimiento.diagnosticos);
+        set('gMetaVenRec', m.ventas.recibidas);
+        set('gMetaVenCot', m.ventas.cotizadas);
+        set('gMetaVenRef', m.ventas.refacciones != null ? m.ventas.refacciones : 5);
+        set('gMetaComLib', m.compras.liberaciones);
+        set('gMetaComMov', m.compras.movimientos);
+    }
+
+    function guardarMetasDesdeGerencia() {
+        if (!sesion || (sesion.area !== 'Gerencia' && !tienePermisoTotal())) {
+            alert('Solo Gerencia puede guardar metas.');
+            return;
+        }
+        const n = (id, def, minZero) => {
+            const v = parseInt((document.getElementById(id) || {}).value, 10);
+            if (isNaN(v)) return def;
+            if (minZero) return v < 0 ? def : v;
+            return v < 1 ? def : v;
+        };
+        const metas = {
+            mantenimiento: {
+                finalizadas: n('gMetaMantFin', 4),
+                diagnosticos: n('gMetaMantDiag', 8)
+            },
+            ventas: {
+                recibidas: n('gMetaVenRec', 8),
+                cotizadas: n('gMetaVenCot', 10),
+                refacciones: n('gMetaVenRef', 5, true)
+            },
+            compras: {
+                liberaciones: n('gMetaComLib', 7),
+                movimientos: n('gMetaComMov', 12)
+            }
+        };
+        localStorage.setItem(METAS_AREA_KEY, JSON.stringify(metas));
+        localStorage.setItem(META_PROD_KEY, String(metas.mantenimiento.finalizadas));
+        // Sincronizar formulario de Producción si existe
+        try { cargarMetasEnFormulario(); } catch (e) {}
+        mostrarToastApp('🎯 Metas guardadas · aplican al ranking y Mi día', '#28a745');
+        try {
+            if (document.getElementById('modalProduccion') && document.getElementById('modalProduccion').style.display === 'flex') {
+                renderProduccion();
+            }
+        } catch (e) {}
+    }
+
     function getMetaProduccion() {
         const metas = getMetasPorArea();
         return metas.mantenimiento.finalizadas || 4;
@@ -5497,7 +5904,7 @@
                 const med = medallas[i] || (i + 1) + '.';
                 return `<div style="display:flex; justify-content:space-between; gap:8px; padding:8px 10px; background:${i < 3 ? '#fff4e5' : 'var(--detalle-item,#f8f9fa)'}; border-radius:8px; margin-bottom:4px; font-size:13px;">
                     <span>${med} <strong>${st.persona}</strong></span>
-                    <span style="text-align:right; font-size:12px;">✅ Lib. ${st.liberacionesRef || 0} · 📦 ${st.esperaRefacciones} · 🛒 ${st.comprasMov}</span>
+                    <span style="text-align:right; font-size:12px;">✅ ${st.liberacionesRef || 0} · ⚡${st.liberacionesRapidas || 0} · 🐢${st.liberacionesLentas || 0} · ⏱️ ${st.promedioLiberacionTexto || '—'}</span>
                 </div>`;
             }).join('') || '<span style="color:#888;">Sin movimientos de compras en este periodo</span>';
 
@@ -5524,15 +5931,18 @@
             const finRep = st.finalizadasComoReparador || st.finalizadas || 0;
             let metricsHtml = '';
             if (st.area === 'Mantenimiento') {
+                const finDiag = st.finalizadasComoDiagnosticador || st.finalizadasConSuDiag || 0;
                 const pFin = progresoMeta(finRep, metaFinEsc);
                 const pDiag = progresoMeta(st.diagnosticadas || 0, metaDiagEsc);
                 metricsHtml = `
-                    <div>🔍 Diagnosticó: <strong>${st.diagnosticadas}</strong></div>
-                    <div>🔧 En reparación: <strong>${st.reparadas}</strong></div>
-                    <div>✅ Cerró como reparador: <strong>${finRep}</strong></div>
+                    <div>✅ Finalizó (reparador): <strong>${finRep}</strong></div>
+                    <div>✅ Finalizó (su diagnóstico): <strong>${finDiag}</strong></div>
+                    <div>🎯 Diag. a la 1ª: <strong style="color:${(st.diagCorrecto||0) ? '#28a745' : 'inherit'}">${st.diagCorrecto || 0}</strong></div>
+                    <div>📄 PDF diagnóstico: <strong>${st.diagnosticosPdf || 0}</strong></div>
+                    <div>🔍 Pasos en Diagnosticando: <strong>${st.diagnosticadas}</strong></div>
+                    <div>🔧 Pasos en Reparando: <strong>${st.reparadas}</strong></div>
                     <div>↩️ Retrabajos: <strong style="color:${st.retrabajos ? '#dc3545' : 'inherit'}">${st.retrabajos}</strong></div>
-                    <div>📈 Primera vez bien: <strong>${st.eficiencia != null ? st.eficiencia + '%' : '—'}</strong></div>
-                    <div>🛡️ Garantías tocadas: <strong>${st.garantias || 0}</strong></div>
+                    <div>🛡️ Garantías (−pts): <strong style="color:${(st.garantias||0) ? '#dc3545' : 'inherit'}">${st.garantias || 0}</strong></div>
                     <div style="grid-column:1/-1;">⏱️ Prom. diag: <strong>${st.promedioDiagTexto || '—'}</strong> · Prom. rep: <strong>${st.promedioRepTexto || '—'}</strong></div>
                     <div style="grid-column:1/-1;">
                         <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
@@ -5590,12 +6000,16 @@
                 const pLib = progresoMeta(st.liberacionesRef || 0, metaLibEsc);
                 const pMov = progresoMeta(st.comprasMov || 0, metaMovEsc);
                 metricsHtml = `
-                    <div>📦 Pasos en espera: <strong>${st.esperaRefacciones}</strong></div>
                     <div>✅ Liberó a reparar: <strong>${st.liberacionesRef || 0}</strong></div>
+                    <div>⚡ Rápidas (≤2d): <strong style="color:#28a745">${st.liberacionesRapidas || 0}</strong></div>
+                    <div>🐢 Lentas (≥4d): <strong style="color:${(st.liberacionesLentas||0)?'#dc3545':'inherit'}">${st.liberacionesLentas || 0}</strong></div>
+                    <div>⏱️ Prom. liberación: <strong>${st.promedioLiberacionTexto || '—'}</strong></div>
+                    <div>📦 Pasos en espera: <strong>${st.esperaRefacciones}</strong></div>
                     <div>🛒 Movimientos: <strong>${st.comprasMov}</strong></div>
-                    <div>⏸️ Pausas (proveedor): <strong>${st.nPausaCompras || 0}</strong></div>
+                    <div>⏸️ Pausas proveedor: <strong>${st.nPausaCompras || 0}</strong></div>
+                    <div>% rápidas: <strong>${st.pctLiberacionesRapidas != null ? st.pctLiberacionesRapidas + '%' : '—'}</strong></div>
                     <div style="grid-column:1/-1;">⏳ Tiempo espera refacciones: <strong>${st.tiempoEsperaTexto || '—'}</strong></div>
-                    <div style="grid-column:1/-1;">⏸️ Tiempo en pausa (no SLA): <strong>${st.tiempoPausaComprasTexto || '—'}</strong></div>
+                    <div style="grid-column:1/-1;">⏸️ Tiempo en pausa (no cuenta SLA): <strong>${st.tiempoPausaComprasTexto || '—'}</strong></div>
                     <div style="grid-column:1/-1;">
                         <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
                             <span>🎯 Meta liberaciones</span>
@@ -6990,7 +7404,7 @@
             <div style="padding:12px 16px; background:#e8f5e9; border-bottom:1px solid #c8e6c9; font-size:14px;">
                 <strong>📜 Historial de unidades</strong> 
                 <span style="color:#555;">— ${registrosHistorial.length} registro(s)</span>
-                <span style="font-size:12px; color:#777; margin-left:8px;">(Finalizadas y archivadas. Solo Gerencia puede borrar permanentemente)</span>
+                <span style="font-size:12px; color:#777; margin-left:8px;">(Finalizadas recientes y archivadas tras 5 días hábiles. Solo Gerencia borra permanente)</span>
             </div>
             <table>
                 <thead><tr>
@@ -7268,6 +7682,11 @@
                 <div class="label">Problema / Descripción</div>
                 <div class="valor">${u.problema || '—'}</div>
             </div>
+            ${u.tipo_servicio ? `<div class="detalle-item full" style="background:#fff8e6;border-radius:8px;padding:8px;">
+                <div class="label">🔧 Tipo de servicio (para cotizar)</div>
+                <div class="valor" style="font-weight:700;color:#856404;">${u.tipo_servicio}</div>
+                <div style="font-size:12px;color:#666;margin-top:4px;">Ventas debe cotizar este servicio + reparación + piezas.</div>
+            </div>` : ''}
             <div class="detalle-item full">
                 <div class="label">🔍 Diagnóstico detallado</div>
                 <div class="valor" style="white-space:pre-wrap;">${u.diagnostico_detalle || 'Sin diagnóstico registrado'}</div>
@@ -7556,6 +7975,18 @@
                     '¿Registrar esta unidad como reingreso en garantía?'
                 );
                 if (!ok) garantiaInfo = null;
+            }
+        }
+
+        // Candado anti-duplicados (cliente + no. económico activos)
+        {
+            const noChk = (typeof noUnidadFinal !== 'undefined' ? noUnidadFinal : noUnidadVal);
+            const dup = buscarDuplicadoActivo(clienteVal, noChk);
+            if (dup) {
+                alert('🔒 Ya existe una unidad activa con el mismo cliente y número económico.\n\n' +
+                    '• ' + (dup.no_unidad || '—') + ' · ' + (dup.cliente || '—') + ' · ' + (dup.estatus || '') +
+                    '\n\nSolo puedes registrar otra cuando la anterior esté Finalizada o en historial.');
+                return;
             }
         }
 
@@ -8069,10 +8500,38 @@
                     alert('⚠️ Falta el diagnosticador. Asígnolo en Editar estando en Diagnosticando.');
                     return;
                 }
+                // Tipo de servicio → aviso a Ventas para cotizar servicio + reparación
+                const tipoSrv = prompt(
+                    '🔧 ¿Qué tipo de servicio requiere la unidad?\n\n' +
+                    '1 = Servicio mayor de MOTOR\n' +
+                    '2 = Servicio mayor de REFRIGERACIÓN\n' +
+                    '3 = AMBOS (motor + refrigeración)\n' +
+                    '4 = Solo servicio MENOR\n' +
+                    '5 = NO necesita servicio (solo reparación)\n\n' +
+                    'Escribe el número (1-5):',
+                    '5'
+                );
+                if (tipoSrv === null) return;
+                const mapaSrv = {
+                    '1': 'Servicio mayor de motor',
+                    '2': 'Servicio mayor de refrigeración',
+                    '3': 'Servicio mayor motor + refrigeración',
+                    '4': 'Servicio menor',
+                    '5': 'No necesita servicio (solo reparación)'
+                };
+                const key = String(tipoSrv).trim();
+                if (!mapaSrv[key]) {
+                    alert('Opción no válida. Usa 1, 2, 3, 4 o 5.');
+                    return;
+                }
+                window._tipoServicioPendiente = mapaSrv[key];
+                window._tipoServicioCodigo = key;
+
                 let piezas = (document.getElementById('refaccionesEsperadasCambio')?.value || '').trim() || (u.refacciones_esperadas || '').trim();
                 if (!piezas) {
                     piezas = (prompt(
-                        '🛒 Lista de piezas / refacciones a cotizar (obligatorio):\n\nEj. Compresor, filtro, oring...',
+                        '🛒 Lista de piezas / refacciones a cotizar (obligatorio):\n\nEj. Compresor, filtro, oring...\n\n' +
+                        'Ventas cotizará: ' + mapaSrv[key] + ' + reparación + estas piezas.',
                         u.refacciones_esperadas || ''
                     ) || '').trim();
                 }
@@ -8336,6 +8795,18 @@
             }
             if (estatusAnterior === 'Diagnosticando' && nuevoEstatus === 'Cotizando' && piezasTxt) {
                 datos.requiere_refacciones = 'si';
+            }
+            if (window._tipoServicioPendiente) {
+                datos.tipo_servicio = window._tipoServicioPendiente;
+                datos.tipo_servicio_codigo = window._tipoServicioCodigo || '';
+                const last = historial[historial.length - 1];
+                if (last) {
+                    last.comentario = (last.comentario ? last.comentario + ' · ' : '') +
+                        '🔧 Tipo servicio: ' + window._tipoServicioPendiente +
+                        ' · Aviso a Ventas: cotizar servicio + reparación + piezas';
+                }
+                window._tipoServicioPendiente = null;
+                window._tipoServicioCodigo = null;
             }
         }
 
