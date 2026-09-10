@@ -2165,6 +2165,37 @@
         return (u && u.rol_tecnico) ? u.rol_tecnico : 'ambos';
     }
 
+
+    /** Coincide nombres aunque falte acento o sobrenombre parcial */
+    function coincidirNombreUsuario(registrado, escrito) {
+        const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+        const a = norm(registrado);
+        const b = norm(escrito);
+        if (!a || !b) return false;
+        if (a === b) return true;
+        if (a.indexOf(b) >= 0 || b.indexOf(a) >= 0) return true;
+        const pa = a.split(' ');
+        const pb = b.split(' ');
+        if (pa[0] && pb[0] && pa[0] === pb[0] && (pa.length === 1 || pb.length === 1 || (pa[1] && pb[1] && pa[1] === pb[1]))) return true;
+        return false;
+    }
+
+    function resolverUsuarioRegistrado(nombre, areaPreferida) {
+        const n = (nombre || '').trim();
+        if (!n) return null;
+        const lista = listaUsuarios || [];
+        let cand = lista.filter(u => coincidirNombreUsuario(u.nombre, n));
+        if (areaPreferida) {
+            const a = cand.filter(u => u.area === areaPreferida && perteneceAlTallerActual(u.taller));
+            if (a.length) return a[0];
+        }
+        cand = cand.filter(u => perteneceAlTallerActual(u.taller));
+        if (cand.length) return cand[0];
+        // cualquier taller
+        cand = lista.filter(u => coincidirNombreUsuario(u.nombre, n));
+        return cand[0] || null;
+    }
+
     function puedeDiagnosticar(nombre) {
         const r = rolTecnicoUsuario(nombre);
         return r === 'diagnosticador' || r === 'ambos' || r === '';
@@ -5084,44 +5115,60 @@
             return porPersona[key];
         }
 
+        // ===== Recorrer TODAS las unidades (activas + historial/archivadas) y TODO el historial =====
         unidades.forEach(u => {
-            const hist = u.historial || [];
-            if (!hist.length) return;
-            const tiempos = calcularTiemposHistorial(hist);
+            const hist = Array.isArray(u.historial) ? u.historial : [];
+            const tiempos = hist.length ? calcularTiemposHistorial(hist) : [];
 
+            // Paso a paso del historial (cada cambio de estatus en el periodo)
             tiempos.forEach((h, i) => {
                 const d = parseFechaHistorial(h.fecha);
                 if (!d) return;
-                const t = d.getTime();
-                if (t < rango.inicio || t > rango.fin) return;
+                const tms = d.getTime();
+                if (tms < rango.inicio || tms > rango.fin) return;
 
                 const est = h.estatus || '';
-                // Agenda no cuenta como tiempo de taller / producción
                 if (est === 'Agenda') return;
-                // Persona: del historial, o la asignada en la unidad (datos viejos)
+
                 let persona = (h.persona || '').trim();
+                let area = (h.area || '').trim();
+
+                // Completar persona/área con datos de la unidad si el historial viene incompleto
                 if (!persona) {
                     if (est === 'Diagnosticando') persona = (u.diagnosticador || '').trim();
-                    else if (est === 'Reparando' || est === 'Finalizada') persona = (u.reparador || '').trim() || (u.diagnosticador || '').trim();
-                    else if (est === 'Cotizando' || est === 'Recibida' || est === 'Agenda') persona = (u.asesor_ventas || '').trim();
+                    else if (est === 'Reparando') persona = (u.reparador || '').trim() || (u.diagnosticador || '').trim();
+                    else if (est === 'Finalizada') persona = (u.reparador || '').trim() || (u.asesor_ventas || '').trim() || (h.persona || '').trim();
+                    else if (est === 'Cotizando' || est === 'Recibida') persona = (u.asesor_ventas || '').trim();
+                    else if (est === 'Espera de refacciones') {
+                        // buscar última persona Compras en historial
+                        for (let j = i; j >= 0; j--) {
+                            if ((tiempos[j].area || '') === 'Compras' && tiempos[j].persona) {
+                                persona = String(tiempos[j].persona).trim();
+                                break;
+                            }
+                        }
+                    }
                 }
-                let area = (h.area || '').trim();
                 if (!area) {
                     if (est === 'Diagnosticando' || est === 'Reparando') area = 'Mantenimiento';
-                    else if (est === 'Cotizando' || est === 'Recibida' || est === 'Finalizada') area = 'Ventas';
+                    else if (est === 'Cotizando' || est === 'Recibida') area = 'Ventas';
+                    else if (est === 'Finalizada') area = (u.asesor_ventas ? 'Ventas' : 'Mantenimiento');
                     else if (est === 'Espera de refacciones') area = 'Compras';
                 }
-                // Solo usuarios registrados del taller cuentan; Gerencia no entra al ranking
-                if (!persona || !esUsuarioRegistrado(persona)) return;
-                if ((area || '') === 'Gerencia') return;
-                const st = getStats(persona, area || '');
+
+                const usr = resolverUsuarioRegistrado(persona, area);
+                if (!usr) return;
+                if (usr.area === 'Gerencia') return;
+                persona = usr.nombre;
+                area = usr.area || area;
+                const st = getStats(persona, area);
 
                 st.unidades.add(u.id);
                 st.msTotal += h.duracionMs || 0;
 
                 if (est === 'Recibida') {
                     st.recibidas++;
-                    if (area === 'Ventas' || area === 'Gerencia') st.ventasMov++;
+                    if (area === 'Ventas') st.ventasMov++;
                 }
                 if (est === 'Diagnosticando') {
                     st.diagnosticadas++;
@@ -5133,86 +5180,88 @@
                 }
                 if (est === 'Finalizada') {
                     st.finalizadas++;
-                    // Refacciones: si no hay asesor, cuenta a quien finalizó
-                    if (esTrabajoVentasRefacciones(u) && (area === 'Ventas' || area === 'Gerencia')) {
-                        const asesU = (u.asesor_ventas || '').trim();
-                        if (!asesU && u.venta_refacciones === true) {
-                            st.refaccionesVendidas = (st.refaccionesVendidas || 0) + 1;
-                        }
+                    if (esTrabajoVentasRefacciones(u) && area === 'Ventas') {
+                        if (u.venta_refacciones === true) st.refaccionesVendidas = (st.refaccionesVendidas || 0) + 1;
                         st.ventasMov++;
                     }
                 }
                 if (est === 'Cotizando') {
                     st.cotizadas++;
-                    if (area === 'Ventas' || area === 'Gerencia') st.ventasMov++;
-                    if (esTrabajoVentasRefacciones(u) && (area === 'Ventas' || area === 'Gerencia')) {
-                        // cotización de refacciones también es movimiento de ventas de piezas
-                        st.ventasMov++;
-                    }
+                    if (area === 'Ventas') st.ventasMov++;
                 }
                 if (est === 'Espera de refacciones') {
                     st.esperaRefacciones++;
                     st.msEsperaRefacciones += h.duracionMs || 0;
-                    if (area === 'Compras' || area === 'Gerencia') st.comprasMov++;
+                    if (area === 'Compras') st.comprasMov++;
                 }
                 if (area === 'Compras' && est !== 'Espera de refacciones') st.comprasMov++;
 
-                // Retrabajo: regreso desde reparación (Cotizando o Diagnosticando)
+                // Retrabajo
                 if (i > 0 && tiempos[i - 1].estatus === 'Reparando') {
                     if (est === 'Cotizando' || est === 'Diagnosticando') st.retrabajos++;
                 }
-                // Liberación de refacciones (Espera → Reparando) cuenta para quien movió
+                // Liberación Espera → Reparando
                 if (est === 'Reparando' && i > 0 && tiempos[i - 1].estatus === 'Espera de refacciones') {
                     st.liberacionesRef = (st.liberacionesRef || 0) + 1;
                     const msLib = tiempos[i - 1].duracionMs || 0;
                     st.msTiempoLiberacion = (st.msTiempoLiberacion || 0) + msLib;
-                    // Rápida ≤ 2 días hábiles · Lenta ≥ 4 días hábiles (jornada)
                     const diasLib = (typeof diasLaboralesDesdeMs === 'function') ? diasLaboralesDesdeMs(msLib) : (msLib / (8.5 * 3600000));
                     if (diasLib <= 2) st.liberacionesRapidas = (st.liberacionesRapidas || 0) + 1;
                     if (diasLib >= 4) st.liberacionesLentas = (st.liberacionesLentas || 0) + 1;
-                    if (area === 'Compras' || area === 'Ventas' || area === 'Gerencia') st.comprasMov++;
+                    if (area === 'Compras' || area === 'Ventas') st.comprasMov++;
                 }
             });
         });
 
-        // Atribución Mantenimiento: finalizada suma a reparador Y diagnosticador
+        // ===== Atribución por roles de la unidad (reparador / diagnosticador / asesor) =====
+        // Usa TODAS las unidades incluyendo archivadas (eliminado) y el historial completo
         unidades.forEach(u => {
-            if (u.eliminado) return;
-            const hist = u.historial || [];
-            // Veces que entró a Diagnosticando (retrabajo = 2+)
+            const hist = Array.isArray(u.historial) ? u.historial : [];
             const vecesDiag = hist.filter(h => (h.estatus || '') === 'Diagnosticando').length;
             const tienePdf = !!(u.diagnostico_pdf_url || u.diagnostico_pdf);
+
+            // Eventos Finalizada en el periodo (fecha del paso o fecha_salida)
+            const eventosFin = [];
             hist.forEach(h => {
-                if (h.estatus !== 'Finalizada') return;
+                if ((h.estatus || '') !== 'Finalizada') return;
                 const d = parseFechaHistorial(h.fecha);
                 if (!d) return;
-                const t = d.getTime();
-                if (t < rango.inicio || t > rango.fin) return;
-                const rep = (u.reparador || '').trim();
-                if (rep && esUsuarioRegistrado(rep, 'Mantenimiento')) {
-                    const st = getStats(rep, 'Mantenimiento');
+                const tms = d.getTime();
+                if (tms >= rango.inicio && tms <= rango.fin) eventosFin.push(h);
+            });
+            // Si está Finalizada y tiene fecha_salida en periodo pero sin paso en historial
+            if (!eventosFin.length && (u.estatus === 'Finalizada' || u.eliminado)) {
+                const fs = u.fecha_salida ? parseFechaHistorial(u.fecha_salida) : null;
+                if (fs) {
+                    const tms = fs.getTime();
+                    if (tms >= rango.inicio && tms <= rango.fin) eventosFin.push({ fecha: u.fecha_salida, estatus: 'Finalizada' });
+                }
+            }
+            if (!eventosFin.length) return;
+
+            eventosFin.forEach(() => {
+                const repU = resolverUsuarioRegistrado(u.reparador, 'Mantenimiento');
+                if (repU && repU.area === 'Mantenimiento') {
+                    const st = getStats(repU.nombre, 'Mantenimiento');
                     st.finalizadasComoReparador = (st.finalizadasComoReparador || 0) + 1;
                     st.unidades.add(u.id);
                     if (u.es_garantia || u.es_reingreso) st.garantias = (st.garantias || 0) + 1;
                 }
-                const diag = (u.diagnosticador || '').trim();
-                if (diag && esUsuarioRegistrado(diag, 'Mantenimiento')) {
-                    const st = getStats(diag, 'Mantenimiento');
+                const diagU = resolverUsuarioRegistrado(u.diagnosticador, 'Mantenimiento');
+                if (diagU && diagU.area === 'Mantenimiento') {
+                    const st = getStats(diagU.nombre, 'Mantenimiento');
                     st.finalizadasConSuDiag = (st.finalizadasConSuDiag || 0) + 1;
                     st.finalizadasComoDiagnosticador = (st.finalizadasComoDiagnosticador || 0) + 1;
                     st.unidades.add(u.id);
-                    // Diagnóstico a la primera (no volvió a Diagnosticando)
                     if (vecesDiag <= 1) st.diagCorrecto = (st.diagCorrecto || 0) + 1;
-                    // PDF de diagnóstico subido
                     if (tienePdf) st.diagnosticosPdf = (st.diagnosticosPdf || 0) + 1;
                     if (u.es_garantia || u.es_reingreso) st.garantias = (st.garantias || 0) + 1;
                 }
-                const asesor = (u.asesor_ventas || '').trim();
-                if (asesor && esUsuarioRegistrado(asesor, 'Ventas')) {
-                    const st = getStats(asesor, 'Ventas');
+                const asesU = resolverUsuarioRegistrado(u.asesor_ventas, 'Ventas');
+                if (asesU && asesU.area === 'Ventas') {
+                    const st = getStats(asesU.nombre, 'Ventas');
                     st.entregasComoAsesor = (st.entregasComoAsesor || 0) + 1;
                     st.unidades.add(u.id);
-                    // Solo finalización CON VENTA cuenta en ranking
                     if (esTrabajoVentasRefacciones(u) && u.venta_refacciones === true) {
                         st.refaccionesVendidas = (st.refaccionesVendidas || 0) + 1;
                     }
@@ -5220,25 +5269,23 @@
             });
         });
 
-        // Tiempos de espera cliente y pausa/espera refacciones por persona
+        // Tiempos espera cliente / pausa compras (también unidades archivadas)
         unidades.forEach(u => {
-            if (u.eliminado) return;
-            const hist = u.historial || [];
+            const hist = Array.isArray(u.historial) ? u.historial : [];
             const msCli = msIntervalosHistorial(hist, 'espera_cliente_on', 'espera_cliente_off', rango);
-            const asesor = (u.asesor_ventas || '').trim();
-            if (msCli > 0 && asesor && esUsuarioRegistrado(asesor, 'Ventas')) {
-                const st = getStats(asesor, 'Ventas');
+            const asesU = resolverUsuarioRegistrado(u.asesor_ventas, 'Ventas');
+            if (msCli > 0 && asesU && asesU.area === 'Ventas') {
+                const st = getStats(asesU.nombre, 'Ventas');
                 st.msEsperaCliente = (st.msEsperaCliente || 0) + msCli;
                 st.nEsperaCliente = (st.nEsperaCliente || 0) + 1;
                 st.unidades.add(u.id);
             }
             const msPausa = msIntervalosHistorial(hist, 'pausa_compras_on', 'pausa_compras_off', rango);
-            // Persona de Compras que más aparece en historial de esta unidad
             let comprasPersona = '';
             hist.slice().reverse().forEach(h => {
-                if (!comprasPersona && h.area === 'Compras' && h.persona && esUsuarioRegistrado(h.persona, 'Compras')) {
-                    comprasPersona = h.persona.trim();
-                }
+                if (comprasPersona) return;
+                const cu = resolverUsuarioRegistrado(h.persona, 'Compras');
+                if (cu && cu.area === 'Compras') comprasPersona = cu.nombre;
             });
             if (comprasPersona) {
                 const st = getStats(comprasPersona, 'Compras');
@@ -6174,6 +6221,19 @@
         box.innerHTML = `
             <div style="margin-bottom:14px; padding:12px; background:#e7f1ff; border-radius:10px; font-size:13px;">
                 <strong>📊 Indicadores del periodo</strong>
+                <details style="margin:10px 0; padding:10px; background:#f0f4f8; border-radius:10px; font-size:12px; color:#333;">
+                    <summary style="cursor:pointer; font-weight:600;">ℹ️ ¿En qué se basa el ranking?</summary>
+                    <ul style="margin:8px 0 0 16px; padding:0; line-height:1.5;">
+                        <li>Se usan <strong>todas las unidades</strong> del taller (activas + finalizadas + archivadas en historial).</li>
+                        <li>Cada <strong>paso del historial</strong> en el periodo suma a quien movió la unidad (nombre registrado).</li>
+                        <li><strong>Ventas:</strong> recibidas, cotizadas, entregas como asesor y refacciones <em>con venta</em>.</li>
+                        <li><strong>Mantenimiento:</strong> pasos en diagnosticando/reparando + finalizadas del reparador y del diagnosticador (PDF, a la 1ª).</li>
+                        <li><strong>Compras:</strong> liberaciones Espera→Reparando y tiempos de esas liberaciones.</li>
+                        <li>Si el historial no trae nombre, se usa diagnosticador / reparador / asesor de la unidad.</li>
+                        <li>Gerencia no entra al ranking. Periodo = semana laboral lun–vie (o el que elijas).</li>
+                    </ul>
+                </details>
+
                 ${(periodo === 'semana' || periodo === 'semanal') ? '<div style="font-size:12px;color:#1a3a5c;margin:4px 0;">📅 Semana laboral: <strong>' + etiquetaRangoSemanaLaboral() + '</strong></div>' : ''}
                 <br>
 
