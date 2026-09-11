@@ -3178,6 +3178,7 @@
         mostrarInfoSesion();
         cargarDatos();
         try { cargarPendientesTareas(); } catch (e) {}
+        try { iniciarMonitoreoSegundoPlano(); } catch (e) {}
     }
 
     function cerrarSesion() {
@@ -3188,6 +3189,7 @@
         document.getElementById('loginOverlay').classList.remove('oculto');
         document.getElementById('loginClave').value = '';
         document.getElementById('sesionInfo').style.display = 'none';
+        try { detenerMonitoreoSegundoPlano(); } catch (e) {}
         try { cerrarPanelMedicionUsuario(); } catch (e) {}
         document.getElementById('btnCerrarSesion').style.display = 'none';
         const btnRep = document.getElementById('btnReporteDiario');
@@ -11553,7 +11555,7 @@
         const perm = Notification.permission;
         const sw = navigator.serviceWorker ? 'Service Worker disponible' : 'Sin Service Worker';
         if (perm === 'granted') {
-            el.innerHTML = '✅ Push activado · Permiso concedido<br><span style="color:#888;">' + sw + '</span>';
+            el.innerHTML = '✅ Push activado · Permiso concedido<br><span style="color:#888;">' + sw + ' · Avisos con la app en segundo plano (pestaña abierta o minimizada). Si cierras el navegador por completo, se necesita push con servidor (futuro).</span>';
         } else if (perm === 'denied') {
             el.innerHTML = '🚫 Permiso bloqueado. Actívalo en Ajustes del navegador / sitio.';
         } else {
@@ -11609,19 +11611,40 @@
         actualizarEstadoPushUI();
     }
 
-    async function mostrarNotifNavegador(titulo, cuerpo) {
+    async function mostrarNotifNavegador(titulo, cuerpo, extra) {
         const cfg = getConfigNotif();
         if (!cfg.navegador || !('Notification' in window) || Notification.permission !== 'granted') return;
+        extra = extra || {};
+        const iconSvg = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%23003057"/><text x="50" y="62" text-anchor="middle" font-size="48" fill="white">TK</text></svg>';
+        const data = {
+            url: (location && location.href) ? location.href.split('#')[0] : './index.html',
+            mensajeId: extra.mensajeId || null,
+            unidadId: extra.unidadId || null,
+            openChat: !!extra.openChat
+        };
         const opts = {
             body: cuerpo || '',
-            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%23003057"/><text x="50" y="62" text-anchor="middle" font-size="48" fill="white">TK</text></svg>',
-            badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔔</text></svg>',
-            tag: 'tk-noroeste-' + (titulo || '').substring(0, 40),
+            icon: iconSvg,
+            badge: iconSvg,
+            tag: extra.tag || ('tk-' + (titulo || '').substring(0, 40)),
             renotify: true,
-            requireInteraction: false,
-            data: { url: self.location ? self.location.href : '/' }
+            requireInteraction: !!extra.requireInteraction,
+            data: data
         };
         try {
+            // Preferir Service Worker (funciona mejor con pestaña en segundo plano)
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'show-notification',
+                    title: titulo,
+                    body: cuerpo || '',
+                    icon: iconSvg,
+                    tag: opts.tag,
+                    requireInteraction: opts.requireInteraction,
+                    data: data
+                });
+                return;
+            }
             if (navigator.serviceWorker) {
                 const reg = await navigator.serviceWorker.ready.catch(() => null);
                 if (reg && reg.showNotification) {
@@ -11633,6 +11656,73 @@
         } catch (e) {
             try { new Notification(titulo, opts); } catch (e2) { console.warn('Notificación:', e2); }
         }
+    }
+
+    // Segundo plano: mientras la sesión esté activa, revisar mensajes aunque la pestaña esté oculta
+    let _bgPollTimer = null;
+    let _bgLastMsgIds = [];
+    function iniciarMonitoreoSegundoPlano() {
+        detenerMonitoreoSegundoPlano();
+        if (!sesion || sesion.area === 'Cliente') return;
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        // Cada 25s (los navegadores limitan intervalos en background, pero algo llega)
+        _bgPollTimer = setInterval(async function() {
+            try {
+                if (!sesion || sesion.area === 'Cliente') return;
+                const cfg = getConfigNotif();
+                if (!cfg.navegador) return;
+                await cargarMensajes();
+                const nuevos = (mensajes || []).filter(m => !m.leido && m.id != null && _bgLastMsgIds.indexOf(m.id) < 0);
+                nuevos.slice(0, 3).forEach(m => {
+                    const cuerpo = String(m.texto || '').replace(/^§CHAT§[^\n]*\n/, '').replace(/^§UNIDAD§\d+§\n?/, '').substring(0, 100);
+                    const unidadId = typeof extraerUnidadIdDeMensaje === 'function' ? extraerUnidadIdDeMensaje(m) : null;
+                    mostrarNotifNavegador(
+                        '💬 ' + (m.de_persona || 'Mensaje'),
+                        cuerpo || 'Nuevo mensaje',
+                        { mensajeId: m.id, unidadId: unidadId, openChat: !unidadId, tag: 'msg-' + m.id }
+                    );
+                    _bgLastMsgIds.push(m.id);
+                });
+                if (_bgLastMsgIds.length > 80) _bgLastMsgIds = _bgLastMsgIds.slice(-80);
+                try { actualizarNotificaciones(); } catch (e) {}
+                // ping SW
+                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'ping' });
+                }
+            } catch (e) { console.warn('bg poll', e); }
+        }, document.hidden ? 20000 : 35000);
+    }
+    function detenerMonitoreoSegundoPlano() {
+        if (_bgPollTimer) { clearInterval(_bgPollTimer); _bgPollTimer = null; }
+    }
+
+    // Al volver a la app o cambiar visibilidad
+    document.addEventListener('visibilitychange', function() {
+        if (!sesion || sesion.area === 'Cliente') return;
+        if (document.hidden) {
+            // reiniciar con intervalo más corto al estar oculta
+            iniciarMonitoreoSegundoPlano();
+        } else {
+            try { cargarMensajes().then(function() { actualizarNotificaciones(); }); } catch (e) {}
+            iniciarMonitoreoSegundoPlano();
+        }
+    });
+
+    // Clic en notificación del sistema → abrir chat o unidad
+    if (navigator.serviceWorker) {
+        navigator.serviceWorker.addEventListener('message', function(event) {
+            const d = event.data || {};
+            if (d.type !== 'notif-click') return;
+            try {
+                if (d.unidadId && typeof abrirUnidadDesdeNotifComentario === 'function') {
+                    abrirUnidadDesdeNotifComentario(d.unidadId);
+                } else if (d.mensajeId && typeof abrirMensajeNotif === 'function') {
+                    abrirMensajeNotif(d.mensajeId);
+                } else if (d.openChat && typeof abrirModalMensaje === 'function') {
+                    abrirModalMensaje();
+                }
+            } catch (e) { console.warn(e); }
+        });
     }
 
     async function probarNotifNavegador() {
@@ -12627,7 +12717,7 @@
                 ? `<div style="font-size:11px;opacity:.85;border-left:3px solid ${mio ? '#fff' : '#25d366'};padding-left:6px;margin-bottom:4px;">↩ ${m.reply_de || ''}: ${(m.reply_texto || '').substring(0, 60)}</div>`
                 : '';
             const hora = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-            return `<div style="display:flex;justify-content:${mio ? 'flex-end' : 'flex-start'};margin-bottom:8px;">
+            return `<div data-msg-id="${m.id || ''}" style="display:flex;justify-content:${mio ? 'flex-end' : 'flex-start'};margin-bottom:8px;">
                 <div style="max-width:82%; background:${mio ? '#dcf8c6' : '#fff'}; border-radius:12px; padding:8px 10px; box-shadow:0 1px 1px rgba(0,0,0,.08);">
                     ${mio ? '' : `<div style="font-size:11px;font-weight:700;color:#075e54;margin-bottom:2px;">${m.de_persona || ''}</div>`}
                     ${reply}
@@ -12846,27 +12936,64 @@
     }
 
     async function abrirMensajeNotif(id) {
-        const m = mensajesTodos.find(x => x.id === id) || mensajes.find(x => x.id === id);
-        if (!m) return;
-        await marcarMensajeLeido(id);
-        const unidadId = extraerUnidadIdDeMensaje(m);
-        // Mención en nota de unidad → abrir unidad y comentarios
-        if (unidadId || (m.texto && String(m.texto).indexOf('Te mencionaron') >= 0 && unidadId)) {
-            if (unidadId) {
-                abrirUnidadDesdeNotifComentario(unidadId);
-                return;
-            }
+        try { cerrarPanelNotif(); } catch (e) {}
+        let m = (mensajesTodos || []).find(x => x.id === id) || (mensajes || []).find(x => x.id === id);
+        if (!m) {
+            try { await cargarMensajes(); } catch (e) {}
+            m = (mensajesTodos || []).find(x => x.id === id) || (mensajes || []).find(x => x.id === id);
         }
-        if (unidadId) {
+        if (!m) {
+            alert('No se encontró el mensaje.');
+            return;
+        }
+        if (typeof parseMensajeTexto === 'function') m = parseMensajeTexto(m);
+        try { await marcarMensajeLeido(id); } catch (e) {}
+
+        // Solo si es mención en nota de unidad (§UNIDAD§) → ir al comentario de la unidad
+        const unidadId = extraerUnidadIdDeMensaje(m);
+        const esMencionUnidad = unidadId && /Te mencionaron/i.test(String(m.texto || '')) && !/^§CHAT§/.test(String(m.texto || ''));
+        if (esMencionUnidad) {
             abrirUnidadDesdeNotifComentario(unidadId);
             return;
         }
-        // Chat normal
-        const parts = participantesDeMsg(m);
-        const cid = m.conversacion_id || chatIdDeParticipantes(parts);
-        await cargarMensajes();
-        document.getElementById('modalMensaje').style.display = 'flex';
-        abrirChatConversacion(cid);
+
+        // Mensaje / conversación de chat → abrir hilo
+        let parts = [];
+        try { parts = participantesDeMsg(m) || []; } catch (e) { parts = []; }
+        if (!parts.length) {
+            parts = [m.de_persona, m.para_persona].filter(Boolean);
+        }
+        if (sesion && sesion.persona && parts.indexOf(sesion.persona) < 0) {
+            parts.push(sesion.persona);
+        }
+        // Si solo hay uno, al menos conversación 1 a 1 con quien envió
+        if (parts.length < 2 && m.de_persona && sesion && sesion.persona) {
+            parts = Array.from(new Set([m.de_persona, sesion.persona]));
+        }
+        const cid = m.conversacion_id || (typeof chatIdDeParticipantes === 'function' ? chatIdDeParticipantes(parts) : parts.join('__'));
+        try { await cargarMensajes(); } catch (e) {}
+        const modal = document.getElementById('modalMensaje');
+        if (modal) modal.style.display = 'flex';
+        if (typeof abrirChatConversacion === 'function') {
+            abrirChatConversacion(cid);
+        } else {
+            alert('Chat no disponible');
+        }
+        // Resaltar el mensaje en el hilo si existe
+        setTimeout(function() {
+            try {
+                const box = document.getElementById('chatHiloMensajes') || document.getElementById('chatMensajes');
+                if (!box) return;
+                const nodos = box.querySelectorAll('[data-msg-id]');
+                nodos.forEach(function(el) {
+                    if (String(el.getAttribute('data-msg-id')) === String(id)) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.style.outline = '2px solid #25d366';
+                        setTimeout(function() { el.style.outline = ''; }, 2500);
+                    }
+                });
+            } catch (e) {}
+        }, 400);
     }
 
 
@@ -13218,7 +13345,7 @@
             if (n.mensajeId) {
                 return `
                 <div class="notif-item ${n.tipo}" style="position:relative;">
-                    <div onclick="abrirMensajeNotif(${n.mensajeId})" style="cursor:pointer; padding-right:28px;">
+                    <div onclick="event.stopPropagation(); abrirMensajeNotif(${n.mensajeId})" style="cursor:pointer; padding-right:28px;">
                         <div class="titulo">${n.titulo}</div>
                         <div class="detalle">${n.detalle || ''}</div>
                     </div>
@@ -14153,6 +14280,7 @@
             document.getElementById('loginOverlay').classList.add('oculto');
             mostrarInfoSesion();
             cargarDatos();
+            try { iniciarMonitoreoSegundoPlano(); } catch (e) {}
         } else {
             sesion = null;
             try { aplicarLoginPrefill(); } catch (e) {}
