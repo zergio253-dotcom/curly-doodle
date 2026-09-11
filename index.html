@@ -1138,7 +1138,8 @@
     </div>
     <div class="pm-grid" id="pmMetricas"></div>
     <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-        <button type="button" class="btn-accion" onclick="cerrarPanelMedicionUsuario(); try{abrirModalProduccion()}catch(e){}">📈 Ver producción</button>
+        <button type="button" class="btn-accion" id="pmBtnProduccion" onclick="cerrarPanelMedicionUsuario(); try{abrirModalProduccion()}catch(e){}">Producción</button>
+        <button type="button" class="btn-accion" id="pmBtnDashboard" onclick="cerrarPanelMedicionUsuario(); try{abrirDashboardRendimiento()}catch(e){}">Dashboard</button>
         <button type="button" class="btn-accion" onclick="cerrarPanelMedicionUsuario()">Cerrar</button>
     </div>
 </div>
@@ -1162,6 +1163,7 @@
                     <button type="button" class="menu-item" id="btnMensaje" onclick="abrirModalMensaje(); cerrarMenuPrincipal();" style="display:none;">💬 Mensaje</button>
                     <button type="button" class="menu-item" id="btnProduccion" onclick="abrirModalProduccion(); cerrarMenuPrincipal();">📈 Producción</button>
                     <button type="button" class="menu-item" id="btnDashboardRT" onclick="abrirDashboardRendimiento(); cerrarMenuPrincipal();">Dashboard en vivo</button>
+                    <button type="button" class="menu-item" id="btnAsignarPendiente" onclick="abrirModalAsignarPendiente(); cerrarMenuPrincipal();" style="display:none;">Asignar pendiente</button>
                     <button type="button" class="menu-item" id="btnMetasGerencia" style="display:none;" onclick="abrirModalMetasGerencia(); cerrarMenuPrincipal();">🎯 Metas</button>
                     <button type="button" class="menu-item" id="btnMiDia" onclick="abrirMiDia();">☀️ Mi día</button>
                     <button type="button" class="menu-item" id="btnInventario" onclick="abrirModalInventario(); cerrarMenuPrincipal();">📦 Inventario</button>
@@ -1356,6 +1358,27 @@
             <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalDashboardRT'); abrirModalProduccion();">Producción detallada</button>
             <button class="btn-modal danger" style="flex:1;" onclick="cerrarDashboardRendimiento()">Cerrar</button>
         </div>
+    </div>
+</div>
+
+
+<div class="modal" id="modalAsignarPendiente">
+    <div class="modal-content" style="max-width:440px;">
+        <h3 style="margin-top:0;">Asignar pendiente</h3>
+        <p style="font-size:13px;color:#666;margin-bottom:10px;">Se mostrará en <strong>Mi día</strong> del empleado.</p>
+        <div class="form-group">
+            <label>Empleado</label>
+            <select id="pendEmpSelect" style="width:100%;padding:10px;border-radius:8px;"></select>
+        </div>
+        <div class="form-group">
+            <label>Nota / tarea</label>
+            <textarea id="pendNotaInput" rows="4" placeholder="Ej. Llamar al cliente de unidad 452, cotizar compresor..." style="width:100%;padding:10px;border-radius:8px;"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+            <button class="btn-modal success" style="flex:1;" onclick="guardarPendienteAsignado()">Asignar</button>
+            <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalAsignarPendiente')">Cancelar</button>
+        </div>
+        <div id="listaPendientesGerencia" style="margin-top:16px;max-height:40vh;overflow-y:auto;"></div>
     </div>
 </div>
 
@@ -2930,7 +2953,7 @@
             show('btnVistaLista', true);
             show('btnVistaHistorial', true);
             show('btnTrabajoHoy', true);
-            show('btnProduccion', true);
+            show('btnProduccion', sesion.area === 'Gerencia');
             show('btnDashboardRT', sesion.area !== 'Cliente');
             show('btnMetasGerencia', sesion.area === 'Gerencia' || tienePermisoTotal());
             show('btnInventario', true);
@@ -2939,6 +2962,7 @@
             show('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
             show('btnMensaje', sesion.area !== 'Cliente');
         try { actualizarUIModoBasicoKanban(); } catch (e) {}
+        try { cargarPendientesTareas(); } catch (e) {}
             document.querySelectorAll('.header-actions .btn-header').forEach(btn => {
                 if ((btn.textContent || '').includes('Nueva')) btn.style.display = '';
             });
@@ -2993,6 +3017,7 @@
         aplicarModoClienteUI(false);
         mostrarInfoSesion();
         cargarDatos();
+        try { cargarPendientesTareas(); } catch (e) {}
     }
 
     function cerrarSesion() {
@@ -3153,6 +3178,10 @@
             `<div class="pm-metric"><div class="k">${m.k}</div><div class="v">${m.v}</div></div>`
         ).join('') || '<div class="pm-metric"><div class="k">Sin datos</div><div class="v">—</div></div>';
 
+        const bp = document.getElementById('pmBtnProduccion');
+        const bd = document.getElementById('pmBtnDashboard');
+        if (bp) bp.style.display = (sesion && sesion.area === 'Gerencia') ? '' : 'none';
+        if (bd) bd.style.display = (sesion && sesion.area !== 'Cliente') ? '' : 'none';
         panel.classList.add('open');
     }
 
@@ -3220,8 +3249,9 @@
             if (el) el.style.display = visible ? 'block' : 'none';
         };
         showMenu('btnReporteDiario', sesion.area === 'Gerencia' || (sesion && sesion.persona === 'Abel'));
-        showMenu('btnProduccion', true);
+        showMenu('btnProduccion', sesion && sesion.area === 'Gerencia');
         showMenu('btnDashboardRT', sesion && sesion.area !== 'Cliente');
+        showMenu('btnAsignarPendiente', sesion && sesion.area === 'Gerencia');
         showMenu('btnMetasGerencia', sesion && (sesion.area === 'Gerencia' || tienePermisoTotal()));
         showMenu('btnMiDia', sesion.area !== 'Gerencia' && sesion.area !== 'Cliente');
         showMenu('btnInventario', true);
@@ -3229,6 +3259,7 @@
         showMenu('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
         showMenu('btnMensaje', sesion.area !== 'Cliente');
         try { actualizarUIModoBasicoKanban(); } catch (e) {}
+        try { cargarPendientesTareas(); } catch (e) {}
         showMenu('btnTrabajoHoy', true);
         showMenu('btnVistaLista', true);
         showMenu('btnVistaHistorial', true);
@@ -6803,11 +6834,16 @@
 
     function renderDashboardRendimiento() {
         const box = document.getElementById('dashboardRTContenido');
-        if (!box) return;
+        if (!box || !sesion) return;
         const periodo = (document.getElementById('dashPeriodo') || {}).value || 'semana';
+        const esGerencia = sesion.area === 'Gerencia';
         const ahora = new Date();
         const ult = document.getElementById('dashUltimaAct');
         if (ult) ult.textContent = 'Actualizado ' + ahora.toLocaleTimeString();
+
+        // Footer: producción solo gerencia
+        const footProd = document.querySelector('#modalDashboardRT .btn-modal.secondary');
+        if (footProd) footProd.style.display = esGerencia ? '' : 'none';
 
         const activas = (unidades || []).filter(u => !u.eliminado);
         const byEst = {};
@@ -6817,31 +6853,6 @@
             if (byEst[e] != null) byEst[e]++;
             else byEst[e] = 1;
         });
-
-        const wipCritico = (byEst['Cotizando'] || 0) + (byEst['Espera de refacciones'] || 0);
-        const enPiso = (byEst['Diagnosticando'] || 0) + (byEst['Reparando'] || 0);
-        let atrasadas = 0;
-        try {
-            if (typeof contarAtrasadasSlaVisible === 'function') atrasadas = contarAtrasadasSlaVisible().length;
-        } catch (e) {}
-
-        let lista = [];
-        try { lista = calcularProduccionPorUsuario(periodo) || []; } catch (e) { lista = []; }
-        const top = lista.slice(0, 5);
-
-        const porArea = { Ventas: [], Mantenimiento: [], Compras: [] };
-        lista.forEach(st => {
-            if (porArea[st.area]) porArea[st.area].push(st);
-        });
-
-        function avgScore(arr) {
-            if (!arr.length) return 0;
-            const s = arr.reduce((a, b) => a + (b.score || 0), 0);
-            return Math.round(s / arr.length);
-        }
-        function sumField(arr, f) {
-            return arr.reduce((a, b) => a + (b[f] || 0), 0);
-        }
 
         const colores = typeof getColor === 'function' ? {
             'Agenda': getColor('Agenda'),
@@ -6853,15 +6864,186 @@
             'Finalizada': getColor('Finalizada')
         } : {};
 
-        const wipHtml = Object.keys(byEst).map(est => {
-            const n = byEst[est] || 0;
+        function chip(est, n) {
             if (!n && est === 'Agenda') return '';
             const c = colores[est] || '#6c757d';
             const nom = (typeof nombresEstatus !== 'undefined' && nombresEstatus[est]) ? nombresEstatus[est] : est;
             return `<span class="dash-wip-chip" style="background:${c};">${nom} ${n}</span>`;
-        }).join('');
+        }
 
-        // Alertas de cuello
+        function sumField(arr, f) {
+            return (arr || []).reduce((a, b) => a + (b[f] || 0), 0);
+        }
+
+        let lista = [];
+        try { lista = calcularProduccionPorUsuario(periodo) || []; } catch (e) { lista = []; }
+        const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        const yo = lista.find(st => norm(st.persona) === norm(sesion.persona) && st.area === sesion.area)
+            || lista.find(st => norm(st.persona) === norm(sesion.persona));
+        const rankPos = yo ? (lista.findIndex(st => st === yo) + 1) : null;
+
+        // Pendientes del área / persona
+        let pendientes = [];
+        try { pendientes = (typeof listarPendientesPersona === 'function') ? listarPendientesPersona() : []; } catch (e) {}
+        const moverHoy = pendientes.filter(u => {
+            try {
+                const n = nivelSlaEstatus(u);
+                return n === 'rojo' || n === 'amarillo';
+            } catch (e) { return false; }
+        });
+        const rojas = moverHoy.filter(u => nivelSlaEstatus(u) === 'rojo');
+
+        // Trabajo hoy
+        let trabajoHoy = [];
+        try {
+            if (typeof getListaTrabajoHoy === 'function') trabajoHoy = getListaTrabajoHoy() || [];
+            else if (typeof listaTrabajoHoy !== 'undefined') trabajoHoy = listaTrabajoHoy || [];
+        } catch (e) {}
+
+        // Columnas relevantes por área (modo operativo)
+        const colsArea = {
+            Ventas: ['Agenda', 'Recibida', 'Cotizando'],
+            Mantenimiento: ['Diagnosticando', 'Reparando'],
+            Compras: ['Espera de refacciones'],
+            Gerencia: ['Agenda','Recibida','Diagnosticando','Cotizando','Espera de refacciones','Reparando','Finalizada']
+        };
+        const misCols = colsArea[sesion.area] || colsArea.Gerencia;
+
+        // Unidades de mi foco
+        const misUnidades = activas.filter(u => {
+            if (misCols.indexOf(u.estatus) < 0) return false;
+            if (sesion.area === 'Ventas') {
+                const ases = (u.asesor_ventas || '').trim();
+                return !ases || norm(ases) === norm(sesion.persona);
+            }
+            if (sesion.area === 'Mantenimiento') {
+                const d = (u.diagnosticador || '').trim();
+                const r = (u.reparador || '').trim();
+                return (!d && !r) || norm(d) === norm(sesion.persona) || norm(r) === norm(sesion.persona);
+            }
+            if (sesion.area === 'Compras') {
+                const c = (u.responsable_compras || '').trim();
+                return !c || norm(c) === norm(sesion.persona);
+            }
+            return true;
+        });
+
+        function filaUnidad(u) {
+            let sla = 'ok';
+            try { sla = nivelSlaEstatus(u); } catch (e) {}
+            const col = (typeof colorSla === 'function' ? colorSla(sla).border : '#ccc');
+            const dias = (typeof diasEnTaller === 'function' && u.estatus !== 'Finalizada' && u.estatus !== 'Agenda') ? diasEnTaller(u) : null;
+            const due = (typeof duenoVisibleUnidad === 'function') ? duenoVisibleUnidad(u) : '';
+            return `<div onclick="cerrarDashboardRendimiento(); abrirModalDetalle(${u.id})"
+                style="padding:10px;margin-bottom:6px;border-radius:10px;background:var(--detalle-item,#f8f9fa);border-left:4px solid ${col};cursor:pointer;font-size:13px;">
+                <div style="font-weight:700;">${u.cliente || '—'} · ${u.no_unidad || u.modelo || ''}</div>
+                <div style="font-size:12px;color:#888;">${u.estatus || ''}${dias != null ? ' · ' + dias + ' d' : ''}${due ? ' · ' + due : ''}</div>
+            </div>`;
+        }
+
+        // ===== Vista OPERATIVA (todos menos solo-lectura) =====
+        if (!esGerencia) {
+            const wipAreaHtml = misCols.map(est => chip(est, byEst[est] || 0)).join('');
+            const st = yo || {};
+            const sc = Math.round(st.score || 0);
+            let misMetricas = '';
+            if (sesion.area === 'Ventas') {
+                misMetricas = `
+                    <div class="dash-kpi"><div class="lbl">Recibidas</div><div class="val">${st.recibidas||0}</div></div>
+                    <div class="dash-kpi"><div class="lbl">Cotizadas</div><div class="val">${st.cotizadas||0}</div>
+                        <div class="sub">Rápidas ${st.cotizacionesRapidas||0} · Lentas ${st.cotizacionesLentas||0}</div></div>
+                    <div class="dash-kpi"><div class="lbl">Ventas</div><div class="val">${st.ventasRealizadas!=null?st.ventasRealizadas:((st.refaccionesVendidas||0)+(st.entregasComoAsesor||0))}</div></div>
+                    <div class="dash-kpi"><div class="lbl">Tu score</div><div class="val">${sc}</div>
+                        <div class="sub">${rankPos ? 'Puesto #'+rankPos : 'Sin ranking aún'}</div></div>`;
+            } else if (sesion.area === 'Mantenimiento') {
+                misMetricas = `
+                    <div class="dash-kpi"><div class="lbl">Diagnósticos</div><div class="val">${st.diagnosticadas||0}</div>
+                        <div class="sub">PDF ${st.diagnosticosPdf||0}</div></div>
+                    <div class="dash-kpi"><div class="lbl">Reparando (pasos)</div><div class="val">${st.reparadas||0}</div></div>
+                    <div class="dash-kpi"><div class="lbl">Finalizadas</div><div class="val">${(st.finalizadasComoReparador||0)+(st.finalizadasComoDiagnosticador||0)}</div>
+                        <div class="sub">Rep ${st.finalizadasComoReparador||0} · Diag ${st.finalizadasComoDiagnosticador||st.finalizadasConSuDiag||0}</div></div>
+                    <div class="dash-kpi"><div class="lbl">Tu score</div><div class="val">${sc}</div>
+                        <div class="sub">${rankPos ? 'Puesto #'+rankPos : '—'} · Retrabajo ${st.retrabajos||0}</div></div>`;
+            } else if (sesion.area === 'Compras') {
+                misMetricas = `
+                    <div class="dash-kpi"><div class="lbl">Liberaciones</div><div class="val">${st.liberacionesRef||0}</div>
+                        <div class="sub">Rápidas ${st.liberacionesRapidas||0} · Lentas ${st.liberacionesLentas||0}</div></div>
+                    <div class="dash-kpi"><div class="lbl">Con ETA</div><div class="val">${st.esperaConEta||0}</div></div>
+                    <div class="dash-kpi"><div class="lbl">Sin ETA / vencida</div><div class="val">${(st.esperaSinEta||0)} / ${(st.esperaEtaVencida||0)}</div></div>
+                    <div class="dash-kpi"><div class="lbl">Tu score</div><div class="val">${sc}</div>
+                        <div class="sub">${rankPos ? 'Puesto #'+rankPos : '—'}</div></div>`;
+            } else {
+                misMetricas = `<div class="dash-kpi"><div class="lbl">Score</div><div class="val">${sc}</div></div>`;
+            }
+
+            const urgHtml = moverHoy.length
+                ? moverHoy.slice(0, 12).map(filaUnidad).join('')
+                : '<div style="padding:10px;color:#888;font-size:13px;">Nada urgente por SLA en tu área.</div>';
+
+            const misListHtml = misUnidades.length
+                ? misUnidades.slice(0, 15).map(filaUnidad).join('')
+                : '<div style="padding:10px;color:#888;font-size:13px;">No hay unidades asignadas a ti en tus columnas.</div>';
+
+            let thHtml = '';
+            if (trabajoHoy && trabajoHoy.length) {
+                thHtml = `<div style="margin:12px 0 8px;font-size:13px;font-weight:600;color:#666;">Trabajar hoy (${trabajoHoy.length})</div>` +
+                    trabajoHoy.slice(0, 10).map(idOrU => {
+                        const u = typeof idOrU === 'object' ? idOrU : activas.find(x => x.id == idOrU);
+                        return u ? filaUnidad(u) : '';
+                    }).join('');
+            }
+
+            box.innerHTML = `
+                <div style="padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,#1a3a5c,#0d6efd);color:#fff;margin-bottom:12px;">
+                    <div style="font-size:12px;opacity:.9;">Tu día · ${sesion.area}</div>
+                    <div style="font-size:18px;font-weight:800;">${sesion.persona || ''}</div>
+                    <div style="font-size:12px;margin-top:4px;">Pendientes: <strong>${pendientes.length}</strong>
+                        ${moverHoy.length ? ' · Mover hoy: <strong>'+moverHoy.length+'</strong>' : ''}
+                        ${rojas.length ? ' · Atrasadas: <strong>'+rojas.length+'</strong>' : ''}
+                    </div>
+                </div>
+
+                <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:#666;">Columnas de tu área (ahora)</div>
+                <div class="dash-wip-bar">${wipAreaHtml || '<span style="color:#888;">—</span>'}</div>
+
+                <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:#666;">Tus números (${periodo === 'hoy' ? 'hoy' : 'semana'})</div>
+                <div class="dash-kpi-grid">${misMetricas}</div>
+
+                ${moverHoy.length ? `<div style="padding:10px;border-radius:10px;background:${rojas.length?'#f8d7da':'#fff3cd'};margin-bottom:12px;font-size:13px;color:${rojas.length?'#721c24':'#856404'};">
+                    Hoy debes revisar <strong>${moverHoy.length}</strong> unidad(es)${rojas.length ? ' · '+rojas.length+' en rojo' : ''}
+                </div>` : ''}
+
+                ${typeof htmlTareasMiDia === 'function' && htmlTareasMiDia() ? htmlTareasMiDia() : ''}
+                <div style="margin:4px 0 8px;font-size:13px;font-weight:600;color:#666;">Prioridad / SLA</div>
+                ${urgHtml}
+
+                ${thHtml}
+
+                <div style="margin:12px 0 8px;font-size:13px;font-weight:600;color:#666;">Tus unidades en foco (${misUnidades.length})</div>
+                ${misListHtml}
+
+                <p style="font-size:11px;color:#888;margin-top:10px;">Actualización en vivo · toca una unidad para abrirla · Producción detallada solo Gerencia</p>
+            `;
+            return;
+        }
+
+        // ===== Vista GERENCIA (completa) =====
+        const wipCritico = (byEst['Cotizando'] || 0) + (byEst['Espera de refacciones'] || 0);
+        const enPiso = (byEst['Diagnosticando'] || 0) + (byEst['Reparando'] || 0);
+        let atrasadas = 0;
+        try {
+            if (typeof contarAtrasadasSlaVisible === 'function') atrasadas = contarAtrasadasSlaVisible().length;
+        } catch (e) {}
+
+        const top = lista.slice(0, 8);
+        const porArea = { Ventas: [], Mantenimiento: [], Compras: [] };
+        lista.forEach(st => { if (porArea[st.area]) porArea[st.area].push(st); });
+        function avgScore(arr) {
+            if (!arr.length) return 0;
+            return Math.round(arr.reduce((a, b) => a + (b.score || 0), 0) / arr.length);
+        }
+
+        const wipHtml = Object.keys(byEst).map(est => chip(est, byEst[est] || 0)).join('');
         const alertas = [];
         if (wipCritico >= 12) alertas.push({ t: 'WIP alto en Cotizando + Espera (' + wipCritico + ')', tipo: 'urgente' });
         else if (wipCritico >= 8) alertas.push({ t: 'WIP en cotización/refacciones: ' + wipCritico, tipo: 'aviso' });
@@ -6871,39 +7053,40 @@
             alertas.push({ t: 'Poco trabajo en piso vs backlog', tipo: 'aviso' });
         if (atrasadas > 0) alertas.push({ t: atrasadas + ' unidad(es) atrasadas por SLA', tipo: 'urgente' });
 
-        const finSemana = sumField(lista, 'finalizadas');
-        // finalizadas reales de taller en periodo - approximate from lista mant
         const finRep = sumField(porArea.Mantenimiento, 'finalizadasComoReparador');
-
         const rankHtml = top.length ? top.map((st, i) => {
-            const sc = typeof etiquetaScoreDesempeno === 'function' ? etiquetaScoreDesempeno(st.score || 0) : { color: '#1a3a5c', texto: '' };
-            const med = i === 0 ? '1' : (i === 1 ? '2' : (i === 2 ? '3' : String(i + 1)));
+            const sc = typeof etiquetaScoreDesempeno === 'function' ? etiquetaScoreDesempeno(st.score || 0) : { color: '#1a3a5c' };
             return `<div class="dash-rank-row">
-                <div style="width:28px;height:28px;border-radius:50%;background:${sc.color||'#1a3a5c'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;">${med}</div>
+                <div style="width:28px;height:28px;border-radius:50%;background:${sc.color||'#1a3a5c'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;">${i+1}</div>
                 <div style="flex:1;min-width:0;">
                     <div style="font-weight:700;">${st.persona || '—'}</div>
                     <div style="font-size:12px;color:#888;">${st.area || ''}${st.rolRanking ? ' · ' + st.rolRanking : ''}</div>
                 </div>
                 <div style="font-weight:800;font-size:18px;color:${sc.color||'#1a3a5c'}">${Math.round(st.score || 0)}</div>
             </div>`;
-        }).join('') : '<div style="color:#888;padding:12px;">Sin datos de ranking en el periodo</div>';
+        }).join('') : '<div style="color:#888;padding:12px;">Sin datos</div>';
 
         const areaHtml = ['Ventas', 'Mantenimiento', 'Compras'].map(area => {
             const arr = porArea[area] || [];
             let extra = '';
-            if (area === 'Ventas') {
-                extra = `Rec ${sumField(arr,'recibidas')} · Cot ${sumField(arr,'cotizadas')} · Ventas ${sumField(arr,'ventasRealizadas')}`;
-            } else if (area === 'Mantenimiento') {
-                extra = `Diag ${sumField(arr,'diagnosticadas')} · Fin.rep ${sumField(arr,'finalizadasComoReparador')} · PDF ${sumField(arr,'diagnosticosPdf')}`;
-            } else {
-                extra = `Lib ${sumField(arr,'liberacionesRef')} · Sin ETA ${sumField(arr,'esperaSinEta')} · ETA venc. ${sumField(arr,'esperaEtaVencida')}`;
-            }
+            if (area === 'Ventas') extra = `Rec ${sumField(arr,'recibidas')} · Cot ${sumField(arr,'cotizadas')} · Ventas ${sumField(arr,'ventasRealizadas')}`;
+            else if (area === 'Mantenimiento') extra = `Diag ${sumField(arr,'diagnosticadas')} · Fin.rep ${sumField(arr,'finalizadasComoReparador')} · PDF ${sumField(arr,'diagnosticosPdf')}`;
+            else extra = `Lib ${sumField(arr,'liberacionesRef')} · Sin ETA ${sumField(arr,'esperaSinEta')} · ETA venc. ${sumField(arr,'esperaEtaVencida')}`;
             return `<div class="dash-kpi" style="border-left-color:${area==='Ventas'?'#28a745':(area==='Mantenimiento'?'#17a2b8':'#fd7e14')}">
                 <div class="lbl">${area}</div>
                 <div class="val">${avgScore(arr)}<span style="font-size:13px;font-weight:600;color:#888;"> avg</span></div>
                 <div class="sub">${arr.length} persona(s) · ${extra}</div>
             </div>`;
         }).join('');
+
+        // Lista rápida pendientes globales
+        let todasPend = [];
+        try {
+            todasPend = activas.filter(u => {
+                const n = nivelSlaEstatus(u);
+                return n === 'rojo' || n === 'amarillo';
+            }).sort((a,b) => ordenPrioridadSla(a) - ordenPrioridadSla(b));
+        } catch (e) {}
 
         box.innerHTML = `
             <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:#666;">WIP del taller (ahora)</div>
@@ -6923,31 +7106,38 @@
                 <div class="dash-kpi" style="border-left-color:#c82333;">
                     <div class="lbl">Atrasadas SLA</div>
                     <div class="val">${atrasadas}</div>
-                    <div class="sub">Tu vista / área</div>
                 </div>
                 <div class="dash-kpi" style="border-left-color:#28a745;">
-                    <div class="lbl">Finaliz. (ranking)</div>
-                    <div class="val">${finRep || finSemana}</div>
-                    <div class="sub">Periodo seleccionado</div>
+                    <div class="lbl">Fin. como reparador</div>
+                    <div class="val">${finRep}</div>
+                    <div class="sub">Periodo</div>
                 </div>
             </div>
 
-            ${alertas.length ? `<div style="margin-bottom:14px;">
-                ${alertas.map(a => `<div style="padding:8px 12px;border-radius:8px;margin-bottom:6px;font-size:13px;background:${a.tipo==='urgente'?'#f8d7da':'#fff3cd'};color:${a.tipo==='urgente'?'#721c24':'#856404'};">${a.t}</div>`).join('')}
-            </div>` : ''}
+            ${alertas.length ? alertas.map(a => `<div style="padding:8px 12px;border-radius:8px;margin-bottom:6px;font-size:13px;background:${a.tipo==='urgente'?'#f8d7da':'#fff3cd'};color:${a.tipo==='urgente'?'#721c24':'#856404'};">${a.t}</div>`).join('') : ''}
 
-            <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:#666;">Score promedio por área</div>
+            <div style="margin:12px 0 8px;font-size:13px;font-weight:600;color:#666;">Score promedio por área</div>
             <div class="dash-kpi-grid">${areaHtml}</div>
 
-            <div style="margin:12px 0 8px;font-size:13px;font-weight:600;color:#666;">Top ranking (tiempo real)</div>
+            <div style="margin:12px 0 8px;font-size:13px;font-weight:600;color:#666;">Top ranking</div>
             ${rankHtml}
-            <p style="font-size:11px;color:#888;margin-top:10px;">Se actualiza solo con cambios de unidades (live) y cada 30 s mientras el panel esté abierto.</p>
+
+            ${todasPend.length ? `<div style="margin:12px 0 8px;font-size:13px;font-weight:600;color:#666;">Unidades a mover (SLA)</div>
+                ${todasPend.slice(0, 10).map(filaUnidad).join('')}` : ''}
+
+            <p style="font-size:11px;color:#888;margin-top:10px;">Vista Gerencia · live + cada 30 s · Producción detallada en el menú</p>
         `;
     }
 
     function abrirModalProduccion() {
-        if (modoCliente) {
+        if (modoCliente || !sesion || sesion.area === 'Cliente') {
             alert('Vista de solo lectura: inicia sesión con un área para ver producción detallada.');
+            return;
+        }
+        if (sesion.area !== 'Gerencia') {
+            alert('Producción y ranking solo está disponible para Gerencia.\nUsa Dashboard en vivo para tu día a día.');
+            try { abrirDashboardRendimiento(); } catch (e) {}
+            return;
         }
         cargarMetasEnFormulario();
         renderProduccion();
@@ -7995,6 +8185,250 @@
         }
     }
 
+
+    // ===== PENDIENTES ASIGNADOS POR GERENCIA (Mi día) =====
+    const PENDIENTES_TAREAS_KEY = 'thermocontrol_pendientes_tareas';
+    let pendientesTareas = [];
+
+    function uidPendiente() {
+        return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    }
+
+    async function cargarPendientesTareas() {
+        try {
+            const raw = localStorage.getItem(PENDIENTES_TAREAS_KEY);
+            if (raw) pendientesTareas = JSON.parse(raw) || [];
+        } catch (e) { pendientesTareas = []; }
+        try {
+            const { data, error } = await supabaseClient
+                .from('app_config')
+                .select('data')
+                .eq('id', 'pendientes_tareas')
+                .maybeSingle();
+            if (!error && data && data.data && Array.isArray(data.data.items)) {
+                pendientesTareas = data.data.items;
+                try { localStorage.setItem(PENDIENTES_TAREAS_KEY, JSON.stringify(pendientesTareas)); } catch (e) {}
+            }
+        } catch (e) {}
+        return pendientesTareas;
+    }
+
+    async function guardarPendientesTareas() {
+        try { localStorage.setItem(PENDIENTES_TAREAS_KEY, JSON.stringify(pendientesTareas)); } catch (e) {}
+        try {
+            await supabaseClient.from('app_config').upsert({
+                id: 'pendientes_tareas',
+                data: { items: pendientesTareas },
+                updated_at: new Date().toISOString()
+            });
+        } catch (e) {}
+    }
+
+    function listarEmpleadosParaPendiente() {
+        const taller = typeof getTallerActual === 'function' ? getTallerActual() : '';
+        const us = (typeof listaUsuarios !== 'undefined' && listaUsuarios) ? listaUsuarios : [];
+        let list = us.filter(u => u && u.nombre && u.area && u.area !== 'Cliente' && u.area !== 'Gerencia'
+            && (!taller || !u.taller || u.taller === taller))
+            .map(u => ({ nombre: u.nombre, area: u.area }));
+        // fallback personas por área
+        if (!list.length && typeof personas !== 'undefined') {
+            Object.keys(personas || {}).forEach(area => {
+                if (area === 'Gerencia' || area === 'Cliente') return;
+                (personas[area] || []).forEach(n => list.push({ nombre: n, area }));
+            });
+        }
+        // dedupe by name
+        const seen = {};
+        list = list.filter(e => {
+            const k = (e.nombre || '').toLowerCase();
+            if (seen[k]) return false;
+            seen[k] = 1;
+            return true;
+        });
+        return list.sort((a, b) => (a.area + a.nombre).localeCompare(b.area + b.nombre));
+    }
+
+    function abrirModalAsignarPendiente() {
+        if (!sesion || sesion.area !== 'Gerencia') {
+            alert('Solo Gerencia puede asignar pendientes.');
+            return;
+        }
+        const sel = document.getElementById('pendEmpSelect');
+        const emps = listarEmpleadosParaPendiente();
+        sel.innerHTML = emps.map(e =>
+            `<option value="${String(e.nombre).replace(/"/g, '&quot;')}" data-area="${e.area}">${e.area} · ${e.nombre}</option>`
+        ).join('') || '<option value="">Sin empleados</option>';
+        document.getElementById('pendNotaInput').value = '';
+        renderListaPendientesGerencia();
+        document.getElementById('modalAsignarPendiente').style.display = 'flex';
+    }
+
+    async function guardarPendienteAsignado() {
+        if (!sesion || sesion.area !== 'Gerencia') return;
+        const sel = document.getElementById('pendEmpSelect');
+        const nombre = (sel && sel.value || '').trim();
+        const nota = (document.getElementById('pendNotaInput').value || '').trim();
+        if (!nombre) { alert('Elige un empleado.'); return; }
+        if (!nota) { alert('Escribe la nota / tarea.'); return; }
+        const opt = sel.options[sel.selectedIndex];
+        const area = (opt && opt.getAttribute('data-area')) || '';
+        const item = {
+            id: uidPendiente(),
+            taller: getTallerActual() || '',
+            empleado: nombre,
+            area: area,
+            nota: nota,
+            asignado_por: sesion.persona || 'Gerencia',
+            estatus: 'pendiente', // pendiente | en_progreso | finalizado
+            progreso: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            finalizado_at: null
+        };
+        pendientesTareas.unshift(item);
+        await guardarPendientesTareas();
+        document.getElementById('pendNotaInput').value = '';
+        renderListaPendientesGerencia();
+        try {
+            mostrarToastApp('Pendiente asignado a ' + nombre, '#0d6efd');
+        } catch (e) {}
+        // notificación in-app
+        try {
+            if (typeof agregarNotificacionLocal === 'function') {
+                agregarNotificacionLocal({
+                    titulo: 'Nuevo pendiente de Gerencia',
+                    detalle: nota,
+                    para: nombre,
+                    tipo: 'pendiente_tarea'
+                });
+            }
+        } catch (e) {}
+        try {
+            if (typeof crearMensajeNotificacion === 'function') {
+                await crearMensajeNotificacion(nombre, '📋 Pendiente de Gerencia: ' + nota);
+            }
+        } catch (e) {}
+    }
+
+    function renderListaPendientesGerencia() {
+        const box = document.getElementById('listaPendientesGerencia');
+        if (!box) return;
+        const taller = getTallerActual() || '';
+        const activos = (pendientesTareas || []).filter(p =>
+            p.estatus !== 'finalizado' && (!taller || !p.taller || p.taller === taller)
+        );
+        const fin = (pendientesTareas || []).filter(p =>
+            p.estatus === 'finalizado' && (!taller || !p.taller || p.taller === taller)
+        ).slice(0, 8);
+        if (!activos.length && !fin.length) {
+            box.innerHTML = '<p style="font-size:12px;color:#888;">Sin pendientes asignados.</p>';
+            return;
+        }
+        box.innerHTML = '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">Pendientes activos</div>' +
+            activos.map(p => `
+                <div style="padding:10px;border-radius:10px;background:var(--detalle-item,#f8f9fa);margin-bottom:6px;font-size:13px;">
+                    <div style="font-weight:700;">${p.empleado} <span style="font-weight:500;color:#888;">· ${p.area || ''}</span></div>
+                    <div style="margin-top:4px;">${p.nota || ''}</div>
+                    <div style="font-size:11px;color:#888;margin-top:4px;">
+                        ${p.estatus === 'en_progreso' ? 'En progreso ' + (p.progreso || 0) + '%' : 'Pendiente'}
+                        · por ${p.asignado_por || 'Gerencia'}
+                    </div>
+                    <button type="button" class="btn-accion" style="margin-top:6px;font-size:11px;" onclick="eliminarPendienteTarea('${p.id}')">Quitar</button>
+                </div>
+            `).join('') +
+            (fin.length ? '<div style="font-size:12px;font-weight:600;color:#888;margin:12px 0 6px;">Finalizados recientes</div>' +
+                fin.map(p => `<div style="padding:8px;font-size:12px;color:#666;border-bottom:1px solid #eee;">✓ ${p.empleado}: ${p.nota}</div>`).join('') : '');
+    }
+
+    async function eliminarPendienteTarea(id) {
+        if (!confirm('¿Quitar este pendiente?')) return;
+        pendientesTareas = (pendientesTareas || []).filter(p => p.id !== id);
+        await guardarPendientesTareas();
+        renderListaPendientesGerencia();
+        try { if (typeof renderTareasMiDia === 'function') renderTareasMiDia(); } catch (e) {}
+    }
+
+    function pendientesTareasDeSesion() {
+        if (!sesion || !sesion.persona) return [];
+        const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        const yo = norm(sesion.persona);
+        const taller = getTallerActual() || '';
+        return (pendientesTareas || []).filter(p =>
+            norm(p.empleado) === yo &&
+            p.estatus !== 'finalizado' &&
+            (!taller || !p.taller || p.taller === taller)
+        );
+    }
+
+    function htmlTareasMiDia() {
+        const items = pendientesTareasDeSesion();
+        if (!items.length) return '';
+        return `<div style="margin-bottom:12px;">
+            <div style="font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:8px;">📋 Pendientes de Gerencia (${items.length})</div>
+            ${items.map(p => {
+                const pct = Math.max(0, Math.min(100, parseInt(p.progreso, 10) || 0));
+                const est = p.estatus === 'en_progreso' ? 'En progreso' : 'Pendiente';
+                const col = p.estatus === 'en_progreso' ? '#0d6efd' : '#fd7e14';
+                return `<div style="padding:12px;border-radius:12px;background:var(--detalle-item,#f8f9fa);border-left:4px solid ${col};margin-bottom:8px;font-size:13px;" data-pend-id="${p.id}">
+                    <div style="font-weight:600;">${p.nota || ''}</div>
+                    <div style="font-size:11px;color:#888;margin-top:4px;">Asignó: ${p.asignado_por || 'Gerencia'} · ${est} · ${pct}%</div>
+                    <div style="margin-top:8px;">
+                        <label style="font-size:11px;color:#666;">Progreso</label>
+                        <input type="range" min="0" max="100" step="5" value="${pct}"
+                            onchange="actualizarProgresoPendiente('${p.id}', this.value)"
+                            oninput="this.nextElementSibling.textContent=this.value+'%'"
+                            style="width:100%;">
+                        <div style="font-size:12px;font-weight:700;color:#1a3a5c;">${pct}%</div>
+                    </div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+                        ${p.estatus !== 'en_progreso' ? `<button type="button" class="btn-accion" onclick="marcarPendienteTrabajando('${p.id}')">Estoy trabajando</button>` : ''}
+                        <button type="button" class="btn-accion" style="background:#28a745;color:#fff;border-color:#28a745;" onclick="finalizarPendienteTarea('${p.id}')">Finalizado</button>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    }
+
+    async function marcarPendienteTrabajando(id) {
+        const p = (pendientesTareas || []).find(x => x.id === id);
+        if (!p) return;
+        p.estatus = 'en_progreso';
+        if (!p.progreso || p.progreso < 5) p.progreso = 10;
+        p.updated_at = new Date().toISOString();
+        await guardarPendientesTareas();
+        try { mostrarPanelPendientesLogin(true); } catch (e) {}
+        try { refrescarDashboardSiAbierto(); } catch (e) {}
+        try { mostrarToastApp('Marcado: trabajando en el pendiente', '#0d6efd'); } catch (e) {}
+    }
+
+    async function actualizarProgresoPendiente(id, val) {
+        const p = (pendientesTareas || []).find(x => x.id === id);
+        if (!p) return;
+        const n = Math.max(0, Math.min(100, parseInt(val, 10) || 0));
+        p.progreso = n;
+        if (n > 0 && p.estatus === 'pendiente') p.estatus = 'en_progreso';
+        if (n >= 100) {
+            // no auto-finaliza: el usuario confirma
+            p.estatus = 'en_progreso';
+        }
+        p.updated_at = new Date().toISOString();
+        await guardarPendientesTareas();
+    }
+
+    async function finalizarPendienteTarea(id) {
+        const p = (pendientesTareas || []).find(x => x.id === id);
+        if (!p) return;
+        if (!confirm('¿Marcar este pendiente como finalizado?')) return;
+        p.estatus = 'finalizado';
+        p.progreso = 100;
+        p.finalizado_at = new Date().toISOString();
+        p.updated_at = p.finalizado_at;
+        await guardarPendientesTareas();
+        try { mostrarPanelPendientesLogin(true); } catch (e) {}
+        try { refrescarDashboardSiAbierto(); } catch (e) {}
+        try { mostrarToastApp('Pendiente finalizado ✓', '#28a745'); } catch (e) {}
+    }
+
     function listarPendientesPersona() {
         if (!sesion || sesion.area === 'Cliente') return [];
         const area = sesion.area;
@@ -8189,8 +8623,9 @@
         const rojas = moverHoy.filter(u => nivelSlaEstatus(u) === 'rojo');
         const amarillas = moverHoy.filter(u => nivelSlaEstatus(u) === 'amarillo');
 
+        const tareasGer = typeof pendientesTareasDeSesion === 'function' ? pendientesTareasDeSesion() : [];
         // Si no hay nada y no se forzó (botón menú), no molestar
-        if (!lista.length && !forzar) return;
+        if (!lista.length && !tareasGer.length && !forzar) return;
 
         let modal = document.getElementById('modalPendientesLogin');
         if (!modal) {
@@ -8235,13 +8670,18 @@
                     <div style="font-size:15px; font-weight:700; color:#155724;">✅ Nada urgente por SLA hoy</div>
                     <div style="font-size:12px; color:#666; margin-top:4px;">Tienes ${lista.length} en tu área, todas en tiempo. ${r ? r.texto : ''}</div>
                 </div>`;
-        } else {
+        } else if (!tareasGer.length) {
             resumenHtml += `
                 <div style="padding:12px; border-radius:12px; background:#e7f1ff; margin-bottom:8px;">
-                    <div style="font-size:15px; font-weight:700; color:#004085;">🎉 Sin pendientes en tu área</div>
+                    <div style="font-size:15px; font-weight:700; color:#004085;">Sin pendientes de unidades en tu área</div>
                     <div style="font-size:12px; color:#666; margin-top:4px;">Buen trabajo. Revisa el Kanban si entra algo nuevo.</div>
                 </div>`;
         }
+        // Tareas de Gerencia primero
+        try {
+            const th = typeof htmlTareasMiDia === 'function' ? htmlTareasMiDia() : '';
+            if (th) resumenHtml = th + resumenHtml;
+        } catch (e) {}
         document.getElementById('miDiaResumenBox').innerHTML = resumenHtml;
 
         const listaEl = document.getElementById('pendientesLoginLista');
