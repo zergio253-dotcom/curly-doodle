@@ -1311,7 +1311,7 @@
         <div class="header-user-corner">
             <span id="sesionInfo"></span>
             <button class="btn-header btn-notif" id="btnNotif" onclick="togglePanelNotif()" title="Notificaciones del taller">🔔 <span id="badgeNotif" class="badge-notif" style="display:none;">0</span></button>
-            <button class="btn-header btn-notif" id="btnMsgPanel" onclick="togglePanelMensajes()" title="Mensajes" style="display:none;">💬 <span id="badgeMsg" class="badge-notif" style="display:none;">0</span></button>
+            <button class="btn-header btn-notif" id="btnMsgPanel" onclick="abrirCentroMensajes()" title="Mensajes" style="display:none;">💬 <span id="badgeMsg" class="badge-notif" style="display:none;">0</span></button>
             <button type="button" class="btn-header" id="btnAtrasadasSla" onclick="mostrarListaAtrasadasSla()" title="Unidades atrasadas por SLA" style="display:none; background:#c82333; color:#fff; font-weight:700; border-color:#a71d2a;">🔥 <span id="badgeAtrasadasSla">0</span> atrasadas</button>
             <div class="menu-desplegable" id="menuPrincipal">
                 <button class="btn-header" id="btnMenuPrincipal" onclick="toggleMenuPrincipal(event)" title="Más opciones">☰ Menú <span id="badgeMenuAtrasadas" class="badge-notif" style="display:none; background:#dc3545;">0</span></button>
@@ -1321,7 +1321,7 @@
                     <button type="button" class="menu-item" id="btnVistaLista" onclick="cambiarVista('lista'); cerrarMenuPrincipal();">📋 Lista</button>
                     <button type="button" class="menu-item" id="btnVistaHistorial" onclick="cambiarVista('historial'); cerrarMenuPrincipal();">📜 Historial</button>
                     <button type="button" class="menu-item" id="btnTrabajoHoy" onclick="abrirModalTrabajoHoy(); cerrarMenuPrincipal();" style="display:none;">📋 Trabajar hoy</button>
-                    <button type="button" class="menu-item" id="btnMensaje" onclick="abrirModalMensaje(); cerrarMenuPrincipal();" style="display:none;">💬 Mensaje</button>
+                    <button type="button" class="menu-item" id="btnMensaje" onclick="abrirCentroMensajes(); cerrarMenuPrincipal();" style="display:none;">💬 Mensajes</button>
                     <button type="button" class="menu-item" id="btnProduccion" onclick="abrirModalProduccion(); cerrarMenuPrincipal();">📈 Producción</button>
                     <button type="button" class="menu-item" id="btnDashboardRT" onclick="abrirDashboardRendimiento(); cerrarMenuPrincipal();">Dashboard en vivo</button>
                     <button type="button" class="menu-item" id="btnAsignarPendiente" onclick="abrirModalAsignarPendiente(); cerrarMenuPrincipal();" style="display:none;">Asignar pendiente</button>
@@ -1627,7 +1627,7 @@
         </div>
         <!-- Lista de conversaciones -->
         <div id="chatVistaLista">
-            <p style="font-size:12px; color:#666; margin:0 0 10px;">Chats guardados · responde y agrega compañeros</p>
+            <p style="font-size:12px; color:#666; margin:0 0 10px;">Envía mensajes, recibe avisos, borra chats y agrega compañeros.</p>
             <button type="button" class="btn-modal primary" style="width:100%; margin-bottom:10px;" onclick="chatNuevaConversacion()">➕ Nuevo chat</button>
             <div id="chatListaConversaciones" style="max-height:55vh; overflow-y:auto;"></div>
         </div>
@@ -1640,6 +1640,7 @@
                     <div id="chatHiloParticipantes" style="font-size:11px; color:#666;"></div>
                 </div>
                 <button type="button" class="btn-accion" onclick="chatAgregarParticipante()" title="Agregar compañero">👤+</button>
+                <button type="button" class="btn-accion" style="color:#dc3545;" onclick="borrarConversacionChatActual()" title="Borrar conversación">🗑️</button>
             </div>
             <div id="chatHiloMensajes" style="flex:1; overflow-y:auto; max-height:45vh; background:#e5ddd5; border-radius:12px; padding:10px; margin-bottom:8px;"></div>
             <div id="chatReplyBar" style="display:none; background:#fff3cd; border-radius:8px; padding:6px 10px; font-size:12px; margin-bottom:6px;">
@@ -3136,7 +3137,7 @@
             show('btnReporteDiario', sesion.area === 'Gerencia' || sesion.persona === 'Abel');
             show('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
             show('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
-            show('btnMensaje', sesion.area !== 'Cliente');
+            show('btnMensaje', false);
             const bmp = document.getElementById('btnMsgPanel'); if (bmp) bmp.style.display = sesion.area !== 'Cliente' ? '' : 'none';
         try { actualizarUIModoBasicoKanban(); } catch (e) {}
         try { cargarPendientesTareas(); } catch (e) {}
@@ -3438,7 +3439,7 @@
         showMenu('btnInventario', true);
         showMenu('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
         showMenu('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
-        showMenu('btnMensaje', sesion.area !== 'Cliente');
+        showMenu('btnMensaje', false);
         try { actualizarUIModoBasicoKanban(); } catch (e) {}
         try { cargarPendientesTareas(); } catch (e) {}
         showMenu('btnTrabajoHoy', true);
@@ -12608,22 +12609,26 @@
         }
         box.innerHTML = lista.map(c => {
             const ult = c.ultimo || {};
-            const preview = (ult.texto || '').substring(0, 48);
+            let preview = String(ult.texto || '').replace(/^§CHAT§[^\n]*\n/, '').replace(/^§UNIDAD§\d+§\n?/, '').substring(0, 48);
             const hora = ult.created_at ? new Date(ult.created_at).toLocaleString() : '';
             const badge = c.noLeidos ? `<span style="background:#25d366;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;">${c.noLeidos}</span>` : '';
-            return `<div onclick="abrirChatConversacion('${String(c.id).replace(/'/g, "\\'")}')"
-                style="padding:12px; border-bottom:1px solid #eee; cursor:pointer; display:flex; gap:10px; align-items:center;">
-                <div style="width:42px;height:42px;border-radius:50%;background:#25d366;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">
-                    ${(chatTitulo(c.participantes) || '?').charAt(0).toUpperCase()}
-                </div>
-                <div style="flex:1;min-width:0;">
-                    <div style="display:flex;justify-content:space-between;gap:6px;">
-                        <strong style="font-size:14px;">${chatTitulo(c.participantes)}</strong>
-                        ${badge}
+            const cid = String(c.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            return `<div style="padding:12px; border-bottom:1px solid #eee; display:flex; gap:10px; align-items:center;">
+                <div onclick="abrirChatConversacion('${cid}')" style="display:flex;gap:10px;align-items:center;flex:1;min-width:0;cursor:pointer;">
+                    <div style="width:42px;height:42px;border-radius:50%;background:#25d366;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">
+                        ${(chatTitulo(c.participantes) || '?').charAt(0).toUpperCase()}
                     </div>
-                    <div style="font-size:12px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview || '—'}</div>
-                    <div style="font-size:10px;color:#999;">${hora}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;justify-content:space-between;gap:6px;">
+                            <strong style="font-size:14px;">${chatTitulo(c.participantes)}</strong>
+                            ${badge}
+                        </div>
+                        <div style="font-size:12px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview || '—'}</div>
+                        <div style="font-size:10px;color:#999;">${hora}</div>
+                    </div>
                 </div>
+                <button type="button" class="btn-accion" title="Borrar chat" style="color:#dc3545;flex-shrink:0;"
+                    onclick="event.stopPropagation(); borrarConversacionChat('${cid}')">🗑️</button>
             </div>`;
         }).join('');
     }
@@ -12855,6 +12860,55 @@
         }
     }
 
+
+    function abrirCentroMensajes() {
+        try { cerrarPanelNotif(); } catch (e) {}
+        try { cerrarPanelMensajes(); } catch (e) {}
+        if (modoCliente || (sesion && sesion.area === 'Cliente')) {
+            alert('Los clientes no tienen mensajería interna.');
+            return;
+        }
+        if (!requerirSesion()) return;
+        abrirModalMensaje();
+    }
+
+    async function borrarConversacionChat(convId) {
+        if (!convId) return;
+        if (!confirm('¿Borrar esta conversación?\nSe eliminarán los mensajes de este chat para ti en el servidor.')) return;
+        const msgs = (mensajesTodos || []).filter(m => {
+            const cid = m.conversacion_id || chatIdDeParticipantes(participantesDeMsg(m));
+            return cid === convId;
+        });
+        try {
+            for (const m of msgs) {
+                if (m.id == null) continue;
+                try { await supabaseClient.from('mensajes').delete().eq('id', m.id); } catch (e) {}
+            }
+            mensajesTodos = (mensajesTodos || []).filter(m => {
+                const cid = m.conversacion_id || chatIdDeParticipantes(participantesDeMsg(m));
+                return cid !== convId;
+            });
+            mensajes = (mensajes || []).filter(m => {
+                const cid = m.conversacion_id || chatIdDeParticipantes(participantesDeMsg(m));
+                return cid !== convId;
+            });
+            if (chatActivo && chatActivo.id === convId) {
+                chatActivo = null;
+                chatMostrarVista('lista');
+            }
+            renderListaConversacionesChat();
+            try { actualizarNotificaciones(); } catch (e) {}
+            try { mostrarToastApp('Conversación eliminada', '#dc3545'); } catch (e) {}
+        } catch (e) {
+            alert('Error al borrar: ' + (e.message || e));
+        }
+    }
+
+    async function borrarConversacionChatActual() {
+        if (!chatActivo || !chatActivo.id) return;
+        await borrarConversacionChat(chatActivo.id);
+    }
+
     function abrirModalMensaje() {
         if (!requerirSesion()) return;
         if (sesion.area === 'Cliente') return;
@@ -12999,6 +13053,7 @@
         } else {
             alert('Chat no disponible');
         }
+        try { actualizarNotificaciones(); } catch (e) {}
         // Resaltar el mensaje en el hilo si existe
         setTimeout(function() {
             try {
@@ -13415,19 +13470,8 @@
     }
 
     function togglePanelMensajes() {
-        const panel = document.getElementById('panelMensajes');
-        const overlay = document.getElementById('overlayMensajes');
-        if (!panel) return;
-        const abrir = !panel.classList.contains('abierto');
-        // cerrar el de notificaciones si está abierto
-        try { cerrarPanelNotif(); } catch (e) {}
-        if (abrir) {
-            panel.classList.add('abierto');
-            if (overlay) overlay.classList.add('abierto');
-            try { actualizarNotificaciones(); } catch (e) {}
-        } else {
-            cerrarPanelMensajes();
-        }
+        // Unificado: el icono 💬 abre el centro de mensajes (chat completo)
+        abrirCentroMensajes();
     }
 
     function cerrarPanelMensajes() {
