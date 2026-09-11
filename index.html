@@ -41,6 +41,60 @@
             --modal-bg: #ffffff;
             --detalle-item: #f8f9fa;
         }
+
+        .dash-live-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #28a745;
+            margin-right: 6px;
+            animation: dashPulse 1.4s ease infinite;
+        }
+        @keyframes dashPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.45; transform: scale(0.85); }
+        }
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .dash-kpi {
+            background: var(--detalle-item, #f8f9fa);
+            border-radius: 12px;
+            padding: 12px;
+            border-left: 4px solid #1a3a5c;
+        }
+        .dash-kpi .lbl { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.3px; }
+        .dash-kpi .val { font-size: 22px; font-weight: 800; margin-top: 4px; color: var(--text, #1a3a5c); }
+        .dash-kpi .sub { font-size: 11px; color: #888; margin-top: 2px; }
+        .dash-wip-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+        .dash-wip-chip {
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .dash-rank-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--detalle-item, #f8f9fa);
+            margin-bottom: 6px;
+        }
+        body.dark .dash-kpi,
+        body.dark .dash-rank-row { background: #2a2a2a; }
+        body.dark .dash-kpi .val { color: #eee; }
+
         body.dark {
             --bg: #121212;
             --card: #1e1e1e;
@@ -1107,6 +1161,7 @@
                     <button type="button" class="menu-item" id="btnTrabajoHoy" onclick="abrirModalTrabajoHoy(); cerrarMenuPrincipal();" style="display:none;">📋 Trabajar hoy</button>
                     <button type="button" class="menu-item" id="btnMensaje" onclick="abrirModalMensaje(); cerrarMenuPrincipal();" style="display:none;">💬 Mensaje</button>
                     <button type="button" class="menu-item" id="btnProduccion" onclick="abrirModalProduccion(); cerrarMenuPrincipal();">📈 Producción</button>
+                    <button type="button" class="menu-item" id="btnDashboardRT" onclick="abrirDashboardRendimiento(); cerrarMenuPrincipal();">Dashboard en vivo</button>
                     <button type="button" class="menu-item" id="btnMetasGerencia" style="display:none;" onclick="abrirModalMetasGerencia(); cerrarMenuPrincipal();">🎯 Metas</button>
                     <button type="button" class="menu-item" id="btnMiDia" onclick="abrirMiDia();">☀️ Mi día</button>
                     <button type="button" class="menu-item" id="btnInventario" onclick="abrirModalInventario(); cerrarMenuPrincipal();">📦 Inventario</button>
@@ -1272,6 +1327,34 @@
         <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
             <button class="btn-modal primary" style="flex:1;" onclick="guardarMetasDesdeGerencia()">💾 Guardar metas</button>
             <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalMetasGerencia')">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal" id="modalDashboardRT">
+    <div class="modal-content wide" style="max-width:920px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+            <div>
+                <h3 style="margin:0;">Dashboard de rendimiento</h3>
+                <div style="font-size:12px; color:#888; margin-top:4px;">
+                    <span class="dash-live-dot"></span><span id="dashLiveLabel">En vivo</span>
+                    · <span id="dashUltimaAct">—</span>
+                </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <select id="dashPeriodo" onchange="renderDashboardRendimiento()" style="padding:8px; border-radius:8px;">
+                    <option value="semana" selected>Semana laboral</option>
+                    <option value="hoy">Hoy</option>
+                    <option value="7">7 días</option>
+                </select>
+                <button type="button" class="btn-accion" onclick="renderDashboardRendimiento()">Actualizar</button>
+            </div>
+        </div>
+        <div id="dashboardRTContenido" style="max-height:70vh; overflow-y:auto;"></div>
+        <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+            <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalDashboardRT'); abrirModalProduccion();">Producción detallada</button>
+            <button class="btn-modal danger" style="flex:1;" onclick="cerrarDashboardRendimiento()">Cerrar</button>
         </div>
     </div>
 </div>
@@ -2848,6 +2931,7 @@
             show('btnVistaHistorial', true);
             show('btnTrabajoHoy', true);
             show('btnProduccion', true);
+            show('btnDashboardRT', sesion.area !== 'Cliente');
             show('btnMetasGerencia', sesion.area === 'Gerencia' || tienePermisoTotal());
             show('btnInventario', true);
             show('btnReporteDiario', sesion.area === 'Gerencia' || sesion.persona === 'Abel');
@@ -3037,6 +3121,8 @@
         } else if (area === 'Ventas') {
             push('Recibidas', st.recibidas || 0);
             push('Cotizadas', st.cotizadas || 0);
+            push('Cotiz. rápidas (≤1d)', st.cotizacionesRapidas || 0);
+            push('Cotiz. lentas (>1d)', st.cotizacionesLentas || 0);
             const vr = st.ventasRealizadas != null ? st.ventasRealizadas : ((st.refaccionesVendidas || 0) + (st.entregasComoAsesor || 0));
             push('Ventas realizadas', vr);
             push('Refacc. vendidas', st.refaccionesVendidas || 0);
@@ -3045,6 +3131,9 @@
             push('Liberaciones', st.liberacionesRef || 0);
             push('Liberaciones rápidas', st.liberacionesRapidas || 0);
             push('Liberaciones lentas', st.liberacionesLentas || 0);
+            push('Espera con ETA', st.esperaConEta || 0);
+            push('Espera sin ETA', st.esperaSinEta || 0);
+            push('ETA vencida', st.esperaEtaVencida || 0);
             push('Tiempo prom. libera.', formatearMsCortoLab(st.promedioLiberacionMs));
         } else if (area === 'Gerencia') {
             push('Vista', 'Gerencia');
@@ -3132,6 +3221,7 @@
         };
         showMenu('btnReporteDiario', sesion.area === 'Gerencia' || (sesion && sesion.persona === 'Abel'));
         showMenu('btnProduccion', true);
+        showMenu('btnDashboardRT', sesion && sesion.area !== 'Cliente');
         showMenu('btnMetasGerencia', sesion && (sesion.area === 'Gerencia' || tienePermisoTotal()));
         showMenu('btnMiDia', sesion.area !== 'Gerencia' && sesion.area !== 'Cliente');
         showMenu('btnInventario', true);
@@ -3947,10 +4037,11 @@
         const todas = ['Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada'];
         const base = (typeof puedeVerAgenda === 'function' && puedeVerAgenda()) ? todasAgenda : todas;
         if (!modoBasicoKanban || !sesion || modoCliente) return base;
-        if (sesion.area === 'Gerencia' || (typeof tienePermisoTotal === 'function' && tienePermisoTotal())) return base;
+        // Solo Gerencia ve siempre todas. Superusuarios (Sergio, Alfredo, Abel…)
+        // sí usan basico según el ÁREA con la que iniciaron sesión.
+        if (sesion.area === 'Gerencia') return base;
         if (sesion.area === 'Mantenimiento') return ['Diagnosticando', 'Reparando'];
         if (sesion.area === 'Ventas') {
-            // Recibida + Cotizando (+ Agenda si puede verla)
             return (typeof puedeVerAgenda === 'function' && puedeVerAgenda())
                 ? ['Agenda', 'Recibida', 'Cotizando']
                 : ['Recibida', 'Cotizando'];
@@ -3973,7 +4064,7 @@
         const msg = modoBasicoKanban
             ? (sesion.area === 'Gerencia'
                 ? 'Basico ON (Gerencia ve todas las columnas)'
-                : 'Basico ON — solo columnas de ' + sesion.area)
+                : 'Basico ON — ' + sesion.area + ': ' + (columnasKanbanParaSesion().join(', ')))
             : 'Kanban completo — todas las columnas';
         try { mostrarToastApp(msg, '#1a3a5c'); } catch (e) {}
     }
@@ -4184,6 +4275,7 @@
                         renderizarTablero();
                         actualizarStats();
                         actualizarNotificaciones();
+                        try { refrescarDashboardSiAbierto(); } catch (e) {}
                         const det = document.getElementById('modalDetalle');
                         if (det && det.style.display === 'flex' && typeof unidadDetalleActual !== 'undefined' && unidadDetalleActual) {
                             const u = unidades.find(x => x.id === unidadDetalleActual);
@@ -5314,15 +5406,43 @@
         return diff > 0 ? diff : 0;
     }
 
-    function obtenerEmpleadoDeLaSemana() {
-        try {
-            const lista = calcularProduccionPorUsuario('semana');
-            if (!lista || !lista.length) return null;
-            const top = lista.slice().sort((a, b) => (b.score || 0) - (a.score || 0) || (b.finalizadas || 0) - (a.finalizadas || 0))[0];
-            return top || null;
-        } catch (e) {
-            return null;
+    function detallePremioPersona(top) {
+        if (!top) return '';
+        if (top.area === 'Mantenimiento') {
+            return 'Fin. rep: ' + (top.finalizadasComoReparador || 0) +
+                ' · Fin. diag: ' + (top.finalizadasComoDiagnosticador || top.finalizadasConSuDiag || 0) +
+                ' · 1ª vez: ' + (top.diagCorrecto || 0) +
+                ' · PDF: ' + (top.diagnosticosPdf || 0);
         }
+        if (top.area === 'Ventas') {
+            const vr = top.ventasRealizadas != null ? top.ventasRealizadas : ((top.refaccionesVendidas || 0) + (top.entregasComoAsesor || 0));
+            return 'Recibidas: ' + (top.recibidas || 0) + ' · Cotizadas: ' + (top.cotizadas || 0) + ' · Ventas: ' + vr;
+        }
+        if (top.area === 'Compras') {
+            return 'Liberaciones: ' + (top.liberacionesRef || 0) + ' · Movimientos: ' + (top.comprasMov || 0);
+        }
+        return 'Score: ' + (top.score || 0);
+    }
+
+    function obtenerTop3EmpleadosSemana() {
+        try {
+            const lista = calcularProduccionPorUsuario('semana') || [];
+            if (!lista.length) return [];
+            return lista.map(st => {
+                const score = typeof calcularScoreDesempeno === 'function'
+                    ? calcularScoreDesempeno(st, 'semana')
+                    : (st.score || 0);
+                return Object.assign({}, st, { score: score });
+            }).sort((a, b) => (b.score || 0) - (a.score || 0) || (b.finalizadas || 0) - (a.finalizadas || 0))
+              .slice(0, 3);
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function obtenerEmpleadoDeLaSemana() {
+        const top = obtenerTop3EmpleadosSemana();
+        return top[0] || null;
     }
 
     let _confetiAnimId = null;
@@ -5387,34 +5507,26 @@
     function mostrarEmpleadoDeLaSemana(forzar) {
         if (!sesion || sesion.area === 'Cliente' || modoCliente) return;
         if (!forzar && !esHoraPremiacionViernes()) return;
+        // Solo una vez por usuario y día de premiación (viernes de esa semana)
         if (!forzar) {
             try {
                 if (localStorage.getItem(claveEmpleadoSemana()) === '1') return;
             } catch (e) {}
         }
-        const top = obtenerEmpleadoDeLaSemana();
-        if (!top) {
-            if (forzar) alert('Aún no hay datos de producción esta semana para elegir ganador.');
+        const top3 = obtenerTop3EmpleadosSemana();
+        if (!top3.length) {
+            if (forzar) alert('Aún no hay datos de producción esta semana para el ranking.');
             return;
         }
 
         const rango = etiquetaRangoSemanaLaboral();
-        const sc = etiquetaScoreDesempeno(top.score || 0);
-        let detalle = '';
-        if (top.area === 'Mantenimiento') {
-            detalle = '✅ Fin. rep: ' + (top.finalizadasComoReparador || 0) +
-                ' · Fin. diag: ' + (top.finalizadasComoDiagnosticador || top.finalizadasConSuDiag || 0) +
-                ' · 🎯 1ª vez: ' + (top.diagCorrecto || 0) +
-                ' · 📄 PDF: ' + (top.diagnosticosPdf || 0) +
-                ' · 🛡️ Garantías: ' + (top.garantias || 0);
-        } else if (top.area === 'Ventas') {
-            const vr = top.ventasRealizadas != null ? top.ventasRealizadas : ((top.refaccionesVendidas || 0) + (top.entregasComoAsesor || 0));
-            detalle = '📥 Recibidas: ' + (top.recibidas || 0) + ' · 💰 Cotizadas: ' + (top.cotizadas || 0) + ' · 🏷️ Ventas: ' + vr;
-        } else if (top.area === 'Compras') {
-            detalle = '✅ Liberaciones: ' + (top.liberacionesRef || 0) + ' · 🛒 Movimientos: ' + (top.comprasMov || 0);
-        } else {
-            detalle = 'Score: ' + (top.score || 0);
-        }
+        const medallas = ['🥇', '🥈', '🥉'];
+        const titulos = ['1er lugar', '2º lugar', '3er lugar'];
+        const fondos = [
+            'linear-gradient(135deg,#fff8e6,#ffe08a)',
+            'linear-gradient(135deg,#f0f0f0,#d0d0d0)',
+            'linear-gradient(135deg,#f5e6d3,#e0b888)'
+        ];
 
         let modal = document.getElementById('modalEmpleadoSemana');
         if (!modal) {
@@ -5422,23 +5534,17 @@
             modal.id = 'modalEmpleadoSemana';
             modal.className = 'modal';
             modal.innerHTML = `
-                <div class="modal-content" style="max-width:440px; text-align:center; overflow:hidden; border:3px solid #ffc107; box-shadow:0 12px 40px rgba(255,193,7,0.35);">
+                <div class="modal-content" style="max-width:460px; text-align:center; overflow:hidden; border:3px solid #ffc107; box-shadow:0 12px 40px rgba(255,193,7,0.35);">
                     <div style="background:linear-gradient(180deg,#1a3a5c 0%,#0d2137 100%); color:#fff; margin:-20px -20px 16px; padding:20px 16px 16px; border-radius:12px 12px 0 0;">
                         <div style="font-size:13px; letter-spacing:2px; opacity:0.9; text-transform:uppercase;">Premiación semanal</div>
-                        <div id="empTrofeo" style="font-size:72px; line-height:1; margin:8px 0; animation:trofeoBounce 1s ease infinite alternate;">🏆</div>
-                        <h3 style="margin:0; font-size:20px; color:#ffc107;">Empleado de la semana</h3>
+                        <div id="empTrofeo" style="font-size:64px; line-height:1; margin:8px 0; animation:trofeoBounce 1s ease infinite alternate;">🏆</div>
+                        <h3 style="margin:0; font-size:20px; color:#ffc107;">Top 3 de la semana</h3>
                     </div>
                     <p id="empSemanaRango" style="font-size:13px; color:#666; margin:0 0 12px;"></p>
-                    <div style="padding:18px 14px; background:linear-gradient(135deg,#fff8e6,#eafaf1); border-radius:14px; margin-bottom:12px; border:1px solid #ffe08a;">
-                        <div style="font-size:12px; color:#856404; font-weight:600; margin-bottom:6px;">🥇 GANADOR</div>
-                        <div id="empSemanaNombre" style="font-size:26px; font-weight:800; color:#1a3a5c; line-height:1.2;"></div>
-                        <div id="empSemanaArea" style="font-size:14px; color:#555; margin-top:6px;"></div>
-                        <div id="empSemanaScore" style="margin-top:12px;"></div>
-                        <div id="empSemanaDetalle" style="font-size:13px; color:#333; margin-top:12px;"></div>
-                    </div>
-                    <p style="font-size:13px; color:#1a3a5c; font-weight:600; margin:0;">¡Felicidades por el esfuerzo de la semana!</p>
-                    <p style="font-size:11px; color:#888; margin:6px 0 0;">Ranking lunes a viernes · Premiación viernes 4:00 pm</p>
-                    <button class="btn-modal success" style="width:100%; margin-top:14px; font-size:16px; padding:12px;" onclick="cerrarPremiacionSemana()">🎉 ¡Felicidades!</button>
+                    <div id="empSemanaPodio"></div>
+                    <p style="font-size:13px; color:#1a3a5c; font-weight:600; margin:12px 0 0;">¡Felicidades a los tres primeros!</p>
+                    <p style="font-size:11px; color:#888; margin:6px 0 0;">Ranking lun–vie · Solo se muestra una vez · Viernes 4:00 pm</p>
+                    <button class="btn-modal success" style="width:100%; margin-top:14px; font-size:16px; padding:12px;" onclick="cerrarPremiacionSemana()">Felicidades</button>
                 </div>`;
             document.body.appendChild(modal);
             if (!document.getElementById('styleTrofeoPremio')) {
@@ -5448,17 +5554,32 @@
                 document.head.appendChild(st);
             }
         }
-        document.getElementById('empSemanaRango').textContent = '📅 Semana ' + rango;
-        document.getElementById('empSemanaNombre').textContent = top.persona || '—';
-        document.getElementById('empSemanaArea').textContent = (top.area || '') + (top.nivel ? ' · ' + top.nivel : '');
-        document.getElementById('empSemanaScore').innerHTML =
-            '<span style="background:' + sc.color + ';color:#fff;padding:6px 14px;border-radius:20px;font-weight:700;font-size:14px;">' +
-            sc.emoji + ' ' + (top.score || 0) + '/100 · ' + sc.texto + '</span>';
-        document.getElementById('empSemanaDetalle').textContent = detalle;
+        document.getElementById('empSemanaRango').textContent = 'Semana ' + rango;
+        const podio = document.getElementById('empSemanaPodio');
+        podio.innerHTML = top3.map((top, i) => {
+            const sc = etiquetaScoreDesempeno(top.score || 0);
+            const det = detallePremioPersona(top);
+            return `<div style="padding:14px 12px; background:${fondos[i]}; border-radius:14px; margin-bottom:10px; border:1px solid rgba(0,0,0,0.06); text-align:left;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="font-size:32px; line-height:1;">${medallas[i]}</div>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:11px; font-weight:700; color:#555; text-transform:uppercase;">${titulos[i]}</div>
+                        <div style="font-size:${i === 0 ? '22px' : '18px'}; font-weight:800; color:#1a3a5c; line-height:1.2;">${top.persona || '—'}</div>
+                        <div style="font-size:13px; color:#555;">${top.area || ''}${top.nivel ? ' · ' + top.nivel : ''}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="background:${sc.color};color:#fff;padding:4px 10px;border-radius:16px;font-weight:700;font-size:12px;white-space:nowrap;">${Math.round(top.score || 0)}</span>
+                    </div>
+                </div>
+                <div style="font-size:12px; color:#444; margin-top:8px;">${det}</div>
+            </div>`;
+        }).join('');
+
         modal.style.display = 'flex';
-        lanzarConfetiPremiacion(5000);
+        lanzarConfetiPremiacion(5500);
         try { localStorage.setItem(claveEmpleadoSemana(), '1'); } catch (e) {}
-        try { mostrarToastApp('🏆 Empleado de la semana: ' + (top.persona || ''), '#ffc107'); } catch (e) {}
+        const nombres = top3.map(x => x.persona).filter(Boolean).join(', ');
+        try { mostrarToastApp('Top 3 de la semana: ' + nombres, '#ffc107'); } catch (e) {}
     }
 
     function cerrarPremiacionSemana() {
@@ -5645,6 +5766,9 @@
             refaccionesVendidas: 0,
             cotizadas: 0,
             recibidas: 0,
+            cotizacionesLentas: 0,
+            cotizacionesRapidas: 0,
+            cierresCotizacion: 0,
             ventasMov: 0,
             comprasMov: 0,
             esperaRefacciones: 0,
@@ -5652,6 +5776,9 @@
             liberacionesRapidas: 0,
             liberacionesLentas: 0,
             msTiempoLiberacion: 0,
+            esperaConEta: 0,
+            esperaSinEta: 0,
+            esperaEtaVencida: 0,
             garantias: 0,
             retrabajos: 0,
             msEsperaRefacciones: 0,
@@ -5664,13 +5791,48 @@
             msCotizando: 0,
             msRecibida: 0,
             msTotal: 0,
-            // contribucion ponderada por unidad (suma de % de tiempo en cada unidad)
             contribucionUnidades: 0,
             unidadesIdsFinRep: new Set(),
             unidadesIdsFinDiag: new Set(),
             unidadesIdsDiag: new Set(),
+            unidadesIdsCot: new Set(),
+            unidadesIdsRec: new Set(),
             unidades: new Set()
         };
+    }
+
+    /** Dueño de columna por estatus (atribución limpia de producción) */
+    function duenoColumnaUnidad(u, estatus) {
+        const est = estatus || (u && u.estatus) || '';
+        if (est === 'Recibida' || est === 'Cotizando') {
+            const p = (u.asesor_ventas || '').trim();
+            return p ? { persona: p, area: 'Ventas' } : null;
+        }
+        if (est === 'Diagnosticando') {
+            const p = (u.diagnosticador || '').trim();
+            return p ? { persona: p, area: 'Mantenimiento' } : null;
+        }
+        if (est === 'Reparando') {
+            const p = (u.reparador || '').trim();
+            return p ? { persona: p, area: 'Mantenimiento' } : null;
+        }
+        if (est === 'Espera de refacciones') {
+            const p = (u.responsable_compras || '').trim();
+            if (p) return { persona: p, area: 'Compras' };
+            return null;
+        }
+        if (est === 'Finalizada') {
+            // cierre de taller → reparador; refacciones → asesor
+            if (typeof esTrabajoVentasRefacciones === 'function' && esTrabajoVentasRefacciones(u)) {
+                const p = (u.asesor_ventas || '').trim();
+                return p ? { persona: p, area: 'Ventas' } : null;
+            }
+            const rep = (u.reparador || '').trim();
+            if (rep) return { persona: rep, area: 'Mantenimiento' };
+            const ases = (u.asesor_ventas || '').trim();
+            return ases ? { persona: ases, area: 'Ventas' } : null;
+        }
+        return null;
     }
 
     function calcularProduccionPorUsuario(periodo) {
@@ -5698,52 +5860,75 @@
                 const est = h.estatus || '';
                 if (est === 'Agenda') return;
 
-                let persona = (h.persona || '').trim();
-                let area = (h.area || '').trim();
+                // Atribución LIMPIA: dueño de columna (no quien solo comentó o movió fuera de su rol)
+                let dueno = typeof duenoColumnaUnidad === 'function' ? duenoColumnaUnidad(u, est) : null;
+                let persona = dueno ? dueno.persona : '';
+                let area = dueno ? dueno.area : '';
 
-                // Completar persona/área con datos de la unidad si el historial viene incompleto
+                // Fallback: historial solo si el área del paso coincide con el dueño esperado
                 if (!persona) {
-                    if (est === 'Diagnosticando') persona = (u.diagnosticador || '').trim();
-                    else if (est === 'Reparando') persona = (u.reparador || '').trim() || (u.diagnosticador || '').trim();
-                    else if (est === 'Finalizada') persona = (u.reparador || '').trim() || (u.asesor_ventas || '').trim() || (h.persona || '').trim();
-                    else if (est === 'Cotizando' || est === 'Recibida') persona = (u.asesor_ventas || '').trim();
-                    else if (est === 'Espera de refacciones') {
-                        // buscar última persona Compras en historial
-                        for (let j = i; j >= 0; j--) {
-                            if ((tiempos[j].area || '') === 'Compras' && tiempos[j].persona) {
-                                persona = String(tiempos[j].persona).trim();
-                                break;
+                    const hp = (h.persona || '').trim();
+                    const ha = (h.area || '').trim();
+                    if (est === 'Diagnosticando' || est === 'Reparando') {
+                        if (ha === 'Mantenimiento' && hp) { persona = hp; area = 'Mantenimiento'; }
+                    } else if (est === 'Cotizando' || est === 'Recibida') {
+                        if (ha === 'Ventas' && hp) { persona = hp; area = 'Ventas'; }
+                    } else if (est === 'Espera de refacciones') {
+                        if (ha === 'Compras' && hp) { persona = hp; area = 'Compras'; }
+                        else {
+                            for (let j = i; j >= 0; j--) {
+                                if ((tiempos[j].area || '') === 'Compras' && tiempos[j].persona) {
+                                    persona = String(tiempos[j].persona).trim();
+                                    area = 'Compras';
+                                    break;
+                                }
                             }
                         }
                     }
                 }
-                if (!area) {
-                    if (est === 'Diagnosticando' || est === 'Reparando') area = 'Mantenimiento';
-                    else if (est === 'Cotizando' || est === 'Recibida') area = 'Ventas';
-                    else if (est === 'Finalizada') area = (u.asesor_ventas ? 'Ventas' : 'Mantenimiento');
-                    else if (est === 'Espera de refacciones') area = 'Compras';
-                }
 
+                if (!persona || !area) return;
                 const usr = resolverUsuarioRegistrado(persona, area);
                 if (!usr) return;
                 if (usr.area === 'Gerencia') return;
+                // Solo contar métricas del área real del usuario registrado
+                if (usr.area !== area && area !== 'Compras') {
+                    // si el nombre está en otra área, no contaminar (ej. Ventas con pasos de diag)
+                    area = usr.area;
+                }
                 persona = usr.nombre;
                 area = usr.area || area;
-                const st = getStats(persona, area);
 
+                // No sumar a Ventas pasos de Diag/Rep ni a Mant pasos de Cotizando
+                if (area === 'Ventas' && (est === 'Diagnosticando' || est === 'Reparando')) return;
+                if (area === 'Mantenimiento' && (est === 'Cotizando' || est === 'Recibida' || est === 'Espera de refacciones')) return;
+                if (area === 'Compras' && est !== 'Espera de refacciones' && !(est === 'Reparando' && i > 0 && tiempos[i - 1].estatus === 'Espera de refacciones')) {
+                    // compras solo espera + liberaciones
+                    if (est !== 'Espera de refacciones') {
+                        // permitir solo liberación abajo
+                    }
+                }
+
+                const st = getStats(persona, area);
                 st.unidades.add(u.id);
                 st.msTotal += h.duracionMs || 0;
 
-                if (est === 'Recibida') {
-                    st.recibidas++;
+                if (est === 'Recibida' && area === 'Ventas') {
+                    if (!st.unidadesIdsRec.has(u.id)) {
+                        st.unidadesIdsRec.add(u.id);
+                        st.recibidas++;
+                    }
                     st.msRecibida = (st.msRecibida || 0) + (h.duracionMs || 0);
-                    if (area === 'Ventas') st.ventasMov++;
+                    st.ventasMov++;
                 }
-                if (est === 'Diagnosticando') {
-                    st.diagnosticadas++;
+                if (est === 'Diagnosticando' && area === 'Mantenimiento') {
+                    if (!st.unidadesIdsDiag.has(u.id)) {
+                        st.unidadesIdsDiag.add(u.id);
+                        st.diagnosticadas++;
+                    }
                     st.msDiagnostico += h.duracionMs || 0;
                 }
-                if (est === 'Reparando') {
+                if (est === 'Reparando' && area === 'Mantenimiento') {
                     st.reparadas++;
                     st.msReparacion += h.duracionMs || 0;
                 }
@@ -5754,31 +5939,52 @@
                         st.ventasMov++;
                     }
                 }
-                if (est === 'Cotizando') {
-                    st.cotizadas++;
+                if (est === 'Cotizando' && area === 'Ventas') {
+                    if (!st.unidadesIdsCot.has(u.id)) {
+                        st.unidadesIdsCot.add(u.id);
+                        st.cotizadas++;
+                    }
                     st.msCotizando = (st.msCotizando || 0) + (h.duracionMs || 0);
-                    if (area === 'Ventas') st.ventasMov++;
+                    st.ventasMov++;
+                    const diasCot = (typeof diasLaboralesDesdeMs === 'function')
+                        ? diasLaboralesDesdeMs(h.duracionMs || 0)
+                        : ((h.duracionMs || 0) / (8.5 * 3600000));
+                    if (diasCot <= 1) st.cotizacionesRapidas = (st.cotizacionesRapidas || 0) + 1;
+                    if (diasCot > 1) st.cotizacionesLentas = (st.cotizacionesLentas || 0) + 1;
                 }
-                if (est === 'Espera de refacciones') {
+                if (est === 'Espera de refacciones' && area === 'Compras') {
                     st.esperaRefacciones++;
                     st.msEsperaRefacciones += h.duracionMs || 0;
-                    if (area === 'Compras') st.comprasMov++;
+                    st.comprasMov++;
                 }
-                if (area === 'Compras' && est !== 'Espera de refacciones') st.comprasMov++;
 
-                // Retrabajo
+                // Retrabajo: solo al diagnosticador / área mant de la unidad
                 if (i > 0 && tiempos[i - 1].estatus === 'Reparando') {
-                    if (est === 'Cotizando' || est === 'Diagnosticando') st.retrabajos++;
+                    if ((est === 'Cotizando' || est === 'Diagnosticando') && area === 'Mantenimiento') st.retrabajos++;
                 }
-                // Liberación Espera → Reparando
+                // Liberación Espera → Reparando → dueño Compras
                 if (est === 'Reparando' && i > 0 && tiempos[i - 1].estatus === 'Espera de refacciones') {
-                    st.liberacionesRef = (st.liberacionesRef || 0) + 1;
-                    const msLib = tiempos[i - 1].duracionMs || 0;
-                    st.msTiempoLiberacion = (st.msTiempoLiberacion || 0) + msLib;
-                    const diasLib = (typeof diasLaboralesDesdeMs === 'function') ? diasLaboralesDesdeMs(msLib) : (msLib / (8.5 * 3600000));
-                    if (diasLib <= 2) st.liberacionesRapidas = (st.liberacionesRapidas || 0) + 1;
-                    if (diasLib >= 4) st.liberacionesLentas = (st.liberacionesLentas || 0) + 1;
-                    if (area === 'Compras' || area === 'Ventas') st.comprasMov++;
+                    let compPersona = (u.responsable_compras || '').trim();
+                    if (!compPersona) {
+                        for (let j = i - 1; j >= 0; j--) {
+                            if ((tiempos[j].area || '') === 'Compras' && tiempos[j].persona) {
+                                compPersona = String(tiempos[j].persona).trim();
+                                break;
+                            }
+                        }
+                    }
+                    const cu = resolverUsuarioRegistrado(compPersona, 'Compras');
+                    if (cu && cu.area === 'Compras') {
+                        const stc = getStats(cu.nombre, 'Compras');
+                        stc.liberacionesRef = (stc.liberacionesRef || 0) + 1;
+                        const msLib = tiempos[i - 1].duracionMs || 0;
+                        stc.msTiempoLiberacion = (stc.msTiempoLiberacion || 0) + msLib;
+                        const diasLib = (typeof diasLaboralesDesdeMs === 'function') ? diasLaboralesDesdeMs(msLib) : (msLib / (8.5 * 3600000));
+                        if (diasLib <= 2) stc.liberacionesRapidas = (stc.liberacionesRapidas || 0) + 1;
+                        if (diasLib >= 4) stc.liberacionesLentas = (stc.liberacionesLentas || 0) + 1;
+                        stc.comprasMov++;
+                        stc.unidades.add(u.id);
+                    }
                 }
             });
         });
@@ -5883,6 +6089,35 @@
         });
 
 
+
+        // ===== Compras: calidad de Espera (ETA) en unidades activas del periodo =====
+        unidades.forEach(u => {
+            if ((u.estatus || '') !== 'Espera de refacciones' && !(u.historial || []).some(h => (h.estatus || '') === 'Espera de refacciones')) return;
+            let comp = (u.responsable_compras || '').trim();
+            if (!comp) {
+                (u.historial || []).slice().reverse().forEach(h => {
+                    if (comp) return;
+                    if ((h.area || '') === 'Compras' && h.persona) comp = String(h.persona).trim();
+                });
+            }
+            const cu = resolverUsuarioRegistrado(comp, 'Compras');
+            if (!cu || cu.area !== 'Compras') return;
+            const st = getStats(cu.nombre, 'Compras');
+            const eta = (u.fecha_estimada_refacciones || '').toString().trim();
+            if (eta) {
+                st.esperaConEta = (st.esperaConEta || 0) + 1;
+                try {
+                    const hoy = fechaHoyISO();
+                    if (eta < hoy && (u.estatus || '') === 'Espera de refacciones') {
+                        st.esperaEtaVencida = (st.esperaEtaVencida || 0) + 1;
+                    }
+                } catch (e) {}
+            } else if ((u.estatus || '') === 'Espera de refacciones') {
+                st.esperaSinEta = (st.esperaSinEta || 0) + 1;
+            }
+            st.unidades.add(u.id);
+        });
+
         // ===== % de trabajo por persona en cada unidad (tiempo propio / tiempo total de la unidad en periodo) =====
         unidades.forEach(u => {
             const hist = Array.isArray(u.historial) ? u.historial : [];
@@ -5966,7 +6201,10 @@
             st.unidadesEquivalentes = Math.round((st.contribucionUnidades || 0) * 10) / 10;
             // % éxito diagnósticos (a la 1ª / finalizadas con su diag)
             const baseDiag = st.finalizadasComoDiagnosticador || st.finalizadasConSuDiag || st.diagnosticadas || 0;
-            st.tasaExitoDiag = baseDiag > 0 ? Math.round(((st.diagCorrecto || 0) / baseDiag) * 100) : null;
+            // % éxito solo confiable con muestra >= 5
+            st.tasaExitoDiag = baseDiag >= 5 ? Math.round(((st.diagCorrecto || 0) / baseDiag) * 100) : null;
+            st.tasaExitoDiagMuestraBaja = baseDiag > 0 && baseDiag < 5;
+            st.baseDiagExito = baseDiag;
             // Eficiencia reparación
             const finRep = st.finalizadasComoReparador || st.finalizadas || 0;
             const base = finRep + st.retrabajos;
@@ -5975,6 +6213,8 @@
             delete st.unidadesIdsFinRep;
             delete st.unidadesIdsFinDiag;
             delete st.unidadesIdsDiag;
+            delete st.unidadesIdsCot;
+            delete st.unidadesIdsRec;
             delete st._entregasSet;
             st.score = calcularScoreDesempeno(st, periodo || 'semana');
             st.scoreLabel = etiquetaScoreDesempeno(st.score);
@@ -5992,88 +6232,108 @@
         const per = periodo || 'semana';
         let score = 0;
 
-        const uCount = st.unidadesCount || 0;
-        const carga = Math.min(40, st.pctCargaEquipo || 0);
+        const carga = Math.min(35, st.pctCargaEquipo || 0);
         const uEq = st.unidadesEquivalentes || 0;
+        const MS_DIA = (typeof MS_DIA_LABORAL !== 'undefined') ? MS_DIA_LABORAL : (8.5 * 3600000);
 
         if (st.area === 'Mantenimiento') {
             let rol = (typeof rolTecnicoUsuario === 'function' ? rolTecnicoUsuario(st.persona) : 'ambos') || 'ambos';
-            const nom = (st.persona || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+            const nom = (st.persona || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
             if (nom.indexOf('sergio holguin') >= 0 || nom.indexOf('marcos sifuentes') >= 0) rol = 'diagnosticador';
-            else if (nom.indexOf('miguel') >= 0 || nom.indexOf('alfredo') === 0 || nom === 'alfredo') {
+            else if (nom.indexOf('miguel') >= 0 || nom.indexOf('alfredo hernandez') >= 0 || nom === 'alfredo') {
                 if (rol !== 'diagnosticador') rol = 'reparador';
             }
             st.rolRanking = rol;
             const finRep = st.finalizadasComoReparador || 0;
             const finDiag = st.finalizadasComoDiagnosticador || st.finalizadasConSuDiag || 0;
-            const metaFin = Math.max(1, escalarMetaSemanal(metas.mantenimiento.finalizadas, per));
-            const metaDiag = Math.max(1, escalarMetaSemanal(metas.mantenimiento.diagnosticos, per));
+            const metaFin = Math.max(1, escalarMetaSemanal((metas.mantenimiento && metas.mantenimiento.finalizadas) || 6, per));
+            const metaDiag = Math.max(1, escalarMetaSemanal((metas.mantenimiento && metas.mantenimiento.diagnosticos) || 8, per));
 
-            score += Math.min(25, Math.round(carga * 0.6));
-            score += Math.min(15, Math.round(Math.min(uEq, 15) * 1.2));
+            score += Math.min(18, Math.round(carga * 0.45));
+            score += Math.min(10, Math.round(Math.min(uEq, 12)));
 
             if (rol === 'diagnosticador') {
-                score += Math.min(20, Math.round(((st.diagnosticadas || 0) / metaDiag) * 20));
-                score += Math.min(15, Math.round(((st.diagnosticosPdf || 0) / metaDiag) * 15));
-                if (st.tasaExitoDiag != null) score += Math.round((st.tasaExitoDiag / 100) * 20);
-                else score += Math.min(10, (st.diagCorrecto || 0) * 2);
-                score += Math.min(8, Math.round((finDiag / metaFin) * 8));
-                if (st.promedioDiagMs > 0 && st.promedioDiagMs < 1.5 * MS_DIA_LABORAL) score += 5;
-                if (st.promedioDiagMs > 3 * MS_DIA_LABORAL) score -= 6;
-                score -= Math.min(15, (st.retrabajos || 0) * 6);
+                // Más peso a PDF y diagnóstico a la 1ª
+                score += Math.min(18, Math.round(((st.diagnosticadas || 0) / metaDiag) * 18));
+                score += Math.min(22, Math.round(((st.diagnosticosPdf || 0) / metaDiag) * 22));
+                if (st.tasaExitoDiag != null) {
+                    score += Math.round((st.tasaExitoDiag / 100) * 25);
+                } else if (st.tasaExitoDiagMuestraBaja) {
+                    score += Math.min(8, (st.diagCorrecto || 0) * 2); // muestra baja: poco peso
+                }
+                score += Math.min(10, Math.round((finDiag / metaFin) * 10));
+                if (st.promedioDiagMs > 0 && st.promedioDiagMs < 1.5 * MS_DIA) score += 5;
+                if (st.promedioDiagMs > 3 * MS_DIA) score -= 6;
+                score -= Math.min(18, (st.retrabajos || 0) * 6);
                 score -= Math.min(12, (st.garantias || 0) * 6);
             } else if (rol === 'reparador') {
-                score += Math.min(30, Math.round((finRep / metaFin) * 30));
-                score += Math.min(12, Math.round(((st.reparadas || 0) / Math.max(1, metaFin * 2)) * 12));
+                score += Math.min(35, Math.round((finRep / metaFin) * 35));
+                score += Math.min(15, Math.round(((st.reparadas || 0) / Math.max(1, metaFin * 2)) * 15));
                 if (st.eficiencia != null) score += Math.round((st.eficiencia / 100) * 15);
-                if (st.promedioRepMs > 0 && st.promedioRepMs < 2 * MS_DIA_LABORAL) score += 8;
-                if (st.promedioRepMs > 4 * MS_DIA_LABORAL) score -= 10;
+                if (st.promedioRepMs > 0 && st.promedioRepMs < 2 * MS_DIA) score += 8;
+                if (st.promedioRepMs > 4 * MS_DIA) score -= 10;
                 score -= Math.min(20, (st.retrabajos || 0) * 8);
                 score -= Math.min(15, (st.garantias || 0) * 8);
             } else {
-                score += Math.min(18, Math.round((finRep / metaFin) * 18));
+                score += Math.min(20, Math.round((finRep / metaFin) * 20));
                 score += Math.min(12, Math.round(((st.diagnosticadas || 0) / metaDiag) * 12));
-                score += Math.min(10, Math.round(((st.diagnosticosPdf || 0) / metaDiag) * 10));
+                score += Math.min(14, Math.round(((st.diagnosticosPdf || 0) / metaDiag) * 14));
                 if (st.tasaExitoDiag != null) score += Math.round((st.tasaExitoDiag / 100) * 12);
-                if (st.eficiencia != null) score += Math.round((st.eficiencia / 100) * 10);
                 score -= Math.min(15, (st.retrabajos || 0) * 6);
                 score -= Math.min(12, (st.garantias || 0) * 6);
             }
         } else if (st.area === 'Ventas') {
-            const metaRec = Math.max(1, escalarMetaSemanal(metas.ventas.recibidas, per));
-            const metaCot = Math.max(1, escalarMetaSemanal(metas.ventas.cotizadas, per));
-            const metaVen = Math.max(1, escalarMetaSemanal((metas.ventas.refacciones || 5) + 3, per));
+            // Menos peso a recibidas; más a cotizadas, velocidad y ventas cerradas
+            const metaRec = Math.max(1, escalarMetaSemanal((metas.ventas && metas.ventas.recibidas) || 8, per));
+            const metaCot = Math.max(1, escalarMetaSemanal((metas.ventas && metas.ventas.cotizadas) || 8, per));
+            const metaVen = Math.max(1, escalarMetaSemanal(((metas.ventas && metas.ventas.refacciones) || 5) + 3, per));
             const vr = st.ventasRealizadas != null ? st.ventasRealizadas : ((st.refaccionesVendidas || 0) + (st.entregasComoAsesor || 0));
-            score += Math.min(20, Math.round(carga * 0.5));
-            score += Math.min(12, Math.round(Math.min(uEq, 12)));
-            score += Math.min(22, Math.round(((st.recibidas || 0) / metaRec) * 22));
-            score += Math.min(22, Math.round(((st.cotizadas || 0) / metaCot) * 22));
-            score += Math.min(22, Math.round((vr / metaVen) * 22));
-            if (st.promedioCotMs > 0 && st.promedioCotMs < 1 * MS_DIA_LABORAL) score += 6;
-            if (st.promedioCotMs > 3 * MS_DIA_LABORAL) score -= 6;
+            score += Math.min(10, Math.round(carga * 0.3));
+            score += Math.min(8, Math.round(Math.min(uEq, 10)));
+            // Recibidas: máximo 12 pts (antes ~22)
+            score += Math.min(12, Math.round(((st.recibidas || 0) / metaRec) * 12));
+            // Cotizadas: hasta 28 pts
+            score += Math.min(28, Math.round(((st.cotizadas || 0) / metaCot) * 28));
+            // Ventas realizadas: hasta 28 pts
+            score += Math.min(28, Math.round((vr / metaVen) * 28));
+            // Velocidad de cotización
+            score += Math.min(10, (st.cotizacionesRapidas || 0) * 2);
+            score -= Math.min(16, (st.cotizacionesLentas || 0) * 4);
+            if (st.promedioCotMs > 0 && st.promedioCotMs <= 1 * MS_DIA) score += 8;
+            if (st.promedioCotMs > 2 * MS_DIA) score -= 8;
+            if (st.promedioCotMs > 3 * MS_DIA) score -= 6;
         } else if (st.area === 'Compras') {
-            const metaLib = Math.max(1, escalarMetaSemanal(metas.compras.liberaciones, per));
+            const metaLib = Math.max(1, escalarMetaSemanal((metas.compras && metas.compras.liberaciones) || 5, per));
             const lib = st.liberacionesRef || 0;
-            score += Math.min(15, Math.round(carga * 0.4));
+            score += Math.min(10, Math.round(carga * 0.25));
+            // Liberaciones (eje principal)
             score += Math.min(35, Math.round((lib / metaLib) * 35));
             if (lib > 0) {
                 const pctRap = ((st.liberacionesRapidas || 0) / lib) * 100;
-                score += Math.round((pctRap / 100) * 20);
-                score -= Math.min(18, (st.liberacionesLentas || 0) * 7);
+                score += Math.round((pctRap / 100) * 18);
+                score -= Math.min(16, (st.liberacionesLentas || 0) * 6);
             }
+            // Disciplina ETA
+            const conEta = st.esperaConEta || 0;
+            const sinEta = st.esperaSinEta || 0;
+            const venc = st.esperaEtaVencida || 0;
+            const totalEta = conEta + sinEta;
+            if (totalEta > 0) {
+                const pctEta = (conEta / totalEta) * 100;
+                score += Math.round((pctEta / 100) * 20);
+            }
+            score -= Math.min(15, sinEta * 5);
+            score -= Math.min(18, venc * 6);
             if (st.promedioLiberacionMs > 0) {
-                const diasProm = diasLaboralesDesdeMs(st.promedioLiberacionMs);
-                if (diasProm <= 2) score += 12;
-                else if (diasProm <= 3) score += 5;
+                const diasProm = typeof diasLaboralesDesdeMs === 'function'
+                    ? diasLaboralesDesdeMs(st.promedioLiberacionMs)
+                    : (st.promedioLiberacionMs / MS_DIA);
+                if (diasProm <= 2) score += 10;
+                else if (diasProm <= 3) score += 4;
                 else if (diasProm >= 5) score -= 12;
-                else if (diasProm >= 4) score -= 6;
             }
-            const msActiva = Math.max(0, (st.msEsperaRefacciones || 0) - (st.msPausaCompras || 0));
-            if (st.esperaRefacciones > 0 && msActiva > st.esperaRefacciones * 2.5 * MS_DIA_LABORAL) score -= 8;
-        } else {
-            score += Math.min(30, uCount * 3);
-            score += Math.min(20, Math.round(carga * 0.5));
         }
+
         return Math.max(0, Math.min(100, Math.round(score)));
     }
 
@@ -6418,9 +6678,9 @@
 
     const METAS_AREA_KEY = 'thermocontrol_metas_area';
     const METAS_AREA_DEFAULT = {
-        mantenimiento: { finalizadas: 4, diagnosticos: 8 },
-        ventas: { recibidas: 8, cotizadas: 10, refacciones: 5 },
-        compras: { liberaciones: 7, movimientos: 12 }
+        mantenimiento: { finalizadas: 6, diagnosticos: 8 },
+        ventas: { recibidas: 8, cotizadas: 8, refacciones: 5 },
+        compras: { liberaciones: 5, movimientos: 10 }
     };
 
     function getMetasPorArea() {
@@ -6501,6 +6761,189 @@
 
     let _ultimaProduccion = [];
     let _ultimoCiclo = null;
+
+
+    let _dashRTTimer = null;
+    let _dashRTAbierto = false;
+
+    function abrirDashboardRendimiento() {
+        if (modoCliente) {
+            alert('Inicia sesión con un área para ver el dashboard.');
+            return;
+        }
+        if (!requerirSesion()) return;
+        _dashRTAbierto = true;
+        renderDashboardRendimiento();
+        document.getElementById('modalDashboardRT').style.display = 'flex';
+        if (_dashRTTimer) clearInterval(_dashRTTimer);
+        _dashRTTimer = setInterval(function() {
+            if (!_dashRTAbierto) return;
+            const m = document.getElementById('modalDashboardRT');
+            if (!m || m.style.display !== 'flex') {
+                cerrarDashboardRendimiento();
+                return;
+            }
+            renderDashboardRendimiento();
+        }, 30000);
+    }
+
+    function cerrarDashboardRendimiento() {
+        _dashRTAbierto = false;
+        if (_dashRTTimer) { clearInterval(_dashRTTimer); _dashRTTimer = null; }
+        cerrarModal('modalDashboardRT');
+    }
+
+    function refrescarDashboardSiAbierto() {
+        if (!_dashRTAbierto) return;
+        const m = document.getElementById('modalDashboardRT');
+        if (m && m.style.display === 'flex') {
+            try { renderDashboardRendimiento(); } catch (e) {}
+        }
+    }
+
+    function renderDashboardRendimiento() {
+        const box = document.getElementById('dashboardRTContenido');
+        if (!box) return;
+        const periodo = (document.getElementById('dashPeriodo') || {}).value || 'semana';
+        const ahora = new Date();
+        const ult = document.getElementById('dashUltimaAct');
+        if (ult) ult.textContent = 'Actualizado ' + ahora.toLocaleTimeString();
+
+        const activas = (unidades || []).filter(u => !u.eliminado);
+        const byEst = {};
+        ['Agenda','Recibida','Diagnosticando','Cotizando','Espera de refacciones','Reparando','Finalizada'].forEach(e => byEst[e] = 0);
+        activas.forEach(u => {
+            const e = u.estatus || '';
+            if (byEst[e] != null) byEst[e]++;
+            else byEst[e] = 1;
+        });
+
+        const wipCritico = (byEst['Cotizando'] || 0) + (byEst['Espera de refacciones'] || 0);
+        const enPiso = (byEst['Diagnosticando'] || 0) + (byEst['Reparando'] || 0);
+        let atrasadas = 0;
+        try {
+            if (typeof contarAtrasadasSlaVisible === 'function') atrasadas = contarAtrasadasSlaVisible().length;
+        } catch (e) {}
+
+        let lista = [];
+        try { lista = calcularProduccionPorUsuario(periodo) || []; } catch (e) { lista = []; }
+        const top = lista.slice(0, 5);
+
+        const porArea = { Ventas: [], Mantenimiento: [], Compras: [] };
+        lista.forEach(st => {
+            if (porArea[st.area]) porArea[st.area].push(st);
+        });
+
+        function avgScore(arr) {
+            if (!arr.length) return 0;
+            const s = arr.reduce((a, b) => a + (b.score || 0), 0);
+            return Math.round(s / arr.length);
+        }
+        function sumField(arr, f) {
+            return arr.reduce((a, b) => a + (b[f] || 0), 0);
+        }
+
+        const colores = typeof getColor === 'function' ? {
+            'Agenda': getColor('Agenda'),
+            'Recibida': getColor('Recibida'),
+            'Diagnosticando': getColor('Diagnosticando'),
+            'Cotizando': getColor('Cotizando'),
+            'Espera de refacciones': getColor('Espera de refacciones'),
+            'Reparando': getColor('Reparando'),
+            'Finalizada': getColor('Finalizada')
+        } : {};
+
+        const wipHtml = Object.keys(byEst).map(est => {
+            const n = byEst[est] || 0;
+            if (!n && est === 'Agenda') return '';
+            const c = colores[est] || '#6c757d';
+            const nom = (typeof nombresEstatus !== 'undefined' && nombresEstatus[est]) ? nombresEstatus[est] : est;
+            return `<span class="dash-wip-chip" style="background:${c};">${nom} ${n}</span>`;
+        }).join('');
+
+        // Alertas de cuello
+        const alertas = [];
+        if (wipCritico >= 12) alertas.push({ t: 'WIP alto en Cotizando + Espera (' + wipCritico + ')', tipo: 'urgente' });
+        else if (wipCritico >= 8) alertas.push({ t: 'WIP en cotización/refacciones: ' + wipCritico, tipo: 'aviso' });
+        if ((byEst['Diagnosticando'] || 0) === 0 && (byEst['Recibida'] || 0) > 0)
+            alertas.push({ t: 'Hay recibidas sin pasar a diagnóstico', tipo: 'aviso' });
+        if ((byEst['Reparando'] || 0) <= 1 && wipCritico >= 6)
+            alertas.push({ t: 'Poco trabajo en piso vs backlog', tipo: 'aviso' });
+        if (atrasadas > 0) alertas.push({ t: atrasadas + ' unidad(es) atrasadas por SLA', tipo: 'urgente' });
+
+        const finSemana = sumField(lista, 'finalizadas');
+        // finalizadas reales de taller en periodo - approximate from lista mant
+        const finRep = sumField(porArea.Mantenimiento, 'finalizadasComoReparador');
+
+        const rankHtml = top.length ? top.map((st, i) => {
+            const sc = typeof etiquetaScoreDesempeno === 'function' ? etiquetaScoreDesempeno(st.score || 0) : { color: '#1a3a5c', texto: '' };
+            const med = i === 0 ? '1' : (i === 1 ? '2' : (i === 2 ? '3' : String(i + 1)));
+            return `<div class="dash-rank-row">
+                <div style="width:28px;height:28px;border-radius:50%;background:${sc.color||'#1a3a5c'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;">${med}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;">${st.persona || '—'}</div>
+                    <div style="font-size:12px;color:#888;">${st.area || ''}${st.rolRanking ? ' · ' + st.rolRanking : ''}</div>
+                </div>
+                <div style="font-weight:800;font-size:18px;color:${sc.color||'#1a3a5c'}">${Math.round(st.score || 0)}</div>
+            </div>`;
+        }).join('') : '<div style="color:#888;padding:12px;">Sin datos de ranking en el periodo</div>';
+
+        const areaHtml = ['Ventas', 'Mantenimiento', 'Compras'].map(area => {
+            const arr = porArea[area] || [];
+            let extra = '';
+            if (area === 'Ventas') {
+                extra = `Rec ${sumField(arr,'recibidas')} · Cot ${sumField(arr,'cotizadas')} · Ventas ${sumField(arr,'ventasRealizadas')}`;
+            } else if (area === 'Mantenimiento') {
+                extra = `Diag ${sumField(arr,'diagnosticadas')} · Fin.rep ${sumField(arr,'finalizadasComoReparador')} · PDF ${sumField(arr,'diagnosticosPdf')}`;
+            } else {
+                extra = `Lib ${sumField(arr,'liberacionesRef')} · Sin ETA ${sumField(arr,'esperaSinEta')} · ETA venc. ${sumField(arr,'esperaEtaVencida')}`;
+            }
+            return `<div class="dash-kpi" style="border-left-color:${area==='Ventas'?'#28a745':(area==='Mantenimiento'?'#17a2b8':'#fd7e14')}">
+                <div class="lbl">${area}</div>
+                <div class="val">${avgScore(arr)}<span style="font-size:13px;font-weight:600;color:#888;"> avg</span></div>
+                <div class="sub">${arr.length} persona(s) · ${extra}</div>
+            </div>`;
+        }).join('');
+
+        box.innerHTML = `
+            <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:#666;">WIP del taller (ahora)</div>
+            <div class="dash-wip-bar">${wipHtml}</div>
+
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi" style="border-left-color:#dc3545;">
+                    <div class="lbl">WIP crítico</div>
+                    <div class="val">${wipCritico}</div>
+                    <div class="sub">Cotizando + Espera</div>
+                </div>
+                <div class="dash-kpi" style="border-left-color:#fd7e14;">
+                    <div class="lbl">En piso</div>
+                    <div class="val">${enPiso}</div>
+                    <div class="sub">Diag + Reparando</div>
+                </div>
+                <div class="dash-kpi" style="border-left-color:#c82333;">
+                    <div class="lbl">Atrasadas SLA</div>
+                    <div class="val">${atrasadas}</div>
+                    <div class="sub">Tu vista / área</div>
+                </div>
+                <div class="dash-kpi" style="border-left-color:#28a745;">
+                    <div class="lbl">Finaliz. (ranking)</div>
+                    <div class="val">${finRep || finSemana}</div>
+                    <div class="sub">Periodo seleccionado</div>
+                </div>
+            </div>
+
+            ${alertas.length ? `<div style="margin-bottom:14px;">
+                ${alertas.map(a => `<div style="padding:8px 12px;border-radius:8px;margin-bottom:6px;font-size:13px;background:${a.tipo==='urgente'?'#f8d7da':'#fff3cd'};color:${a.tipo==='urgente'?'#721c24':'#856404'};">${a.t}</div>`).join('')}
+            </div>` : ''}
+
+            <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:#666;">Score promedio por área</div>
+            <div class="dash-kpi-grid">${areaHtml}</div>
+
+            <div style="margin:12px 0 8px;font-size:13px;font-weight:600;color:#666;">Top ranking (tiempo real)</div>
+            ${rankHtml}
+            <p style="font-size:11px;color:#888;margin-top:10px;">Se actualiza solo con cambios de unidades (live) y cada 30 s mientras el panel esté abierto.</p>
+        `;
+    }
 
     function abrirModalProduccion() {
         if (modoCliente) {
