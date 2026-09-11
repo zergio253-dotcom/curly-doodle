@@ -1310,7 +1310,8 @@
         <h1>❄️ Thermo King Chihuahua <small>Base de Datos en la Nube</small></h1>
         <div class="header-user-corner">
             <span id="sesionInfo"></span>
-            <button class="btn-header btn-notif" id="btnNotif" onclick="togglePanelNotif()" title="Notificaciones">🔔 <span id="badgeNotif" class="badge-notif" style="display:none;">0</span></button>
+            <button class="btn-header btn-notif" id="btnNotif" onclick="togglePanelNotif()" title="Notificaciones del taller">🔔 <span id="badgeNotif" class="badge-notif" style="display:none;">0</span></button>
+            <button class="btn-header btn-notif" id="btnMsgPanel" onclick="togglePanelMensajes()" title="Mensajes" style="display:none;">💬 <span id="badgeMsg" class="badge-notif" style="display:none;">0</span></button>
             <button type="button" class="btn-header" id="btnAtrasadasSla" onclick="mostrarListaAtrasadasSla()" title="Unidades atrasadas por SLA" style="display:none; background:#c82333; color:#fff; font-weight:700; border-color:#a71d2a;">🔥 <span id="badgeAtrasadasSla">0</span> atrasadas</button>
             <div class="menu-desplegable" id="menuPrincipal">
                 <button class="btn-header" id="btnMenuPrincipal" onclick="toggleMenuPrincipal(event)" title="Más opciones">☰ Menú <span id="badgeMenuAtrasadas" class="badge-notif" style="display:none; background:#dc3545;">0</span></button>
@@ -1352,6 +1353,21 @@
 <div class="stats" id="statsContainer"></div>
 
 <!-- ===== PANEL NOTIFICACIONES ===== -->
+
+<div class="overlay-notif" id="overlayMensajes" onclick="cerrarPanelMensajes()"></div>
+<div class="panel-notif" id="panelMensajes">
+    <h3>
+        <span>💬 Mensajes</span>
+        <button class="btn-accion" onclick="cerrarPanelMensajes()">✕</button>
+    </h3>
+    <p style="font-size:12px;color:#888;margin-bottom:10px;">Solo conversaciones y menciones. Las alertas del taller están en la campana 🔔.</p>
+    <div id="listaMensajesPanel"></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-accion" onclick="cerrarPanelMensajes(); abrirModalMensaje();">Abrir chat</button>
+        <button class="btn-accion" style="color:#dc3545;" onclick="event.stopPropagation(); limpiarMensajesPanel();">Limpiar lista</button>
+    </div>
+</div>
+
 <div class="overlay-notif" id="overlayNotif" onclick="cerrarPanelNotif()"></div>
 <div class="panel-notif" id="panelNotif">
     <h3>
@@ -3121,6 +3137,7 @@
             show('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
             show('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
             show('btnMensaje', sesion.area !== 'Cliente');
+            const bmp = document.getElementById('btnMsgPanel'); if (bmp) bmp.style.display = sesion.area !== 'Cliente' ? '' : 'none';
         try { actualizarUIModoBasicoKanban(); } catch (e) {}
         try { cargarPendientesTareas(); } catch (e) {}
             document.querySelectorAll('.header-actions .btn-header').forEach(btn => {
@@ -3189,6 +3206,8 @@
         document.getElementById('loginOverlay').classList.remove('oculto');
         document.getElementById('loginClave').value = '';
         document.getElementById('sesionInfo').style.display = 'none';
+        const bmp = document.getElementById('btnMsgPanel');
+        if (bmp) bmp.style.display = 'none';
         try { detenerMonitoreoSegundoPlano(); } catch (e) {}
         try { cerrarPanelMedicionUsuario(); } catch (e) {}
         document.getElementById('btnCerrarSesion').style.display = 'none';
@@ -11744,6 +11763,7 @@
     }
 
     function togglePanelNotif() {
+        try { cerrarPanelMensajes(); } catch (e) {}
         const panel = document.getElementById('panelNotif');
         const overlay = document.getElementById('overlayNotif');
         const abierto = panel.classList.contains('abierto');
@@ -13296,9 +13316,16 @@
     }, 45000);
 
     function actualizarNotificaciones() {
-        const notifs = generarNotificaciones();
+        const notifsAll = generarNotificaciones();
+        // Separar: mensajes vs alertas del taller
+        const notifsMsg = notifsAll.filter(n => n.mensajeId);
+        const notifsTaller = notifsAll.filter(n => !n.mensajeId);
+
         const badge = document.getElementById('badgeNotif');
         const lista = document.getElementById('listaNotificaciones');
+        const badgeMsg = document.getElementById('badgeMsg');
+        const listaMsg = document.getElementById('listaMensajesPanel');
+        const btnMsgPanel = document.getElementById('btnMsgPanel');
         try { actualizarBadgeAtrasadas(); } catch (e) {}
 
         // Push del navegador para mensajes nuevos no leídos
@@ -13309,56 +13336,111 @@
             const nuevos = (mensajes || []).filter(m => !m.leido && m.id != null && ya.indexOf(m.id) < 0);
             nuevos.slice(0, 5).forEach(m => {
                 const cuerpo = String(m.texto || '').replace(/^§CHAT§[^\n]*\n/, '').replace(/^§UNIDAD§\d+§\n?/, '').substring(0, 100);
-                mostrarNotifNavegador('💬 ' + (m.de_persona || 'Mensaje'), cuerpo || 'Nuevo mensaje');
+                const unidadId = typeof extraerUnidadIdDeMensaje === 'function' ? extraerUnidadIdDeMensaje(m) : null;
+                mostrarNotifNavegador('💬 ' + (m.de_persona || 'Mensaje'), cuerpo || 'Nuevo mensaje', {
+                    mensajeId: m.id,
+                    unidadId: unidadId,
+                    openChat: !unidadId,
+                    tag: 'msg-' + m.id
+                });
                 ya.push(m.id);
             });
             if (ya.length > 80) ya = ya.slice(-80);
             sessionStorage.setItem(key, JSON.stringify(ya));
         } catch (e) {}
 
-        if (!badge || !lista) return;
+        // Badge campana = solo taller (sin mensajes)
+        if (badge) {
+            const count = notifsTaller.length;
+            if (count > 0) {
+                badge.style.display = 'inline';
+                badge.textContent = count > 99 ? '99+' : String(count);
+            } else {
+                badge.style.display = 'none';
+            }
+        }
 
+        // Badge mensajes
         const noLeidos = (mensajes || []).filter(m => !m.leido).length;
-        const count = notifs.length;
-        if (count > 0) {
-            badge.style.display = 'inline';
-            badge.textContent = (noLeidos > 0 ? noLeidos + '·' : '') + (count > 99 ? '99+' : String(count));
-        } else {
-            badge.style.display = 'none';
+        const countMsg = Math.max(notifsMsg.length, noLeidos);
+        if (badgeMsg) {
+            if (countMsg > 0) {
+                badgeMsg.style.display = 'inline';
+                badgeMsg.textContent = countMsg > 99 ? '99+' : String(countMsg);
+            } else {
+                badgeMsg.style.display = 'none';
+            }
+        }
+        if (btnMsgPanel && sesion && sesion.area !== 'Cliente' && !modoCliente) {
+            btnMsgPanel.style.display = '';
         }
 
-        if (notifs.length === 0) {
-            lista.innerHTML = '<div class="notif-vacio">No hay alertas por ahora ✅</div>';
-            return;
-        }
-
-        const hayMensajes = (mensajes || []).length > 0;
-        const hayLeidos = (mensajes || []).some(m => m.leido);
-        const barraMsg = `
-            <div style="margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap;">
-                <button class="btn-accion" style="color:#dc3545;" onclick="event.stopPropagation(); limpiarTodasNotificaciones()">🗑️ Limpiar todas las notificaciones</button>
-                ${hayLeidos ? `<button class="btn-accion" onclick="event.stopPropagation(); borrarMensajesLeidos()">🗑️ Borrar mensajes leídos</button>` : ''}
-                ${hayMensajes ? `<button class="btn-accion" style="color:#dc3545;" onclick="event.stopPropagation(); borrarTodosMensajes()">🗑️ Borrar todos los mensajes</button>` : ''}
-            </div>`;
-
-        lista.innerHTML = barraMsg + notifs.map(n => {
-            if (n.mensajeId) {
-                return `
-                <div class="notif-item ${n.tipo}" style="position:relative;">
-                    <div onclick="event.stopPropagation(); abrirMensajeNotif(${n.mensajeId})" style="cursor:pointer; padding-right:28px;">
+        // Panel taller
+        if (lista) {
+            if (notifsTaller.length === 0) {
+                lista.innerHTML = '<div class="notif-vacio">No hay alertas del taller ✅</div>';
+            } else {
+                lista.innerHTML = `
+                    <div style="margin-bottom:10px;">
+                        <button class="btn-accion" style="color:#dc3545;" onclick="event.stopPropagation(); limpiarTodasNotificaciones()">Limpiar alertas</button>
+                    </div>` + notifsTaller.map(n => `
+                    <div class="notif-item ${n.tipo}" onclick="abrirDesdeNotif(${n.unidadId || 'null'})">
                         <div class="titulo">${n.titulo}</div>
                         <div class="detalle">${n.detalle || ''}</div>
-                    </div>
-                    <button class="btn-accion" title="Borrar mensaje" style="position:absolute; top:8px; right:8px; color:#dc3545;"
-                        onclick="event.stopPropagation(); borrarMensaje(${n.mensajeId})">✕</button>
-                </div>`;
+                    </div>`).join('');
             }
-            return `
-            <div class="notif-item ${n.tipo}" onclick="abrirDesdeNotif(${n.unidadId || 'null'})">
-                <div class="titulo">${n.titulo}</div>
-                <div class="detalle">${n.detalle || ''}</div>
-            </div>`;
-        }).join('');
+        }
+
+        // Panel mensajes
+        if (listaMsg) {
+            if (notifsMsg.length === 0) {
+                listaMsg.innerHTML = '<div class="notif-vacio">No hay mensajes nuevos ✅</div>';
+            } else {
+                const hayLeidos = (mensajes || []).some(m => m.leido);
+                listaMsg.innerHTML = `
+                    <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                        ${hayLeidos ? `<button class="btn-accion" onclick="event.stopPropagation(); borrarMensajesLeidos()">Borrar leídos</button>` : ''}
+                        <button class="btn-accion" style="color:#dc3545;" onclick="event.stopPropagation(); borrarTodosMensajes()">Borrar todos</button>
+                    </div>` + notifsMsg.map(n => `
+                    <div class="notif-item ${n.tipo}" style="position:relative;">
+                        <div onclick="event.stopPropagation(); cerrarPanelMensajes(); abrirMensajeNotif(${n.mensajeId})" style="cursor:pointer;padding-right:28px;">
+                            <div class="titulo">${n.titulo}</div>
+                            <div class="detalle">${n.detalle || ''}</div>
+                        </div>
+                        <button class="btn-accion" title="Borrar" style="position:absolute;top:8px;right:8px;color:#dc3545;"
+                            onclick="event.stopPropagation(); borrarMensaje(${n.mensajeId})">✕</button>
+                    </div>`).join('');
+            }
+        }
+    }
+
+    function togglePanelMensajes() {
+        const panel = document.getElementById('panelMensajes');
+        const overlay = document.getElementById('overlayMensajes');
+        if (!panel) return;
+        const abrir = !panel.classList.contains('abierto');
+        // cerrar el de notificaciones si está abierto
+        try { cerrarPanelNotif(); } catch (e) {}
+        if (abrir) {
+            panel.classList.add('abierto');
+            if (overlay) overlay.classList.add('abierto');
+            try { actualizarNotificaciones(); } catch (e) {}
+        } else {
+            cerrarPanelMensajes();
+        }
+    }
+
+    function cerrarPanelMensajes() {
+        const panel = document.getElementById('panelMensajes');
+        const overlay = document.getElementById('overlayMensajes');
+        if (panel) panel.classList.remove('abierto');
+        if (overlay) overlay.classList.remove('abierto');
+    }
+
+    function limpiarMensajesPanel() {
+        // Solo limpia visualmente marcando leídos no borra
+        (mensajes || []).forEach(m => { m.leido = true; });
+        try { actualizarNotificaciones(); } catch (e) {}
     }
 
     async function borrarTodosMensajes() {
