@@ -2010,7 +2010,7 @@
     let listaUsuarios = [
         { id: 'u_luis_n', nombre: 'Luis Solís', area: 'Gerencia', taller: 'Noroeste', nivel: '', permiso_total: true, rol_tecnico: '' },
         { id: 'u_marcos', nombre: 'Marcos Sifuentes', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Máster', permiso_total: false, rol_tecnico: 'diagnosticador' },
-        { id: 'u_sergio', nombre: 'Sergio Holguín', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Profesional', permiso_total: false, rol_tecnico: 'diagnosticador' },
+        { id: 'u_sergio', nombre: 'Sergio Holguín', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Profesional', permiso_total: true, rol_tecnico: 'diagnosticador' },
         { id: 'u_miguel', nombre: 'Miguel Arredondo', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Profesional', permiso_total: false, rol_tecnico: 'reparador' },
         { id: 'u_alfredo_m', nombre: 'Alfredo', area: 'Mantenimiento', taller: 'Noroeste', nivel: 'Aprendiz', permiso_total: false, rol_tecnico: 'reparador' },
         { id: 'u_romina_n', nombre: 'Romina', area: 'Ventas', taller: 'Noroeste', nivel: '', permiso_total: false, rol_tecnico: '' },
@@ -2051,11 +2051,30 @@
     }
 
     // Gerencia y usuarios con permiso_total
+
+    function asegurarPrivilegiosEspeciales() {
+        (listaUsuarios || []).forEach(u => {
+            const n = String(u.nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (n.indexOf('sergio holguin') >= 0) u.permiso_total = true;
+            if (n.indexOf('alfredo hernandez') >= 0) u.permiso_total = true;
+            if (n === 'abel') u.permiso_total = true;
+        });
+    }
+
     function tienePermisoTotal() {
         if (!sesion) return false;
+        try { asegurarPrivilegiosEspeciales(); } catch (e) {}
         if (sesion.area === 'Gerencia') return true;
-        const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+        const norm = (s) => String(s || '').toLowerCase()
+            .normalize('NFD')
+            .replace(/[̀-ͯ]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
         const nomSes = norm(sesion.persona);
+        // Superusuarios por nombre (sin depender solo de listaUsuarios en localStorage viejo)
+        if (nomSes === 'abel' || nomSes.indexOf('abel ') === 0) return true;
+        if (nomSes.indexOf('sergio holguin') >= 0) return true;
+        if (nomSes.indexOf('alfredo hernandez') >= 0) return true;
         const u = (listaUsuarios || []).find(x => {
             if (!x.permiso_total) return false;
             const mismoNombre = x.nombre === sesion.persona || norm(x.nombre) === nomSes;
@@ -2064,8 +2083,6 @@
             return mismoNombre && mismoTaller;
         });
         if (u) return true;
-        if (sesion.persona === 'Abel' || nomSes === 'abel') return true;
-        if (nomSes.indexOf('alfredo hernandez') >= 0) return true;
         return false;
     }
 
@@ -2074,11 +2091,17 @@
     function puedeModificarUnidad(u) {
         if (!sesion || !u || modoCliente) return false;
         if (tienePermisoTotal()) return true;
+        // Mantenimiento puede editar (asignar diag/reparador) aunque la unidad esté en Cotizando o Espera
+        if (sesion.area === 'Mantenimiento') {
+            const est = u.estatus || '';
+            if (['Diagnosticando', 'Reparando', 'Cotizando', 'Espera de refacciones'].includes(est)) {
+                if (!esTrabajoKuzzy(u) && !esTrabajoVentasRefacciones(u)) return true;
+            }
+        }
         const permisos = typeof permisosCambio !== 'undefined' ? permisosCambio[sesion.area] : null;
         if (!permisos) return false;
         const destinosBase = permisos[u.estatus];
         if (!Array.isArray(destinosBase) || !destinosBase.length) return false;
-        // Respeta flujo Taller vs Kuzzy
         if (typeof filtrarDestinosPorUbicacion === 'function') {
             return filtrarDestinosPorUbicacion(u, destinosBase, sesion.area).length > 0;
         }
@@ -2407,8 +2430,9 @@
         const puedeDiag = (area === 'Mantenimiento');
         if (boxDiag) boxDiag.style.display = (est === 'Diagnosticando' && puedeDiag) ? 'block' : 'none';
 
-        const puedeRep = (area === 'Mantenimiento');
-        if (boxRep) boxRep.style.display = (est === 'Reparando' && puedeRep) ? 'block' : 'none';
+        const puedeRep = (area === 'Mantenimiento' || tienePermisoTotal());
+        const estRepOk = ['Diagnosticando', 'Reparando', 'Cotizando', 'Espera de refacciones'].includes(est);
+        if (boxRep) boxRep.style.display = (estRepOk && puedeRep) ? 'block' : 'none';
 
         if (boxDiagRep) {
             const show = (boxDiag && boxDiag.style.display !== 'none') || (boxRep && boxRep.style.display !== 'none');
@@ -2445,16 +2469,17 @@
                 diagActual ? 'Asignado por Mantenimiento. No se puede modificar desde tu área.' : 'Solo Mantenimiento puede designarlo.');
         }
 
-        // Reparador — SOLO Mantenimiento
+        // Reparador — SOLO Mantenimiento (también en Cotizando / Espera, para asignarlo antes de reparar)
         const repActual = (u.reparador || '').trim();
-        const puedeRep = (area === 'Mantenimiento' && (est === 'Diagnosticando' || est === 'Reparando'));
+        const estatusRepOk = ['Diagnosticando', 'Reparando', 'Cotizando', 'Espera de refacciones'].includes(est);
+        const puedeRep = (area === 'Mantenimiento' || full) && estatusRepOk && !esTrabajoKuzzy(u) && !esTrabajoVentasRefacciones(u);
         if (puedeRep) {
             llenarSelectPersonas('reparadorEditar', 'Mantenimiento', repActual, 'reparador');
             setCampoPersonaEditable('reparadorEditar', true, '', 'hintRepEditar',
-                'Solo Mantenimiento puede designar al reparador.');
+                'Mantenimiento puede asignar o cambiar el reparador.');
         } else {
             setCampoPersonaEditable('reparadorEditar', false, repActual, 'hintRepEditar',
-                repActual ? 'Asignado por Mantenimiento. No se puede modificar desde tu área.' : 'Solo Mantenimiento puede designarlo.');
+                repActual ? 'Asignado por Mantenimiento.' : 'Solo Mantenimiento puede designarlo (en Diag., Cotizando, Espera o Reparando).');
         }
     }
 
@@ -2940,6 +2965,7 @@
             listaUsuarios.forEach(u => {
                 const n = String(u.nombre || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
                 if (n.indexOf('alfredo hernandez') >= 0) u.permiso_total = true;
+                if (n.indexOf('sergio holguin') >= 0) u.permiso_total = true;
             });
         }
         rebuildPersonasDesdeUsuarios();
@@ -8462,13 +8488,16 @@
         if (area === 'Gerencia' || (sesion && (sesion.persona === 'Abel' || tienePermisoTotal()))) {
             opcionesPermitidas = Object.keys(nombresEstatus);
             const esAlfredo = sesion && /alfredo\s*hern[aá]ndez/i.test(sesion.persona || '');
+            const esSergio = sesion && /sergio\s*holgu/i.test(sesion.persona || '');
             ayuda.textContent = sesion && sesion.persona === 'Abel'
                 ? '🔧 Abel puede cambiar a cualquier estatus (encargado Juárez).'
-                : (esAlfredo
-                    ? '🔧 Alfredo Hernández puede cambiar cualquier unidad a cualquier estatus.'
-                    : (tienePermisoTotal() && area !== 'Gerencia'
-                        ? '🔧 Permiso total: puedes cambiar a cualquier estatus.'
-                        : '👔 Gerencia puede cambiar a cualquier estatus.'));
+                : (esSergio
+                    ? '🔧 Sergio Holguín: privilegio total — cualquier unidad y estatus.'
+                    : (esAlfredo
+                        ? '🔧 Alfredo Hernández puede cambiar cualquier unidad a cualquier estatus.'
+                        : (tienePermisoTotal() && area !== 'Gerencia'
+                            ? '🔧 Permiso total: puedes cambiar a cualquier estatus.'
+                            : '👔 Gerencia puede cambiar a cualquier estatus.')));
         } else {
             const permisosArea = permisosCambio[area];
             if (permisosArea && estatusActual && permisosArea[estatusActual]) {
@@ -8480,8 +8509,10 @@
             }
         }
 
-        // Filtrar por Taller / Kuzzy / Rescate
-        opcionesPermitidas = filtrarDestinosPorUbicacion(u, opcionesPermitidas, area);
+        // Filtrar por Taller / Kuzzy / Rescate (superusuario no se restringe)
+        if (!tienePermisoTotal() && area !== 'Gerencia') {
+            opcionesPermitidas = filtrarDestinosPorUbicacion(u, opcionesPermitidas, area);
+        }
         if (esTrabajoKuzzy(u)) {
             ayuda.textContent = '🚚 Kuzzy: Recibida → Cotizando → Finalizada. Destinos: ' +
                 (opcionesPermitidas.join(', ') || 'ninguno');
@@ -8597,7 +8628,8 @@
         const u = unidades.find(item => item.id === id);
         if (!u) return;
 
-        if (area !== 'Gerencia' && !(sesion && sesion.persona === 'Abel')) {
+        // Superusuario / Gerencia / Abel / Sergio / Alfredo: sin restricciones de transición
+        if (!tienePermisoTotal() && area !== 'Gerencia' && !(sesion && sesion.persona === 'Abel')) {
             const permisosArea = permisosCambio[area];
             const permitidos = permisosArea && permisosArea[u.estatus] ? permisosArea[u.estatus] : [];
             if (!permitidos.includes(nuevoEstatus)) {
@@ -8945,8 +8977,12 @@
             }
             const falt = faltantesBase.filter(r => !(u[r.campo] || '').toString().trim()).map(r => r.nombre);
             if (falt.length) {
-                alert('⚠️ Antes de finalizar completa en Editar:\n\n• ' + falt.join('\n• '));
-                return;
+                if (tienePermisoTotal()) {
+                    if (!confirm('⚠️ Superusuario: faltan datos:\n\n• ' + falt.join('\n• ') + '\n\n¿Finalizar de todos modos?')) return;
+                } else {
+                    alert('⚠️ Antes de finalizar completa en Editar:\n\n• ' + falt.join('\n• '));
+                    return;
+                }
             }
             if (fuera) {
                 const tipo = esTrabajoKuzzy(u) ? 'Kuzzy' : 'Rescate fuera de taller';
@@ -8971,6 +9007,31 @@
                 }
                 return;
             }
+            if (tienePermisoTotal()) {
+                const saltar = confirm('🔧 Superusuario: ¿usar checklist de entrega o finalizar directo?\n\nAceptar = checklist\nCancelar = finalizar directo (sin checklist)');
+                if (!saltar) {
+                    const historialS = (u.historial || []).slice();
+                    historialS.push({
+                        fecha: fechaHistorialAhora(),
+                        estatus: 'Finalizada',
+                        area: area,
+                        persona: persona,
+                        comentario: (comentario || ('Cambio de ' + estatusAnterior + ' a Finalizada')) + ' · Superusuario (sin checklist)'
+                    });
+                    const resS = await actualizarUnidad(u.id, {
+                        estatus: 'Finalizada',
+                        historial: historialS,
+                        fecha_salida: u.fecha_salida || fechaHoyISO()
+                    });
+                    if (resS.success) {
+                        cerrarModal('modalCambio');
+                        cerrarModal('modalDetalle');
+                        alert('✅ Unidad finalizada (superusuario).');
+                        actualizarNotificaciones();
+                    }
+                    return;
+                }
+            }
             abrirChecklistFinalizar({
                 area: area,
                 persona: persona,
@@ -8980,8 +9041,12 @@
         } else if (nuevoEstatus !== 'Agenda') {
             const faltantes = validarCamposParaEstatus(u, nuevoEstatus);
             if (faltantes.length > 0) {
-                alert('⚠️ Flujo de trabajo: no se puede pasar a "' + nuevoEstatus + '".\n\nFaltan:\n• ' + faltantes.join('\n• ') + '\n\nComplétalos en Editar o en Diagnóstico.');
-                return;
+                if (tienePermisoTotal()) {
+                    if (!confirm('⚠️ Superusuario: faltan para "' + nuevoEstatus + '":\n\n• ' + faltantes.join('\n• ') + '\n\n¿Continuar de todos modos?')) return;
+                } else {
+                    alert('⚠️ Flujo de trabajo: no se puede pasar a "' + nuevoEstatus + '".\n\nFaltan:\n• ' + faltantes.join('\n• ') + '\n\nComplétalos en Editar o en Diagnóstico.');
+                    return;
+                }
             }
         }
 
