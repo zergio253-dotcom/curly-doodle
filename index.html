@@ -103,6 +103,73 @@
             margin-left: auto;
             flex-shrink: 0;
         }
+        
+        .panel-medicion-usuario {
+            display: none;
+            position: fixed;
+            top: 70px;
+            right: 12px;
+            z-index: 9500;
+            width: min(340px, calc(100vw - 24px));
+            background: var(--modal-bg, #fff);
+            color: var(--text, #222);
+            border-radius: 14px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            border: 1px solid var(--border, #ddd);
+            padding: 14px 16px 16px;
+            max-height: min(70vh, 520px);
+            overflow-y: auto;
+        }
+        .panel-medicion-usuario.open { display: block; }
+        .panel-medicion-usuario .pm-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .panel-medicion-usuario .pm-head strong { font-size: 15px; }
+        .panel-medicion-usuario .pm-close {
+            border: none;
+            background: transparent;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            color: #888;
+            padding: 0 4px;
+        }
+        .panel-medicion-usuario .pm-meta { font-size: 12px; color: #888; margin-bottom: 10px; }
+        .panel-medicion-usuario .pm-score {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #1a3a5c, #0d6efd);
+            color: #fff;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+        }
+        .panel-medicion-usuario .pm-score .num { font-size: 28px; font-weight: 800; }
+        .panel-medicion-usuario .pm-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .panel-medicion-usuario .pm-metric {
+            background: var(--detalle-item, #f8f9fa);
+            border-radius: 10px;
+            padding: 8px 10px;
+        }
+        .panel-medicion-usuario .pm-metric .k { font-size: 11px; color: #888; }
+        .panel-medicion-usuario .pm-metric .v { font-size: 16px; font-weight: 700; margin-top: 2px; }
+        body.dark .panel-medicion-usuario { background: #1e1e1e; border-color: #333; }
+        body.dark .panel-medicion-usuario .pm-meta,
+        body.dark .panel-medicion-usuario .pm-metric .k { color: #aaa; }
+        body.dark .panel-medicion-usuario .pm-metric { background: #2a2a2a; }
+        body.dark .panel-medicion-usuario .pm-close { color: #ccc; }
+        #sesionInfo { cursor: pointer; }
+        #sesionInfo:hover { filter: brightness(1.1); }
+
         .header-user-corner #sesionInfo {
             display: none;
             color: white;
@@ -378,6 +445,57 @@
         }
         body.dark .kanban-col { background: #1a1a1a; }
         body.dark .card-compact { background: #242424; color: #eee; border-color: #333; }
+        /* Contraste modo oscuro: textos que antes quedaban grises/azules oscuros */
+        body.dark .stat-item { color: #e8e8e8; background: #1e1e1e; border-color: #333; }
+        body.dark .stat-item span, body.dark .stat-item strong { color: #eee; }
+        body.dark .card-compact .cliente,
+        body.dark .card-compact .meta,
+        body.dark .card-compact small,
+        body.dark .card-compact .depto { color: #c5c5c5 !important; }
+        body.dark .card-compact .sla-badge,
+        body.dark .card-compact .badge-tiempo { color: #eee; }
+        body.dark .modal-content { color: #e8e8e8; }
+        body.dark .modal-content h3,
+        body.dark .modal-content h4,
+        body.dark .modal-content label,
+        body.dark .form-group label { color: #f0f0f0 !important; }
+        body.dark .modal-content p,
+        body.dark .modal-content small,
+        body.dark .modal-content .depto { color: #c8c8c8 !important; }
+        body.dark .detalle-item .label { color: #9ec9f5 !important; }
+        body.dark .detalle-item .valor { color: #f0f0f0 !important; }
+        body.dark .notif-item,
+        body.dark .notif-item .titulo { color: #eee; }
+        body.dark .notif-item .detalle { color: #bbb; }
+        body.dark .persona-item label { color: #e0e0e0; }
+        body.dark .menu-desplegable .menu-item { color: #e8e8e8; }
+        body.dark #listaNotificaciones,
+        body.dark .notif-vacio { color: #ccc; }
+        body.dark .btn-accion { color: #d0e8ff; }
+        body.dark input::placeholder,
+        body.dark textarea::placeholder { color: #888; }
+        /* Inline styles frecuentes ilegibles en oscuro */
+        body.dark [style*="color:#666"],
+        body.dark [style*="color: #666"],
+        body.dark [style*="color:#555"],
+        body.dark [style*="color: #555"],
+        body.dark [style*="color:#888"],
+        body.dark [style*="color: #888"],
+        body.dark [style*="color:#1a3a5c"],
+        body.dark [style*="color: #1a3a5c"],
+        body.dark [style*="color:#333"],
+        body.dark [style*="color: #333"] {
+            color: #c8c8c8 !important;
+        }
+        body.dark [style*="background:#f8f9fa"],
+        body.dark [style*="background: #f8f9fa"],
+        body.dark [style*="background:#e7f1ff"],
+        body.dark [style*="background: #e7f1ff"],
+        body.dark [style*="background:#e8f7fa"],
+        body.dark [style*="background: #e8f7fa"] {
+            background: #2a2a2a !important;
+            color: #e0e0e0 !important;
+        }
 
         .card-compact .cliente { color: var(--text2); font-size: 12px; }
         .card-compact .fechas { font-size: 10px; color: var(--text3); margin-top: 2px; }
@@ -661,7 +779,74 @@
                 max-width: 58%;
                 gap: 6px;
             }
-            .header-user-corner #sesionInfo {
+            
+        .panel-medicion-usuario {
+            display: none;
+            position: fixed;
+            top: 70px;
+            right: 12px;
+            z-index: 9500;
+            width: min(340px, calc(100vw - 24px));
+            background: var(--modal-bg, #fff);
+            color: var(--text, #222);
+            border-radius: 14px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            border: 1px solid var(--border, #ddd);
+            padding: 14px 16px 16px;
+            max-height: min(70vh, 520px);
+            overflow-y: auto;
+        }
+        .panel-medicion-usuario.open { display: block; }
+        .panel-medicion-usuario .pm-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .panel-medicion-usuario .pm-head strong { font-size: 15px; }
+        .panel-medicion-usuario .pm-close {
+            border: none;
+            background: transparent;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            color: #888;
+            padding: 0 4px;
+        }
+        .panel-medicion-usuario .pm-meta { font-size: 12px; color: #888; margin-bottom: 10px; }
+        .panel-medicion-usuario .pm-score {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #1a3a5c, #0d6efd);
+            color: #fff;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+        }
+        .panel-medicion-usuario .pm-score .num { font-size: 28px; font-weight: 800; }
+        .panel-medicion-usuario .pm-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .panel-medicion-usuario .pm-metric {
+            background: var(--detalle-item, #f8f9fa);
+            border-radius: 10px;
+            padding: 8px 10px;
+        }
+        .panel-medicion-usuario .pm-metric .k { font-size: 11px; color: #888; }
+        .panel-medicion-usuario .pm-metric .v { font-size: 16px; font-weight: 700; margin-top: 2px; }
+        body.dark .panel-medicion-usuario { background: #1e1e1e; border-color: #333; }
+        body.dark .panel-medicion-usuario .pm-meta,
+        body.dark .panel-medicion-usuario .pm-metric .k { color: #aaa; }
+        body.dark .panel-medicion-usuario .pm-metric { background: #2a2a2a; }
+        body.dark .panel-medicion-usuario .pm-close { color: #ccc; }
+        #sesionInfo { cursor: pointer; }
+        #sesionInfo:hover { filter: brightness(1.1); }
+
+        .header-user-corner #sesionInfo {
                 max-width: 100%;
                 font-size: 11px;
                 padding: 5px 8px;
@@ -880,6 +1065,30 @@
     </div>
 </div>
 
+
+<!-- Panel mediciones usuario (clic en nombre) -->
+<div id="panelMedicionUsuario" class="panel-medicion-usuario" onclick="event.stopPropagation()">
+    <div class="pm-head">
+        <div>
+            <strong id="pmNombre">—</strong>
+            <div class="pm-meta" id="pmMeta"></div>
+        </div>
+        <button type="button" class="pm-close" onclick="cerrarPanelMedicionUsuario()" title="Cerrar">×</button>
+    </div>
+    <div class="pm-score" id="pmScoreBox">
+        <div class="num" id="pmScore">0</div>
+        <div>
+            <div style="font-size:12px;opacity:.9;">Score · esta semana</div>
+            <div style="font-size:12px;" id="pmRank">—</div>
+        </div>
+    </div>
+    <div class="pm-grid" id="pmMetricas"></div>
+    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="button" class="btn-accion" onclick="cerrarPanelMedicionUsuario(); try{abrirModalProduccion()}catch(e){}">📈 Ver producción</button>
+        <button type="button" class="btn-accion" onclick="cerrarPanelMedicionUsuario()">Cerrar</button>
+    </div>
+</div>
+
 <!-- ===== HEADER ===== -->
 <div class="header">
     <div class="header-top">
@@ -892,6 +1101,7 @@
                 <button class="btn-header" id="btnMenuPrincipal" onclick="toggleMenuPrincipal(event)" title="Más opciones">☰ Menú <span id="badgeMenuAtrasadas" class="badge-notif" style="display:none; background:#dc3545;">0</span></button>
                 <div class="menu-panel" id="menuPrincipalPanel">
                     <button type="button" class="menu-item" id="btnAtrasadasMenu" onclick="mostrarListaAtrasadasSla(); cerrarMenuPrincipal();" style="display:none; color:#c82333; font-weight:700;">🔥 Atrasadas SLA</button>
+                    <button type="button" class="menu-item" id="btnModoBasicoMenu" onclick="toggleModoBasicoKanban(); cerrarMenuPrincipal();">Basico Kanban</button>
                     <button type="button" class="menu-item" id="btnVistaLista" onclick="cambiarVista('lista'); cerrarMenuPrincipal();">📋 Lista</button>
                     <button type="button" class="menu-item" id="btnVistaHistorial" onclick="cambiarVista('historial'); cerrarMenuPrincipal();">📜 Historial</button>
                     <button type="button" class="menu-item" id="btnTrabajoHoy" onclick="abrirModalTrabajoHoy(); cerrarMenuPrincipal();" style="display:none;">📋 Trabajar hoy</button>
@@ -915,6 +1125,7 @@
     <div class="header-actions">
         <input type="text" id="searchGlobal" placeholder="🔍 Buscar unidad..." oninput="renderizarTablero()">
         <button class="btn-header" id="btnVistaKanban" onclick="cambiarVista('kanban')">📊 Kanban</button>
+        <button class="btn-header" id="btnModoBasicoKanban" onclick="toggleModoBasicoKanban()" title="Solo columnas de tu área" style="display:none;">Basico</button>
         <button class="btn-header" onclick="abrirModalNueva()">➕ Nueva</button>
         <span id="statusConexion" style="color:white; font-size:12px; padding:4px 10px; background:rgba(255,255,255,0.15); border-radius:12px;">⏳ Conectando...</span>
     </div>
@@ -2643,6 +2854,7 @@
             show('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
             show('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
             show('btnMensaje', sesion.area !== 'Cliente');
+        try { actualizarUIModoBasicoKanban(); } catch (e) {}
             document.querySelectorAll('.header-actions .btn-header').forEach(btn => {
                 if ((btn.textContent || '').includes('Nueva')) btn.style.display = '';
             });
@@ -2707,6 +2919,7 @@
         document.getElementById('loginOverlay').classList.remove('oculto');
         document.getElementById('loginClave').value = '';
         document.getElementById('sesionInfo').style.display = 'none';
+        try { cerrarPanelMedicionUsuario(); } catch (e) {}
         document.getElementById('btnCerrarSesion').style.display = 'none';
         const btnRep = document.getElementById('btnReporteDiario');
         if (btnRep) btnRep.style.display = 'none';
@@ -2731,6 +2944,129 @@
         });
     }
 
+
+    document.addEventListener('click', function(e) {
+        const p = document.getElementById('panelMedicionUsuario');
+        if (!p || !p.classList.contains('open')) return;
+        if (e.target.closest('#panelMedicionUsuario') || e.target.closest('#sesionInfo')) return;
+        cerrarPanelMedicionUsuario();
+    });
+
+    function cerrarPanelMedicionUsuario() {
+        const p = document.getElementById('panelMedicionUsuario');
+        if (p) p.classList.remove('open');
+    }
+
+    function formatearMsCortoLab(ms) {
+        if (!ms || ms <= 0) return '—';
+        if (typeof formatearDuracion === 'function') return formatearDuracion(ms);
+        const h = Math.round(ms / 3600000);
+        if (h < 24) return h + ' h';
+        return Math.round(h / 8) + ' d lab';
+    }
+
+    function abrirPanelMedicionUsuario() {
+        if (!sesion || sesion.area === 'Cliente' || modoCliente) return;
+        const panel = document.getElementById('panelMedicionUsuario');
+        if (!panel) return;
+        if (panel.classList.contains('open')) {
+            cerrarPanelMedicionUsuario();
+            return;
+        }
+
+        const periodo = 'semana';
+        let statsList = [];
+        try {
+            statsList = calcularProduccionPorUsuario(periodo) || [];
+        } catch (e) {
+            console.warn(e);
+            statsList = [];
+        }
+        // ranking order by score
+        const ranked = statsList
+            .map(st => {
+                const sc = typeof calcularScoreDesempeno === 'function' ? calcularScoreDesempeno(st, periodo) : 0;
+                return { st, score: sc };
+            })
+            .sort((a, b) => b.score - a.score);
+
+        const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        const yo = ranked.find(x => norm(x.st.persona) === norm(sesion.persona) && (!x.st.area || x.st.area === sesion.area))
+            || ranked.find(x => norm(x.st.persona) === norm(sesion.persona));
+        const rankPos = yo ? (ranked.findIndex(x => x === yo) + 1) : null;
+
+        document.getElementById('pmNombre').textContent = sesion.persona || '—';
+        document.getElementById('pmMeta').textContent =
+            (sesion.area || '') + ' · ' + (typeof etiquetaTaller === 'function' ? etiquetaTaller(sesion.taller) : (sesion.taller || '')) +
+            ' · Semana (lun–vie)';
+
+        const score = yo ? yo.score : 0;
+        document.getElementById('pmScore').textContent = String(Math.max(0, Math.round(score)));
+        document.getElementById('pmRank').textContent = rankPos
+            ? ('Puesto #' + rankPos + ' de ' + ranked.length + ' en ranking')
+            : (sesion.area === 'Gerencia' ? 'Gerencia no entra al ranking' : 'Sin movimientos medidos esta semana');
+
+        const st = yo ? yo.st : {
+            area: sesion.area,
+            recibidas: 0, cotizadas: 0, diagnosticadas: 0, reparadas: 0, finalizadas: 0,
+            liberacionesRef: 0, unidadesPdf: 0, unidadesCorrecto: 0, unidadesRetrabajo: 0,
+            ventasRealizadas: 0, refaccionesVendidas: 0, unidadesosPdf: 0,
+            unidadesCount: 0, pctCargaEquipo: 0, tasaExitoDiag: null,
+            promedioDiagMs: 0, promedioRepMs: 0, promedioCotMs: 0, promedioLiberacionMs: 0,
+            finalizadasComoReparador: 0, finalizadasComoDiagnosticador: 0, garantias: 0, retrabajos: 0
+        };
+
+        const area = sesion.area;
+        const metrics = [];
+        const push = (k, v) => metrics.push({ k, v });
+
+        push('Unidades tocadas', st.unidadesCount || (st.unidades && st.unidades.size) || 0);
+        if (st.pctCargaEquipo != null) push('% carga equipo', Math.round(st.pctCargaEquipo || 0) + '%');
+
+        if (area === 'Mantenimiento') {
+            push('Diagnósticos', st.diagnosticadas || 0);
+            push('PDF diagnóstico', st.diagnosticosPdf || st.diagnosticosPdf === 0 ? (st.diagnosticosPdf || 0) : (st.pdfDiag || 0));
+            push('Reparaciones (pasos)', st.reparadas || 0);
+            push('Finalizadas como rep.', st.finalizadasComoReparador || 0);
+            push('Finalizadas como diag.', st.finalizadasComoDiagnosticador || st.finalizadasConSuDiag || 0);
+            if (st.tasaExitoDiag != null) push('% éxito diag.', Math.round(st.tasaExitoDiag) + '%');
+            push('Tiempo prom. diag.', formatearMsCortoLab(st.promedioDiagMs));
+            push('Tiempo prom. rep.', formatearMsCortoLab(st.promedioRepMs));
+            push('Retrabajos', st.retrabajos || 0);
+            push('Garantías', st.garantias || 0);
+        } else if (area === 'Ventas') {
+            push('Recibidas', st.recibidas || 0);
+            push('Cotizadas', st.cotizadas || 0);
+            const vr = st.ventasRealizadas != null ? st.ventasRealizadas : ((st.refaccionesVendidas || 0) + (st.entregasComoAsesor || 0));
+            push('Ventas realizadas', vr);
+            push('Refacc. vendidas', st.refaccionesVendidas || 0);
+            push('Tiempo prom. cotiz.', formatearMsCortoLab(st.promedioCotMs));
+        } else if (area === 'Compras') {
+            push('Liberaciones', st.liberacionesRef || 0);
+            push('Liberaciones rápidas', st.liberacionesRapidas || 0);
+            push('Liberaciones lentas', st.liberacionesLentas || 0);
+            push('Tiempo prom. libera.', formatearMsCortoLab(st.promedioLiberacionMs));
+        } else if (area === 'Gerencia') {
+            push('Vista', 'Gerencia');
+            push('Ranking', 'No aplica');
+            // resumen global WIP
+            try {
+                const act = (unidades || []).filter(u => !u.eliminado && u.estatus !== 'Finalizada' && u.estatus !== 'Agenda');
+                push('WIP activo', act.length);
+                push('Cotizando', act.filter(u => u.estatus === 'Cotizando').length);
+                push('Espera refacc.', act.filter(u => u.estatus === 'Espera de refacciones').length);
+                push('Reparando', act.filter(u => u.estatus === 'Reparando').length);
+            } catch (e) {}
+        }
+
+        const box = document.getElementById('pmMetricas');
+        box.innerHTML = metrics.map(m =>
+            `<div class="pm-metric"><div class="k">${m.k}</div><div class="v">${m.v}</div></div>`
+        ).join('') || '<div class="pm-metric"><div class="k">Sin datos</div><div class="v">—</div></div>';
+
+        panel.classList.add('open');
+    }
+
     function mostrarInfoSesion() {
         if (!sesion) return;
         const el = document.getElementById('sesionInfo');
@@ -2739,7 +3075,17 @@
         el.textContent = sesion.area === 'Cliente'
             ? `👁️ Cliente · ${tallerTxt} · solo lectura`
             : `👤 ${sesion.persona} · ${sesion.area} · ${tallerTxt}`;
-        el.title = el.textContent;
+        el.title = sesion.area === 'Cliente'
+            ? el.textContent
+            : 'Toca para ver tus mediciones de la semana';
+        el.style.cursor = sesion.area === 'Cliente' ? 'default' : 'pointer';
+        if (!el.dataset.medicionBound) {
+            el.dataset.medicionBound = '1';
+            el.addEventListener('click', function(e) {
+                e.stopPropagation();
+                abrirPanelMedicionUsuario();
+            });
+        }
         const h1 = document.querySelector('.header h1');
         if (h1) {
             const nombre = nombreAppTaller(sesion.taller);
@@ -2792,6 +3138,7 @@
         showMenu('btnDiagnosticosExt', sesion.area === 'Mantenimiento');
         showMenu('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
         showMenu('btnMensaje', sesion.area !== 'Cliente');
+        try { actualizarUIModoBasicoKanban(); } catch (e) {}
         showMenu('btnTrabajoHoy', true);
         showMenu('btnVistaLista', true);
         showMenu('btnVistaHistorial', true);
@@ -3591,6 +3938,62 @@
         if (!menu.contains(e.target)) menu.classList.remove('abierto');
     });
 
+
+    // Modo básico Kanban: solo columnas del área del usuario
+    let modoBasicoKanban = localStorage.getItem('thermocontrol_kanban_basico') === '1';
+
+    function columnasKanbanParaSesion() {
+        const todasAgenda = ['Agenda', 'Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada'];
+        const todas = ['Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada'];
+        const base = (typeof puedeVerAgenda === 'function' && puedeVerAgenda()) ? todasAgenda : todas;
+        if (!modoBasicoKanban || !sesion || modoCliente) return base;
+        if (sesion.area === 'Gerencia' || (typeof tienePermisoTotal === 'function' && tienePermisoTotal())) return base;
+        if (sesion.area === 'Mantenimiento') return ['Diagnosticando', 'Reparando'];
+        if (sesion.area === 'Ventas') {
+            // Recibida + Cotizando (+ Agenda si puede verla)
+            return (typeof puedeVerAgenda === 'function' && puedeVerAgenda())
+                ? ['Agenda', 'Recibida', 'Cotizando']
+                : ['Recibida', 'Cotizando'];
+        }
+        if (sesion.area === 'Compras') return ['Espera de refacciones'];
+        return base;
+    }
+
+    function toggleModoBasicoKanban() {
+        if (!sesion || sesion.area === 'Cliente') return;
+        modoBasicoKanban = !modoBasicoKanban;
+        localStorage.setItem('thermocontrol_kanban_basico', modoBasicoKanban ? '1' : '0');
+        actualizarUIModoBasicoKanban();
+        // Refrescar tablero al instante
+        try {
+            if (typeof filtroEstatus !== 'undefined' && filtroEstatus) filtroEstatus = null;
+            if (typeof renderizarTablero === 'function') renderizarTablero();
+            else if (typeof render === 'function') render();
+        } catch (e) { console.warn(e); }
+        const msg = modoBasicoKanban
+            ? (sesion.area === 'Gerencia'
+                ? 'Basico ON (Gerencia ve todas las columnas)'
+                : 'Basico ON — solo columnas de ' + sesion.area)
+            : 'Kanban completo — todas las columnas';
+        try { mostrarToastApp(msg, '#1a3a5c'); } catch (e) {}
+    }
+
+    function actualizarUIModoBasicoKanban() {
+        const btn = document.getElementById('btnModoBasicoKanban');
+        const menu = document.getElementById('btnModoBasicoMenu');
+        const on = !!modoBasicoKanban;
+        if (btn) {
+            btn.textContent = on ? 'Basico ON' : 'Basico';
+            btn.style.background = on ? '#0d6efd' : '';
+            btn.style.color = on ? '#fff' : '';
+            btn.style.display = (sesion && sesion.area !== 'Cliente' && !modoCliente) ? '' : 'none';
+        }
+        if (menu) {
+            menu.textContent = on ? 'Basico Kanban ON' : 'Basico Kanban';
+            menu.style.display = (sesion && sesion.area !== 'Cliente') ? '' : 'none';
+        }
+    }
+
     // Contraer / expandir columnas del Kanban
     const KANBAN_COLAPSADAS_KEY = 'thermocontrol_kanban_colapsadas';
     function getColumnasColapsadas() {
@@ -3625,6 +4028,7 @@
     if (localStorage.getItem('thermocontrol_dark') === '1') {
         document.body.classList.add('dark');
     }
+    try { actualizarUIModoBasicoKanban(); } catch (e) {}
 
     // ===== FOTOS LOCALES (solo en este dispositivo - IndexedDB) =====
     const DB_NAME = 'ThermoControlFotos';
@@ -7574,11 +7978,18 @@
         const container = document.getElementById('kanbanContainer');
         container.innerHTML = '';
         container.style.gridTemplateColumns = filtroEstatus ? '1fr' : '';
-        const estatusOrden = (puedeVerAgenda()
-            ? ['Agenda', 'Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada']
-            : ['Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada']);
-        // Si hay filtro, solo mostrar esa columna; si no, todas
-        const columnas = filtroEstatus ? [filtroEstatus] : estatusOrden;
+        const estatusOrden = columnasKanbanParaSesion();
+        // Si hay filtro de etiqueta, solo esa columna (si está permitida en el modo actual)
+        let columnas = filtroEstatus ? [filtroEstatus] : estatusOrden;
+        if (filtroEstatus && estatusOrden.indexOf(filtroEstatus) < 0) {
+            // Filtro fuera del modo básico: mostrar solo esa columna igual
+            columnas = [filtroEstatus];
+        }
+        // Ajuste de grid según cantidad de columnas
+        const nCol = columnas.length;
+        if (!filtroEstatus && nCol <= 3) {
+            container.style.gridTemplateColumns = nCol === 1 ? '1fr' : (nCol === 2 ? '1fr 1fr' : '1fr 1fr 1fr');
+        }
         columnas.forEach(status => {
             const items = filtered.filter(u => u.estatus === status);
             const colapsada = estaColumnaColapsada(status);
