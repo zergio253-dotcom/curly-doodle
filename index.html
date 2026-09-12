@@ -1872,7 +1872,7 @@
             Modo cliente: solo puedes ver el Kanban. No podrás editar ni cambiar estatus.
         </p>
         <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:normal; cursor:pointer;" id="loginRecordarLabel">
-            <input type="checkbox" id="loginRecordar"> Recordar en este dispositivo
+            <input type="checkbox" id="loginRecordar" checked> Recordar en este dispositivo
         </label>
         <button class="btn-login" onclick="iniciarSesion()">Entrar</button>
         <div class="login-error" id="loginError"></div>
@@ -2661,6 +2661,7 @@
             </div>
             <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
                 <button class="btn-modal success" onclick="guardarConfigAdminCompleta()">☁️ Guardar todo</button>
+                <button class="btn-modal secondary" onclick="limpiarCacheConfigLocal()">🧹 Limpiar caché local</button>
                 <button class="btn-modal danger" onclick="cerrarModal('modalAdmin'); adminDesbloqueado=false;">Cerrar</button>
             </div>
         </div>
@@ -3412,22 +3413,40 @@
 
     // Cada depto solo modifica si el estatus actual es de su área (según permisos).
     // Fuera de su área → solo lectura. Gerencia y Abel siempre pueden.
+    // Estaciones (columnas) que "pertenecen" a cada área — solo ahí pueden modificar
+    const ESTACIONES_AREA = {
+        'Ventas': ['Agenda', 'Recibida', 'Cotizando'],
+        'Mantenimiento': ['Diagnosticando', 'Reparando'],
+        'Compras': ['Espera de refacciones'],
+        'Gerencia': ['Agenda', 'Recibida', 'Diagnosticando', 'Cotizando', 'Espera de refacciones', 'Reparando', 'Finalizada']
+    };
+    function estacionesDeArea(area) {
+        if (!area) return [];
+        if (area === 'Gerencia') return ESTACIONES_AREA.Gerencia;
+        return ESTACIONES_AREA[area] || [];
+    }
+    function unidadEnAreaSesion(u) {
+        if (!u || !sesion) return false;
+        if (tienePermisoTotal() || sesion.area === 'Gerencia') return true;
+        const est = u.estatus || '';
+        return estacionesDeArea(sesion.area).indexOf(est) >= 0;
+    }
     function puedeModificarUnidad(u) {
         if (!sesion || !u || modoCliente) return false;
-        if (tienePermisoTotal()) return true;
-        // Mantenimiento puede editar (asignar diag/reparador) aunque la unidad esté en Cotizando o Espera
-        if (sesion.area === 'Mantenimiento') {
-            const est = u.estatus || '';
-            if (['Diagnosticando', 'Reparando', 'Cotizando', 'Espera de refacciones'].includes(est)) {
-                if (!esTrabajoKuzzy(u) && !esTrabajoVentasRefacciones(u)) return true;
-            }
-        }
+        if (tienePermisoTotal() || sesion.area === 'Gerencia') return true;
+        // Solo si la unidad está en una estación de su área
+        if (!unidadEnAreaSesion(u)) return false;
+        // Y debe existir al menos un movimiento permitido desde ese estatus
         const permisos = typeof permisosCambio !== 'undefined' ? permisosCambio[sesion.area] : null;
         if (!permisos) return false;
         const destinosBase = permisos[u.estatus];
-        if (!Array.isArray(destinosBase) || !destinosBase.length) return false;
+        if (!Array.isArray(destinosBase) || !destinosBase.length) {
+            // Puede editar datos / notas en su estación aunque no mueva (ej. Compras en espera)
+            return estacionesDeArea(sesion.area).indexOf(u.estatus) >= 0;
+        }
         if (typeof filtrarDestinosPorUbicacion === 'function') {
-            return filtrarDestinosPorUbicacion(u, destinosBase, sesion.area).length > 0;
+            return filtrarDestinosPorUbicacion(u, destinosBase, sesion.area).length > 0
+                || estacionesDeArea(sesion.area).indexOf(u.estatus) >= 0;
         }
         return true;
     }
@@ -3872,9 +3891,8 @@
     function guardarSesion(data, recordar) {
         sesion = data;
         const raw = JSON.stringify(data);
-        sessionStorage.setItem('thermocontrol_sesion', raw);
-        if (recordar) localStorage.setItem('thermocontrol_sesion', raw);
-        else localStorage.removeItem('thermocontrol_sesion');
+        try { sessionStorage.setItem('thermocontrol_sesion', raw); } catch (e) {}
+        try { localStorage.setItem('thermocontrol_sesion', raw); } catch (e) {}
     }
 
     function actualizarPersonasLogin() {
@@ -3947,6 +3965,7 @@
             show('btnMensaje', false);
             const bmp = document.getElementById('btnMsgPanel'); if (bmp) bmp.style.display = sesion.area !== 'Cliente' ? '' : 'none';
         try { actualizarUIModoBasicoKanban(); } catch (e) {}
+        setTimeout(function(){ try { aplicarMenuVisUsuario(); } catch(e){} }, 200);
         try { cargarPendientesTareas(); } catch (e) {}
             document.querySelectorAll('.header-actions .btn-header').forEach(btn => {
                 if ((btn.textContent || '').includes('Nueva')) btn.style.display = '';
@@ -4370,29 +4389,52 @@
     }
     function renderEditorMenuVis() {
         const box = document.getElementById('editorMenuVisUsuarios');
-        if (!box) return;
-        const lista = (listaUsuarios || []).slice().sort((a,b) => String(a.nombre).localeCompare(String(b.nombre)));
+        if (!box) {
+            alert('Panel de menús no encontrado. Recarga la página.');
+            return;
+        }
+        if (!menuVisPorUsuario || typeof menuVisPorUsuario !== 'object') menuVisPorUsuario = {};
+        const lista = (listaUsuarios || []).slice().sort((a,b) => String(a.nombre||'').localeCompare(String(b.nombre||'')));
+        if (!lista.length) {
+            box.innerHTML = '<p style="color:#888;">No hay usuarios. Agrégalos en la pestaña Usuarios y guarda en la nube.</p>';
+            return;
+        }
         box.innerHTML = lista.map(u => {
-            const cfg = menuVisPorUsuario[String(u.id)] || {};
+            const uid = String(u.id || u.nombre);
+            const cfg = menuVisPorUsuario[uid] || {};
             const checks = MENU_VIS_OPTIONS.map(opt => {
-                const checked = cfg[opt.id] !== false; // default visible
-                return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin:2px 6px 2px 0;white-space:nowrap;">
-                    <input type="checkbox" data-uid="${u.id}" data-mid="${opt.id}" ${checked ? 'checked' : ''} onchange="onMenuVisChange(this)"> ${opt.label}
+                const checked = cfg[opt.id] !== false;
+                return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin:3px 8px 3px 0;white-space:nowrap;">
+                    <input type="checkbox" data-uid="${uid}" data-mid="${opt.id}" ${checked ? 'checked' : ''} onchange="onMenuVisChange(this)"> ${opt.label}
                 </label>`;
             }).join('');
             return `<div style="border:1px solid #ddd;border-radius:10px;padding:10px;margin-bottom:8px;">
-                <strong>${u.nombre}</strong> <span style="font-size:11px;color:#888;">${u.area} · ${etiquetaTaller(u.taller)}</span>
+                <strong>${u.nombre || '—'}</strong>
+                <span style="font-size:11px;color:#888;"> · ${u.area || ''} · ${typeof etiquetaTaller==='function' ? etiquetaTaller(u.taller) : (u.taller||'')}</span>
                 <div style="margin-top:6px;">${checks}</div>
             </div>`;
-        }).join('') || '<p style="color:#888;">Sin usuarios</p>';
+        }).join('') + `
+            <button type="button" class="btn-modal primary" style="width:100%;margin-top:10px;" onclick="guardarMenuVisYNube()">💾 Guardar menús en la nube</button>
+            <p style="font-size:11px;color:#888;margin-top:8px;">Desmarca lo que el usuario <strong>no</strong> debe ver. Guarda para que aplique en todos los dispositivos.</p>`;
+    }
+    async function guardarMenuVisYNube() {
+        try {
+            const r = await persistirConfigAdmin();
+            if (r && r.cloud) alert('✅ Menús guardados en la nube. Cada usuario verá solo lo permitido al entrar.');
+            else alert('✅ Guardado en este dispositivo.\n' + (r && r.msg ? r.msg : 'Revisa que exista la tabla app_config en Supabase.'));
+        } catch (e) {
+            alert('Error: ' + (e.message || e));
+        }
     }
     function onMenuVisChange(el) {
-        const uid = String(el.getAttribute('data-uid'));
-        const mid = el.getAttribute('data-mid');
-        if (!menuVisPorUsuario[uid]) menuVisPorUsuario[uid] = {};
-        menuVisPorUsuario[uid][mid] = !!el.checked;
+        try {
+            const uid = String(el.getAttribute('data-uid'));
+            const mid = el.getAttribute('data-mid');
+            if (!menuVisPorUsuario || typeof menuVisPorUsuario !== 'object') menuVisPorUsuario = {};
+            if (!menuVisPorUsuario[uid]) menuVisPorUsuario[uid] = {};
+            menuVisPorUsuario[uid][mid] = !!el.checked;
+        } catch (e) { console.warn(e); }
     }
-
 
     function abrirDirectorioEmpleados() {
         if (!requerirSesion()) return;
@@ -4665,6 +4707,7 @@
         showMenu('btnThermoDiagPRO', sesion.area === 'Mantenimiento');
         showMenu('btnMensaje', false);
         try { actualizarUIModoBasicoKanban(); } catch (e) {}
+        setTimeout(function(){ try { aplicarMenuVisUsuario(); } catch(e){} }, 200);
         try { cargarPendientesTareas(); } catch (e) {}
         showMenu('btnTrabajoHoy', true);
         showMenu('btnVistaLista', true);
@@ -4691,9 +4734,8 @@
     let permisosCambio = {
         'Gerencia': null,
         'Mantenimiento': {
-            'Recibida': ['Diagnosticando'],
             'Diagnosticando': ['Cotizando', 'Reparando'],
-            'Reparando': ['Finalizada', 'Diagnosticando', 'Espera de refacciones']
+            'Reparando': ['Finalizada', 'Diagnosticando', 'Espera de refacciones', 'Cotizando']
         },
         'Ventas': {
             'Agenda': ['Recibida'],
@@ -4909,8 +4951,8 @@
                 nombre: (t.nombre || t.etiqueta || t.id || '').trim()
             })).filter(t => t.id);
         }
-        if (Array.isArray(cfg.usuarios) && cfg.usuarios.length) {
-            listaUsuarios = cfg.usuarios;
+        if (Array.isArray(cfg.usuarios)) {
+            listaUsuarios = cfg.usuarios.map(u => Object.assign({}, u));
             listaUsuarios.forEach(u => {
                 const n = String(u.nombre || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
                 if (n.indexOf('alfredo hernandez') >= 0) u.permiso_total = true;
@@ -4974,12 +5016,7 @@
     }
 
     async function cargarConfigAdmin() {
-        // 1) Local primero (rápido)
-        try {
-            const raw = localStorage.getItem(CONFIG_ADMIN_KEY);
-            if (raw) aplicarConfigAdmin(JSON.parse(raw));
-        } catch (e) {}
-        // 2) Supabase con timeout (no bloquear la app)
+        let cloudOk = false;
         try {
             const q = supabaseClient
                 .from('app_config')
@@ -4988,18 +5025,35 @@
                 .maybeSingle();
             const { data, error } = await Promise.race([
                 q,
-                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout app_config')), 8000))
+                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout app_config')), 10000))
             ]);
-            if (!error && data && data.data) {
+            if (!error && data && data.data && typeof data.data === 'object') {
                 aplicarConfigAdmin(data.data);
                 try { localStorage.setItem(CONFIG_ADMIN_KEY, JSON.stringify(data.data)); } catch (e) {}
+                cloudOk = true;
             }
         } catch (e) {
-            console.warn('app_config no disponible, usando local/defaults', e);
+            console.warn('app_config nube no disponible', e);
+        }
+        if (!cloudOk) {
+            try {
+                const raw = localStorage.getItem(CONFIG_ADMIN_KEY);
+                if (raw) aplicarConfigAdmin(JSON.parse(raw));
+            } catch (e) {}
         }
         try { rebuildPersonasDesdeUsuarios(); } catch (e) {}
+        return cloudOk;
     }
 
+    async function limpiarCacheConfigLocal() {
+        if (!confirm('¿Borrar caché de este dispositivo y recargar desde la nube?\nNo borra datos de Supabase.')) return;
+        try {
+            localStorage.removeItem(CONFIG_ADMIN_KEY);
+            localStorage.removeItem('thermocontrol_sesion');
+            sessionStorage.removeItem('thermocontrol_sesion');
+        } catch (e) {}
+        location.reload();
+    }
     async function persistirConfigAdmin() {
         const cfg = obtenerConfigAdminActual();
         try { localStorage.setItem(CONFIG_ADMIN_KEY, JSON.stringify(cfg)); } catch (e) {}
@@ -5047,18 +5101,31 @@
     }
 
     function mostrarTabAdmin(tab) {
-        document.getElementById('adminTabTalleres').style.display = tab === 'talleres' ? 'block' : 'none';
-        document.getElementById('adminTabUsuarios').style.display = tab === 'usuarios' ? 'block' : 'none';
-        document.getElementById('adminTabPermisos').style.display = tab === 'permisos' ? 'block' : 'none';
-        document.getElementById('adminTabClaves').style.display = tab === 'claves' ? 'block' : 'none';
-        const tabFest = document.getElementById('adminTabFestivos');
-        if (tabFest) tabFest.style.display = tab === 'festivos' ? 'block' : 'none';
-        if (tab === 'talleres') renderListaTalleresAdmin();
-        if (tab === 'usuarios') {
-            llenarSelectTalleres('adminUserTaller');
-            renderListaUsuariosAdmin();
+        const tabs = {
+            talleres: 'adminTabTalleres',
+            usuarios: 'adminTabUsuarios',
+            permisos: 'adminTabPermisos',
+            claves: 'adminTabClaves',
+            festivos: 'adminTabFestivos',
+            menuvis: 'adminTabMenuVis'
+        };
+        Object.keys(tabs).forEach(k => {
+            const el = document.getElementById(tabs[k]);
+            if (el) el.style.display = (k === tab) ? 'block' : 'none';
+        });
+        try {
+            if (tab === 'talleres') renderListaTalleresAdmin();
+            if (tab === 'usuarios') {
+                llenarSelectTalleres('adminUserTaller');
+                renderListaUsuariosAdmin();
+            }
+            if (tab === 'festivos') renderListaFestivosAdmin();
+            if (tab === 'menuvis') renderEditorMenuVis();
+            if (tab === 'permisos' && typeof renderEditorPermisos === 'function') renderEditorPermisos();
+        } catch (e) {
+            console.error(e);
+            alert('Error al abrir pestaña: ' + (e.message || e));
         }
-        if (tab === 'festivos') renderListaFestivosAdmin();
     }
 
     function renderListaFestivosAdmin() {
@@ -5569,6 +5636,7 @@
         document.body.classList.add('dark');
     }
     try { actualizarUIModoBasicoKanban(); } catch (e) {}
+        setTimeout(function(){ try { aplicarMenuVisUsuario(); } catch(e){} }, 200);
 
     // ===== FOTOS LOCALES (solo en este dispositivo - IndexedDB) =====
     const DB_NAME = 'ThermoControlFotos';
@@ -11190,7 +11258,7 @@
             if (puede && u.estatus === 'Agenda' && sesion && (sesion.area === 'Ventas' || sesion.area === 'Gerencia' || tienePermisoTotal())) {
                 extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="confirmarLlegadaAgenda(${id})">📥 ¿Llegó? → Recibida</button>`;
             }
-            if (u.estatus === 'Espera de refacciones' && sesion && (sesion.area === 'Compras' || sesion.area === 'Gerencia' || sesion.area === 'Ventas' || tienePermisoTotal())) {
+            if (u.estatus === 'Espera de refacciones' && sesion && (sesion.area === 'Compras' || sesion.area === 'Gerencia' || tienePermisoTotal())) {
                 extraBtns += `<button type="button" class="btn-rapido liberar" style="flex:1 1 100%; order:-1;" onclick="piezasListasAReparando(${id})">✅ Liberar → Reparando</button>`;
                 extraBtns += `<button class="btn-modal success" style="flex:1;" onclick="abrirModalRefacciones(${id})">🛒 Gestionar refacciones</button>`;
             }
@@ -11877,74 +11945,53 @@
     }
     function htmlBotonesRapidosCard(u) {
         if (modoCliente || !sesion) return '';
-        const puede = puedeModificarUnidad(u) || tienePermisoTotal();
+        if (!u) return '';
         const area = sesion.area;
-        const superU = tienePermisoTotal() || area === 'Gerencia';
+        const superU = (typeof tienePermisoTotal === 'function' && tienePermisoTotal()) || area === 'Gerencia';
+        // Bloqueo total: solo su área (Gerencia/super ven todo)
+        if (!superU && !unidadEnAreaSesion(u)) return '';
+
+        const btn = (cls, fn, label) =>
+            `<button type="button" class="btn-rapido ${cls}" onclick="event.stopPropagation(); if(!confirm('¿Confirmas esta acción rápida?'))return; ${fn}">${label}</button>`;
         let html = '';
-        const btn = (cls, fn, label) => {
-            const lab = String(label).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-            return `<button type="button" class="btn-rapido ${cls}" onclick="event.stopPropagation(); if(!confirm('¿Confirmas esta acción rápida?'))return; ${fn}">${label}</button>`;
-        };
 
-        // —— Espera de refacciones ——
-        if (u.estatus === 'Espera de refacciones' && (area === 'Compras' || area === 'Ventas' || superU)) {
-            html += btn('liberar', `piezasListasAReparando(${u.id})`, '✅ Liberar → Reparando');
-            if (area === 'Compras' || superU) {
-                html += btn('aviso', `accionRapidaEstatus(${u.id}, 'Cotizando', { comentario: 'Regreso a cotizar (precio/pieza)' })`, '💰 Volver a Cotizando');
-                html += btn('sec', `togglePausaCompras(${u.id})`, u.pausa_compras ? '▶️ Quitar pausa' : '⏸️ Pausa compras');
+        // —— VENTAS: Agenda, Recibida, Cotizando ——
+        if (superU || area === 'Ventas') {
+            if (u.estatus === 'Agenda') {
+                html += btn('primario', `confirmarLlegadaAgenda(${u.id})`, '📥 Llegó → Recibida');
             }
-        }
-
-        if (!puede && !superU) {
-            return html ? `<div class="btns-rapidos-wrap" onclick="event.stopPropagation()">${html}</div>` : '';
-        }
-
-        // —— Agenda ——
-        if (u.estatus === 'Agenda' && (area === 'Ventas' || superU)) {
-            html += btn('primario', `confirmarLlegadaAgenda(${u.id})`, '📥 Llegó → Recibida');
-            html += btn('sec', `abrirModalCambio(${u.id})`, '✏️ Más opciones');
-        }
-
-        // —— Recibida ——
-        if (u.estatus === 'Recibida' && (area === 'Ventas' || area === 'Mantenimiento' || superU)) {
-            html += btn('primario', `accionRapidaEstatus(${u.id}, 'Diagnosticando', { comentario: 'A diagnóstico' })`, '🔧 → Diagnosticando');
-            if (area === 'Ventas' || superU) {
+            if (u.estatus === 'Recibida') {
+                html += btn('primario', `accionRapidaEstatus(${u.id}, 'Diagnosticando', { comentario: 'A diagnóstico' })`, '🔧 → Diagnosticando');
                 html += btn('sec', `accionRapidaEstatus(${u.id}, 'Agenda', { comentario: 'Reagendada' })`, '📅 → Agenda');
             }
-        }
-
-        // —— Diagnosticando ——
-        if (u.estatus === 'Diagnosticando' && (area === 'Mantenimiento' || superU)) {
-            html += btn('aviso', `accionRapidaEstatus(${u.id}, 'Cotizando', { comentario: 'Diagnóstico listo → cotizar' })`, '💰 → Cotizando');
-            html += btn('primario', `accionRapidaEstatus(${u.id}, 'Reparando', { comentario: 'Sin piezas → Reparando' })`, '🛠️ → Reparando');
-            html += btn('sec', `abrirModalCambio(${u.id}); setTimeout(function(){ try{ document.getElementById('estatusCambio').value='Diagnosticando'; }catch(e){} },150);`, '📋 Detalle / PDF');
-        }
-
-        // —— Cotizando ——
-        if (u.estatus === 'Cotizando' && (area === 'Ventas' || superU)) {
-            html += btn('aviso', `accionRapidaEstatus(${u.id}, 'Espera de refacciones', { comentario: 'Requiere piezas' })`, '🛒 → Espera piezas');
-            html += btn('primario', `accionRapidaEstatus(${u.id}, 'Reparando', { comentario: 'Autorizado / sin piezas' })`, '🛠️ → Reparando');
-            html += btn('sec', `accionRapidaEstatus(${u.id}, 'Finalizada', { comentario: 'Cliente no autorizó / cerrado en cotización' })`, '🏁 Cerrar (no autorizó)');
-            if (!u.espera_cliente) {
-                html += btn('sec', `toggleEsperaCliente(${u.id})`, '⏸️ Espera cliente');
-            } else {
-                html += btn('sec', `toggleEsperaCliente(${u.id})`, '▶️ Reactivar');
+            if (u.estatus === 'Cotizando') {
+                html += btn('aviso', `accionRapidaEstatus(${u.id}, 'Espera de refacciones', { comentario: 'Requiere piezas' })`, '🛒 → Espera piezas');
+                html += btn('primario', `accionRapidaEstatus(${u.id}, 'Reparando', { comentario: 'Autorizado / sin piezas' })`, '🛠️ → Reparando');
+                html += btn('sec', `accionRapidaEstatus(${u.id}, 'Finalizada', { comentario: 'Cliente no autorizó' })`, '🏁 Cerrar (no autorizó)');
+                html += btn('sec', `toggleEsperaCliente(${u.id})`, u.espera_cliente ? '▶️ Reactivar cliente' : '⏸️ Espera cliente');
             }
         }
 
-        // —— Reparando ——
-        if (u.estatus === 'Reparando' && (area === 'Mantenimiento' || superU)) {
-            html += btn('liberar', `abrirModalCambio(${u.id}); setTimeout(function(){ var s=document.getElementById('estatusCambio'); if(s){ s.value='Finalizada'; try{onEstatusCambioChange()}catch(e){} } }, 200);`, '🏁 Finalizar');
-            html += btn('aviso', `accionRapidaEstatus(${u.id}, 'Espera de refacciones', { comentario: 'Faltan piezas en reparación' })`, '🛒 → Espera piezas');
-            html += btn('sec', `accionRapidaEstatus(${u.id}, 'Diagnosticando', { comentario: 'Regreso a diagnóstico (otra falla)' })`, '🔍 → Diagnóstico');
-            html += btn('sec', `accionRapidaEstatus(${u.id}, 'Cotizando', { comentario: 'Regreso a cotizar desde piso' })`, '💰 → Cotizando');
+        // —— MANTENIMIENTO: Diagnosticando, Reparando (+ Recibida → diag si Gerencia no) ——
+        if (superU || area === 'Mantenimiento') {
+            // Recibida es estación de Ventas; Mantenimiento solo actúa en Diagnosticando/Reparando
+            if (u.estatus === 'Diagnosticando') {
+                html += btn('aviso', `accionRapidaEstatus(${u.id}, 'Cotizando', { comentario: 'Diagnóstico listo → cotizar' })`, '💰 → Cotizando');
+                html += btn('primario', `accionRapidaEstatus(${u.id}, 'Reparando', { comentario: 'Sin piezas → Reparando' })`, '🛠️ → Reparando');
+            }
+            if (u.estatus === 'Reparando') {
+                html += btn('liberar', `abrirModalCambio(${u.id}); setTimeout(function(){ var s=document.getElementById('estatusCambio'); if(s){ s.value='Finalizada'; try{onEstatusCambioChange()}catch(e){} } }, 200);`, '🏁 Finalizar');
+                html += btn('aviso', `accionRapidaEstatus(${u.id}, 'Espera de refacciones', { comentario: 'Faltan piezas' })`, '🛒 → Espera piezas');
+                html += btn('sec', `accionRapidaEstatus(${u.id}, 'Diagnosticando', { comentario: 'Regreso a diagnóstico' })`, '🔍 → Diagnóstico');
+            }
         }
 
-        // —— Finalizada (atajos útiles) ——
-        if (u.estatus === 'Finalizada' && (area === 'Ventas' || area === 'Mantenimiento' || superU)) {
-            html += btn('sec', `abrirModalPDF(${u.id})`, '📄 PDF entrega');
-            if (superU || area === 'Gerencia' || area === 'Ventas') {
-                html += btn('aviso', `accionRapidaEstatus(${u.id}, 'Diagnosticando', { comentario: 'Reingreso / garantía' })`, '🔁 Garantía / reingreso');
+        // —— COMPRAS: solo Espera de refacciones ——
+        if (superU || area === 'Compras') {
+            if (u.estatus === 'Espera de refacciones') {
+                html += btn('liberar', `piezasListasAReparando(${u.id})`, '✅ Liberar → Reparando');
+                html += btn('aviso', `accionRapidaEstatus(${u.id}, 'Cotizando', { comentario: 'Regreso a cotizar' })`, '💰 Volver a Cotizando');
+                html += btn('sec', `togglePausaCompras(${u.id})`, u.pausa_compras ? '▶️ Quitar pausa' : '⏸️ Pausa compras');
             }
         }
 
@@ -16241,14 +16288,31 @@
     } catch (e) { console.warn('init UI', e); }
     
     // Config admin (talleres / usuarios / permisos) + sesión
+    function usuarioExisteEnLista(persona, area, taller) {
+        if (!persona || !area) return false;
+        if (area === 'Cliente') return true;
+        const p = String(persona).toLowerCase();
+        return (listaUsuarios || []).some(u =>
+            String(u.nombre || '').toLowerCase() === p &&
+            String(u.area || '') === area &&
+            (!u.taller || !taller || u.taller === taller)
+        );
+    }
     function arrancarApp() {
         try { rebuildPersonasDesdeUsuarios(); } catch (e) { console.warn(e); }
         try { actualizarSelectsTallerUI(); } catch (e) { console.warn(e); }
         sesion = null;
         try { sesion = getSesionGuardada(); } catch (e) {}
         if (sesion && !sesion.taller) sesion.taller = TALLER_DEFAULT;
-        const sesionValida = sesion && sesion.area && sesion.persona &&
-            (sesion.area === 'Cliente' || (typeof clavesPorArea !== 'undefined' && clavesPorArea[sesion.area]));
+        let sesionValida = !!(sesion && sesion.area && sesion.persona);
+        if (sesionValida && sesion.area !== 'Cliente' && !usuarioExisteEnLista(sesion.persona, sesion.area, sesion.taller)) {
+            try {
+                localStorage.removeItem('thermocontrol_sesion');
+                sessionStorage.removeItem('thermocontrol_sesion');
+            } catch (e) {}
+            sesion = null;
+            sesionValida = false;
+        }
         if (sesionValida) {
             try { document.getElementById('loginOverlay').classList.add('oculto'); } catch (e) {}
             try { mostrarInfoSesion(); } catch (e) { console.warn(e); }
