@@ -4087,7 +4087,7 @@ function validarObligatoriosPorEstatus(u,estatusAnterior,nuevoEstatus,area,extra
       if(["Espera de refacciones","Reparando","Finalizada"].indexOf(nuevoEstatus)>=0){
         if(vacio(u.folio))falt.push("Cotización / folio (Ventas · Cotizando)");
         if(vacio(u.hoja_servicio))falt.push("Pedido / Hoja de servicio (Ventas · Cotizando)");
-        if(vacio(u.orden_trabajo_pdf_url))falt.push("PDF de Orden de trabajo subido (Ventas · Cotizando)");
+        if(vacio(u.orden_trabajo_pdf_url))falt.push("PDF de Orden de trabajo (OBLIGATORIO Ventas · Cotizando) — súbelo antes de avanzar");
       }
     }
     if("Espera de refacciones"===estatusAnterior){
@@ -4327,53 +4327,36 @@ async function extraerTextoPdfUrl(url){
     return texto;
   }catch(e){console.warn("extraerTextoPdfUrl",e);return "";}
 }
+
 function parsearPiezasRefacciones(texto){
   const out=[];
   if(!texto)return out;
   const raw=String(texto).replace(/\r/g,"\n");
   const lineas=raw.split(/\n/).map(function(s){return s.trim();}).filter(Boolean);
-  function pushItem(cant,parte,desc,precio){
+  function pushItem(cant,parte,desc){
     cant=(cant==null||cant==="")?"":String(cant).trim();
     parte=(parte==null||parte==="")?"":String(parte).trim();
     desc=(desc==null||desc==="")?"":String(desc).trim();
-    precio=(precio==null||precio==="")?"":String(precio).trim();
     if(!cant&&!parte&&!desc)return;
-    // evitar basura muy corta
+    if(/tel[eé]|domicilio|cr[eé]dito|ganadera|rfc\b|colonia|vendedor|chihuahua/i.test(parte+" "+desc))return;
     if(!parte&&desc&&desc.length<3)return;
-    out.push({cant:cant||"1",no_parte:parte,descripcion:desc,precio:precio});
+    out.push({cant:cant||"1",no_parte:parte,descripcion:desc,precio:""});
   }
-  // Si hay pocas líneas, intentar también por ;
-  const candidatos=lineas.length?lineas:raw.split(/;/).map(function(s){return s.trim();}).filter(Boolean);
-  candidatos.forEach(function(line){
-    // Formato: cant | parte | desc | precio
+  lineas.forEach(function(line){
+    // Solo formato estructurado: cant | parte | desc
     if(line.indexOf("|")>=0){
       const p=line.split("|").map(function(s){return s.trim();});
-      if(p.length>=3){pushItem(p[0],p[1],p.slice(2,p.length-(p.length>3?1:0)).join(" "),p.length>3?p[p.length-1]:"");return;}
-      if(p.length===2){pushItem("1",p[0],p[1],"");return;}
+      if(p.length>=3){pushItem(p[0],p[1],p.slice(2).join(" "));return;}
+      if(p.length===2){pushItem("1",p[0],p[1]);return;}
     }
-    // Formato: cant x parte desc   o  cant*parte desc
-    let m=line.match(/^(\d+(?:[.,]\d+)?)\s*[xX×*]\s*([A-Za-z0-9][A-Za-z0-9\-\/_.]*)\s+(.+)$/);
-    if(m){pushItem(m[1],m[2],m[3],"");return;}
-    // Formato: parte - desc (cant 2)
-    m=line.match(/^([A-Za-z0-9][A-Za-z0-9\-\/_.]{2,})\s*[-–:]\s*(.+?)(?:\s*\(?cant(?:idad)?[.:\s]*(\d+)\)?)?$/i);
-    if(m){pushItem(m[3]||"1",m[1],m[2],"");return;}
-    // Formato: cant parte desc (primera token número, segunda código)
-    m=line.match(/^(\d+(?:[.,]\d+)?)\s+([A-Za-z0-9][A-Za-z0-9\-\/_.]{2,})\s+(.+)$/);
-    if(m){pushItem(m[1],m[2],m[3],"");return;}
-    // Código al inicio + descripción
-    m=line.match(/^([A-Za-z0-9][A-Za-z0-9\-\/_.]{3,})\s+(.+)$/);
-    if(m && /[A-Za-z]/.test(m[2])){pushItem("1",m[1],m[2],"");return;}
-    // fallback: toda la línea como descripción
-    pushItem("1","",line,"");
+    // cant x desc (manual corto)
+    let m=line.match(/^(\d+(?:[.,]\d+)?)\s*[xX×]\s+(.+)$/);
+    if(m){pushItem(m[1],"",m[2]);return;}
+    // No aceptar basura libre del PDF
   });
-  // dedupe simple
-  const seen={};
-  return out.filter(function(it){
-    const k=(it.no_parte+"|"+it.descripcion).toLowerCase();
-    if(seen[k])return false;
-    seen[k]=1;return true;
-  }).slice(0,12);
+  return out;
 }
+
 function parsearPiezasDesdeTextoOT(texto){
   if(!texto)return [];
   const unidadesRe=/(LITRO|LITROS|KILO|KILOS|KG|PIEZA|PIEZAS|PZA|PZAS|SERVIC|SERVICIO|SERV|PZA\.?)/i;
@@ -4553,47 +4536,47 @@ yr+=ulField("MOTOR",u.motor||"",mid+2,yr,wR,18);
 yr+=ulField("HORÓMETRO",(u.horas_equipo!=null&&u.horas_equipo!=="")?String(u.horas_equipo):"",mid+2,yr,wR,26);
 y+=topH;
 
-/* ===== MATERIAL USADO ===== */
-let piezasMat=parsearPiezasRefacciones((u.refacciones_esperadas||u.refacciones||"").toString());
-/* Intentar leer piezas del PDF de orden de trabajo subido por Ventas */
+/* ===== MATERIAL USADO (solo artículo / descripción / cantidad) ===== */
+let piezasMat=[];
+/* 1) Preferir siempre el PDF de orden de trabajo (tabla limpia) */
 try{
   if(u.orden_trabajo_pdf_url){
     const txtOt=await extraerTextoPdfUrl(u.orden_trabajo_pdf_url);
     if(txtOt&&txtOt.trim()){
-      const desdeOt=parsearPiezasDesdeTextoOT(txtOt);
-      if(desdeOt.length){
-        // Preferir OT si trajo líneas estructuradas; si no, complementar
-        if(piezasMat.length===0){piezasMat=desdeOt;}
-        else{
-          const keys={};
-          piezasMat.forEach(function(p){keys[(p.no_parte+"|"+p.descripcion).toLowerCase()]=1;});
-          desdeOt.forEach(function(p){
-            const k=(p.no_parte+"|"+p.descripcion).toLowerCase();
-            if(!keys[k]){piezasMat.push(p);keys[k]=1;}
-          });
-        }
-      }else{
-        // Si no hubo heurística, intentar parsear el texto completo como lista
-        const alt=parsearPiezasRefacciones(txtOt);
-        if(alt.length&&piezasMat.length===0)piezasMat=alt;
-      }
+      piezasMat=parsearPiezasDesdeTextoOT(txtOt)||[];
     }
   }
 }catch(eOt){console.warn("OT pdf parse",eOt);}
+/* 2) Si no hay OT parseable, usar captura manual cantidad | parte | descripción */
+if(!piezasMat.length){
+  piezasMat=parsearPiezasRefacciones((u.refacciones_esperadas||u.refacciones||"").toString());
+}
+/* 3) Filtro final anti-basura */
+piezasMat=(piezasMat||[]).filter(function(p){
+  const parte=String(p.no_parte||"").trim();
+  const desc=String(p.descripcion||"").trim();
+  if(!parte&&!desc)return false;
+  // Código de artículo típico o formato manual con |
+  const codeOk=/^(SERV(?:MM|MO|IC|VMM|VMO)?|\d{4,7}[A-Z0-9]{0,6})$/i.test(parte);
+  const manualOk=parte.length>=2&&desc.length>=2&&!/tel[eé]|domicilio|cr[eé]dito|ganadera|chihuahua|rfc|colonia|vendedor/i.test(parte+" "+desc);
+  if(codeOk)return desc.length>=2&&!/tel[eé]fono|tels\./i.test(desc);
+  return manualOk;
+});
 const nRows=Math.max(6,Math.min(10,piezasMat.length||6));
 const matH=12+nRows*5.5+6;
 rect(L,y,W,matH,0.45);
 doc.setFillColor(240,240,240);doc.rect(L,y,W,6,"F");
 doc.setFont(undefined,"bold");doc.setFontSize(8);doc.setTextColor.apply(doc,blue);
 doc.text("MATERIAL USADO",L+2,y+4.2);
-const cX=[L,L+14,L+42,R-70,R-48];
-const cW=[14,28,R-70-42,22,48];
-const headers=["CANT.","No. PARTE","DESCRIPCIÓN","PRECIO","REPORTE DE FALLAS"];
+// Columnas: CANT | No. PARTE | DESCRIPCIÓN | REPORTE DE FALLAS (sin precios)
+const cX=[L,L+12,L+40,R-52];
+const cW=[12,28,R-52-40,52];
+const headers=["CANT.","No. PARTE","DESCRIPCIÓN","REPORTE DE FALLAS"];
 doc.setFontSize(6.5);doc.setTextColor(40);
 for(let i=0;i<headers.length;i++){doc.text(headers[i],cX[i]+1,y+10);}
 lineH(L,R,y+11.5,0.3);
-for(let i=1;i<cX.length;i++){doc.setDrawColor(180);doc.setLineWidth(0.2);doc.line(cX[i],y+6,cX[i],y+matH-6);}
-for(let r=0;r<nRows;r++){const ry=y+12+r*5.5;lineH(L,R-48,ry+4.5,0.15);}
+for(let i=1;i<cX.length;i++){doc.setDrawColor(180);doc.setLineWidth(0.2);doc.line(cX[i],y+6,cX[i],y+matH-2);}
+for(let r=0;r<nRows;r++){const ry=y+12+r*5.5;lineH(L,R-52,ry+4.5,0.15);}
 doc.setFont(undefined,"normal");doc.setFontSize(7);doc.setTextColor(20);
 for(let i=0;i<Math.min(nRows,piezasMat.length);i++){
   const p=piezasMat[i];
@@ -4601,14 +4584,11 @@ for(let i=0;i<Math.min(nRows,piezasMat.length);i++){
   doc.text(String(p.cant||"").slice(0,6),cX[0]+1,ry);
   doc.text(String(p.no_parte||"").slice(0,16),cX[1]+1,ry);
   doc.text(doc.splitTextToSize(String(p.descripcion||""),cW[2]-2)[0]||"",cX[2]+1,ry);
-  if(p.precio)doc.text(String(p.precio).slice(0,10),cX[3]+1,ry);
+  // sin precio
 }
 doc.setFont(undefined,"normal");doc.setFontSize(7);
 const falla=v(u.problema||u.falla_llegada||"");
-if(falla)doc.text(doc.splitTextToSize(falla,cW[4]-3).slice(0,Math.min(6,nRows)),cX[4]+1,y+16);
-doc.setFont(undefined,"bold");doc.setFontSize(7.5);doc.setTextColor(30);
-doc.text("SUB-TOTAL  $",L+2,y+matH-2);
-lineH(L+28,L+70,y+matH-1.5,0.3);
+if(falla)doc.text(doc.splitTextToSize(falla,cW[3]-3).slice(0,Math.min(6,nRows)),cX[3]+1,y+16);
 y+=matH;
 
 /* ===== TRABAJO REALIZADO ===== */
