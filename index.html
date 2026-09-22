@@ -1387,61 +1387,144 @@
 
 <!-- ===== PANEL DE CONTROL POR DEPARTAMENTO ===== -->
 
+
 <div class="modal" id="modalGuiaProcesos" style="display:none;z-index:10060;">
-  <div class="modal-content" style="max-width:560px;max-height:90vh;overflow:auto;">
-    <h3 style="margin-top:0;color:#0f766e;">📖 Guía de procesos</h3>
-    <p style="font-size:13px;color:#475569;margin-top:0;">Sigue el flujo según el <b>lugar de trabajo</b>. Llena solo lo que pide cada estación y usa <b>Editar</b> + <b>Cambiar estatus</b> (sin botones rápidos).</p>
+  <div class="modal-content" style="max-width:640px;max-height:92vh;overflow:auto;">
+    <h3 style="margin-top:0;color:#0f766e;">📖 Guía de procesos y responsabilidades</h3>
+    <p style="font-size:13px;color:#475569;margin-top:0;">Manual operativo del taller. Cada rol tiene funciones claras; el sistema valida que no se avance sin la información obligatoria de cada estación.</p>
 
-    <div style="background:#dbeafe;border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid #93c5fd;">
-      <div style="font-weight:800;color:#1e40af;">🏭 Taller</div>
-      <ol style="margin:8px 0 0;padding-left:18px;font-size:13px;color:#1e3a8a;line-height:1.45;">
-        <li><b>Ventas · Recibida</b> — datos azules (cliente, modelo, unidad, placas, contacto, dirección…)</li>
-        <li><b>Mantenimiento · Diagnosticando</b> — no sale sin <b>diagnóstico</b></li>
-        <li><b>Ventas · Cotizando</b> — no avanza sin <b>orden de trabajo (PDF)</b></li>
-        <li><b>Compras · Espera refacciones</b> — material si hace falta</li>
-        <li><b>Mantenimiento · Reparando</b> — no sale sin <b>trabajo realizado</b></li>
-        <li><b>Finalizada</b> — PDF de entrega al cliente</li>
-      </ol>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+      <button type="button" class="btn-accion" id="tabGuiaProcesos" onclick="mostrarTabGuia('procesos')" style="font-weight:700;background:#0f766e;color:#fff;border:none;border-radius:8px;padding:8px 12px;">Procesos</button>
+      <button type="button" class="btn-accion" id="tabGuiaRoles" onclick="mostrarTabGuia('roles')" style="font-weight:700;background:#e2e8f0;color:#334155;border:none;border-radius:8px;padding:8px 12px;">Funciones y obligaciones</button>
     </div>
 
-    <div style="background:#ecfdf5;border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid #6ee7b7;">
-      <div style="font-weight:800;color:#065f46;">🛒 Ventas de refacciones</div>
-      <p style="font-size:13px;color:#064e3b;margin:6px 0;">Solo: <b>cliente + modelo + notas</b>. No es reparación de taller.</p>
-      <p style="font-size:13px;color:#064e3b;margin:0;"><b>Recibida → Cotizando → Espera (Compras) → Finalizada</b><br>Sin Diagnosticando ni Reparando.</p>
+    <div id="guiaTabProcesos">
+      <div style="background:#dbeafe;border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid #93c5fd;">
+        <div style="font-weight:800;color:#1e40af;">🏭 Taller</div>
+        <ol style="margin:8px 0 0;padding-left:18px;font-size:13px;color:#1e3a8a;line-height:1.5;">
+          <li><b>Ventas · Recibida</b> — captura integral del cliente y la unidad</li>
+          <li><b>Mantenimiento · Diagnosticando</b> — diagnóstico documentado</li>
+          <li><b>Ventas · Cotizando</b> — orden de trabajo y cotización</li>
+          <li><b>Compras · Espera de refacciones</b> — surtido o compra de piezas</li>
+          <li><b>Mantenimiento · Reparando</b> — ejecución y registro del trabajo</li>
+          <li><b>Finalizada</b> — entrega y documentación al cliente</li>
+        </ol>
+      </div>
+      <div style="background:#ecfdf5;border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid #6ee7b7;">
+        <div style="font-weight:800;color:#065f46;">🛒 Ventas de refacciones</div>
+        <p style="font-size:13px;color:#064e3b;margin:6px 0 0;"><b>Recibida → Cotizando → Espera (si aplica) → Finalizada</b>. Solo cliente, modelo y notas. Sin diagnóstico ni reparación de taller.</p>
+      </div>
+      <div style="background:#fef3c7;border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid #fcd34d;">
+        <div style="font-weight:800;color:#92400e;">🚚 Kuzzy · 🟡 Sigma · 🛣️ Carretera</div>
+        <p style="font-size:13px;color:#78350f;margin:6px 0 0;">Flujos fuera de taller o de sitio. En carretera: Ventas notifica por WhatsApp al técnico y el trabajo se cierra en Reparando con evidencias (serie, horas, trabajo realizado).</p>
+      </div>
     </div>
 
-    <div style="background:#fef3c7;border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid #fcd34d;">
-      <div style="font-weight:800;color:#92400e;">🚚 Kuzzy</div>
-      <p style="font-size:13px;color:#78350f;margin:6px 0 0;"><b>Recibida → Cotizando → Finalizada</b><br>Cliente, modelo, unidad, placas y notas.</p>
+    <div id="guiaTabRoles" style="display:none;">
+
+      <div style="background:#dbeafe;border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid #93c5fd;">
+        <div style="font-weight:800;font-size:15px;color:#1e40af;">💰 Asesor de ventas</div>
+        <p style="font-size:12px;color:#1e3a8a;margin:4px 0 8px;font-style:italic;">Responsable de la relación con el cliente, la programación y la cotización.</p>
+        <div style="font-size:13px;color:#1e3a8a;line-height:1.5;">
+          <b>Funciones principales</b>
+          <ul style="margin:6px 0;padding-left:18px;">
+            <li>Coordinar la llegada de unidades al taller y su prioridad de atención.</li>
+            <li>Recibir unidades: registrar cliente, unidad, falla reportada y datos de contacto completos.</li>
+            <li>Programar unidades en Agenda y confirmar recepción cuando ingresan.</li>
+            <li>Gestionar <b>ventas de refacciones</b> (cliente, modelo y notas de la solicitud).</li>
+            <li>Consultar catálogo y disponibilidad orientativa de piezas para apoyar al cliente.</li>
+            <li>Cotizar trabajos de reparación, refacciones y servicios <b>dentro y fuera de taller</b> (Taller, Kuzzy, Sigma, carretera).</li>
+            <li>En Cotizando: emitir cotización, folio/pedido y subir la <b>orden de trabajo en PDF</b> antes de avanzar.</li>
+            <li>En rescates carreteros: capturar datos del servicio, tipo de pago y técnico, y notificar por WhatsApp.</li>
+          </ul>
+          <b>Obligaciones</b>
+          <ul style="margin:6px 0 0;padding-left:18px;">
+            <li>No avanzar de Recibida sin la información de ventas requerida por el tipo de trabajo.</li>
+            <li>No sacar unidades de Cotizando sin orden de trabajo documentada.</li>
+            <li>Mantener informado al cliente sobre estatus, tiempos y alcance cotizado.</li>
+            <li>Canalizar dudas técnicas al diagnosticador; no asumir diagnósticos de taller.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:#ffedd5;border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid #fdba74;">
+        <div style="font-weight:800;font-size:15px;color:#9a3412;">🔍 Diagnosticador</div>
+        <p style="font-size:12px;color:#7c2d12;margin:4px 0 8px;font-style:italic;">Autoridad técnica del diagnóstico y de la orientación del trabajo de reparación.</p>
+        <div style="font-size:13px;color:#7c2d12;line-height:1.5;">
+          <b>Funciones principales</b>
+          <ul style="margin:6px 0;padding-left:18px;">
+            <li>Realizar el <b>diagnóstico</b> de las unidades en estación Diagnosticando (texto y/o PDF).</li>
+            <li>Identificar causa raíz, alcance de reparación y refacciones necesarias.</li>
+            <li>Registrar serie TK, horómetro y datos técnicos del equipo cuando corresponda.</li>
+            <li>Dar <b>seguimiento al personal de reparación</b> asignado a cada unidad.</li>
+            <li>Orientar a los reparadores sobre el procedimiento, el orden de trabajo y los puntos críticos.</li>
+            <li>Ayudar a comprender el problema y la solución propuesta, resolviendo dudas técnicas.</li>
+            <li>Supervisar o realizar las <b>pruebas finales</b> cuando el reparador avise que concluyó el trabajo.</li>
+          </ul>
+          <b>Obligaciones</b>
+          <ul style="margin:6px 0 0;padding-left:18px;">
+            <li>No sacar la unidad de Diagnosticando sin diagnóstico documentado.</li>
+            <li>Dejar instrucciones claras y suficientes para que el reparador ejecute el trabajo con seguridad y calidad.</li>
+            <li>Validar que el trabajo realizado coincida con el diagnóstico antes del cierre técnico.</li>
+            <li>Escalar a Gerencia situaciones de riesgo, garantía compleja o falta de recursos.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:#dcfce7;border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid #86efac;">
+        <div style="font-weight:800;font-size:15px;color:#166534;">🛠️ Reparador</div>
+        <p style="font-size:12px;color:#14532d;margin:4px 0 8px;font-style:italic;">Ejecutor de la reparación conforme al diagnóstico y los procedimientos indicados.</p>
+        <div style="font-size:13px;color:#14532d;line-height:1.5;">
+          <b>Funciones principales</b>
+          <ul style="margin:6px 0;padding-left:18px;">
+            <li>Realizar los trabajos de reparación asignados en estación Reparando.</li>
+            <li>Seguir los procedimientos y alcances definidos por el <b>diagnosticador</b>.</li>
+            <li>Consultar de inmediato cualquier duda sobre el diagnóstico, el método o las piezas.</li>
+            <li>Utilizar las refacciones liberadas por Compras y reportar faltantes o no conformidades.</li>
+            <li>Documentar el <b>trabajo realizado</b> de forma clara y completa en el sistema.</li>
+            <li>Al concluir: <b>avisar al diagnosticador</b> para pruebas finales y validación.</li>
+            <li>Participar en el cierre de la unidad solo cuando el trabajo y las pruebas estén correctos.</li>
+          </ul>
+          <b>Obligaciones</b>
+          <ul style="margin:6px 0 0;padding-left:18px;">
+            <li>No finalizar una unidad sin haber registrado el trabajo realizado.</li>
+            <li>No improvisar fuera del diagnóstico sin autorización del diagnosticador.</li>
+            <li>Cuidar herramientas, equipo del cliente y normas de seguridad del taller.</li>
+            <li>Informar retrasos, piezas incorrectas o hallazgos adicionales durante la reparación.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:#fee2e2;border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid #fca5a5;">
+        <div style="font-weight:800;font-size:15px;color:#991b1b;">🛒 Compras · Espera de refacciones</div>
+        <p style="font-size:12px;color:#7f1d1d;margin:4px 0 8px;font-style:italic;">Responsable del surtido oportuno de piezas para no detener la reparación.</p>
+        <div style="font-size:13px;color:#7f1d1d;line-height:1.5;">
+          <b>Funciones principales</b>
+          <ul style="margin:6px 0;padding-left:18px;">
+            <li>Revisar el listado de refacciones requeridas por diagnóstico / orden de trabajo.</li>
+            <li>Buscar piezas en <b>inventario</b> y alistarlas para el reparador.</li>
+            <li>Si no hay existencia: cotizar, gestionar la <b>compra</b> y dar seguimiento al proveedor.</li>
+            <li>Mantener actualizado el estatus de cada partida (en stock, pedida, en tránsito, recibida).</li>
+            <li>Cuando las piezas lleguen: verificar, registrar y <b>liberar a Reparando</b>.</li>
+            <li>Coordinar con Ventas y Mantenimiento tiempos de surtido y alternativas de pieza.</li>
+          </ul>
+          <b>Obligaciones</b>
+          <ul style="margin:6px 0 0;padding-left:18px;">
+            <li>No liberar a reparación piezas incompletas o incorrectas sin avisar.</li>
+            <li>Priorizar unidades detenidas por falta de material y comunicar fechas estimadas.</li>
+            <li>Documentar en el sistema el material preparado (cantidad, no. de parte, descripción).</li>
+            <li>Escalonar compras urgentes con Gerencia cuando el costo o el tiempo lo requieran.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:#f1f5f9;border-radius:12px;padding:12px;margin-bottom:8px;border:1px solid #cbd5e1;">
+        <div style="font-weight:800;color:#334155;">👔 Gerencia</div>
+        <p style="font-size:13px;color:#475569;margin:6px 0 0;">Supervisión del flujo, cuellos de botella, prioridades, llamadas urgentes a oficina y autorización de excepciones. Puede intervenir en cualquier estatus para destrabar el proceso.</p>
+      </div>
     </div>
 
-    <div style="background:#fef9c3;border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid #fde047;">
-      <div style="font-weight:800;color:#854d0e;">🟡 Servicios Sigma</div>
-      <p style="font-size:13px;color:#713f12;margin:6px 0 0;">Fuera de taller (en sitio). Mismo tipo de flujo que rescate fuera de taller.</p>
-    </div>
-
-    <div style="background:#ffedd5;border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid #fdba74;">
-      <div style="font-weight:800;color:#9a3412;">🛣️ Rescates carreteras</div>
-      <ol style="margin:8px 0 0;padding-left:18px;font-size:13px;color:#7c2d12;line-height:1.45;">
-        <li><b>Ventas</b> — cliente, modelo, económico, trabajo, tipo de pago, técnico</li>
-        <li><b>WhatsApp</b> al técnico (elige contacto)</li>
-        <li><b>Reparando</b> — serie, horas, trabajo realizado</li>
-        <li><b>Finalizada</b></li>
-      </ol>
-    </div>
-
-    <div style="background:#f1f5f9;border-radius:12px;padding:12px;margin-bottom:12px;border:1px solid #cbd5e1;">
-      <div style="font-weight:800;color:#334155;">Quién hace qué</div>
-      <ul style="margin:8px 0 0;padding-left:18px;font-size:13px;color:#475569;line-height:1.45;">
-        <li><b>Ventas</b> — Agenda, Recibida, Cotizando</li>
-        <li><b>Mantenimiento</b> — Diagnosticando, Reparando</li>
-        <li><b>Compras</b> — Espera de refacciones</li>
-        <li><b>Gerencia</b> — ve todo y puede intervenir</li>
-      </ul>
-      <p style="font-size:12px;color:#64748b;margin:10px 0 0;">Si falta un dato obligatorio, la app <b>no deja avanzar</b> y te indica qué completar en Editar.</p>
-    </div>
-
-    <button type="button" class="btn-modal primary" style="width:100%;" onclick="cerrarModal('modalGuiaProcesos')">Entendido</button>
+    <button type="button" class="btn-modal primary" style="width:100%;margin-top:8px;" onclick="cerrarModal('modalGuiaProcesos')">Entendido</button>
   </div>
 </div>
 
@@ -3261,12 +3344,25 @@ if(typeof window!=="undefined"){
 }
 
 
-function abrirGuiaProcesos(){
+
+function mostrarTabGuia(tab){
+  const p=document.getElementById("guiaTabProcesos");
+  const r=document.getElementById("guiaTabRoles");
+  const bp=document.getElementById("tabGuiaProcesos");
+  const br=document.getElementById("tabGuiaRoles");
+  if(p)p.style.display=tab==="procesos"?"":"none";
+  if(r)r.style.display=tab==="roles"?"":"none";
+  if(bp){bp.style.background=tab==="procesos"?"#0f766e":"#e2e8f0";bp.style.color=tab==="procesos"?"#fff":"#334155";}
+  if(br){br.style.background=tab==="roles"?"#0f766e":"#e2e8f0";br.style.color=tab==="roles"?"#fff":"#334155";}
+}
+function abrirGuiaProcesos(tab){
   const m=document.getElementById("modalGuiaProcesos");
   if(!m){alert("No se encontró la guía");return;}
   m.style.display="flex";
   m.style.zIndex="10060";
+  try{mostrarTabGuia(tab==="roles"?"roles":"procesos");}catch(e){}
 }
+
 
 function abrirPanelControl(){
   try{
