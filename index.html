@@ -52,9 +52,43 @@
     <button type="button" id="btnEnteradoLlamada" onclick="marcarEnteradoLlamadaGerencia()" style="width:100%;padding:14px;border:none;border-radius:10px;background:#fff;color:#991b1b;font-weight:900;font-size:16px;cursor:pointer;">✓ ENTERADO — Voy a la oficina</button>
   </div>
 </div>
+
+<!-- Bloqueo por mantenimiento -->
+<div id="overlayMantenimientoApp" style="display:none;position:fixed;inset:0;z-index:999999;background:linear-gradient(160deg,#0f172a 0%,#1e3a5f 50%,#0f172a 100%);color:#fff;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:system-ui,sans-serif;">
+  <div style="max-width:420px;">
+    <div style="font-size:48px;margin-bottom:12px;">🔧</div>
+    <h1 style="margin:0 0 12px;font-size:26px;font-weight:800;">App en mantenimiento</h1>
+    <p style="font-size:16px;line-height:1.5;opacity:.95;margin:0 0 8px;">Estamos realizando labores de mantenimiento para mejorar el servicio.</p>
+    <p style="font-size:15px;line-height:1.45;opacity:.85;margin:0 0 20px;">Gracias por su comprensión.</p>
+    <p style="font-size:12px;opacity:.5;margin:0;">Thermo King · Sistema de taller</p>
+    <button type="button" id="btnDesbloquearMantOculto" onclick="intentarDesbloquearMantenimiento()" style="margin-top:28px;opacity:0.12;background:transparent;border:none;color:#fff;font-size:11px;padding:20px;">·</button>
+  </div>
+</div>
+
+<div class="modal" id="modalMantOculto" style="display:none;z-index:1000000;">
+  <div class="modal-content" style="max-width:360px;">
+    <h3 style="margin-top:0;">🔧 Menú de mantenimiento</h3>
+    <p style="font-size:13px;color:#64748b;">Acceso restringido. Solo personal autorizado.</p>
+    <div id="mantOcultoPasoClave">
+      <div class="form-group">
+        <label>Código de acceso</label>
+        <input type="password" id="mantOcultoClave" maxlength="20" onkeydown="if(event.key==='Enter'){event.preventDefault();validarClaveMantOculto();}" inputmode="numeric" placeholder="código o palabra" style="width:100%;padding:12px;border-radius:8px;border:1px solid #cbd5e1;font-size:16px;text-align:center;">
+      </div>
+      <button type="button" class="btn-modal primary" style="width:100%;" onclick="validarClaveMantOculto()">Entrar</button>
+    </div>
+    <div id="mantOcultoMenu" style="display:none;">
+      <p style="font-size:13px;margin:0 0 12px;color:#334155;">Opciones del sistema:</p>
+      <button type="button" class="btn-modal danger" style="width:100%;margin-bottom:8px;" onclick="activarBloqueoMantenimientoApp()">🔒 Bloquear app — En mantenimiento</button>
+      <button type="button" class="btn-modal secondary" style="width:100%;margin-bottom:8px;" onclick="desactivarBloqueoMantenimientoApp()">🔓 Quitar bloqueo de mantenimiento</button>
+      <button type="button" class="btn-modal" style="width:100%;background:#e2e8f0;" onclick="cerrarModalMantOculto()">Cerrar</button>
+    </div>
+    <button type="button" class="btn-modal secondary" id="btnCancelMantClave" style="width:100%;margin-top:8px;" onclick="cerrarModalMantOculto()">Cancelar</button>
+  </div>
+</div>
+
 <div class="login-overlay" id="loginOverlay">
     <div class="login-box">
-        <h2>Thermo King</h2>
+        <h2 id="tituloLoginTK" onclick="tapTituloLoginTK()" style="cursor:default;user-select:none;-webkit-user-select:none;">Thermo King</h2>
         <p class="sub">Selecciona taller, tu nombre e ingresa tu clave</p>
         <div class="form-group">
             <label>Taller</label>
@@ -3355,6 +3389,112 @@ function mostrarTabGuia(tab){
   if(bp){bp.style.background=tab==="procesos"?"#0f766e":"#e2e8f0";bp.style.color=tab==="procesos"?"#fff":"#334155";}
   if(br){br.style.background=tab==="roles"?"#0f766e":"#e2e8f0";br.style.color=tab==="roles"?"#fff":"#334155";}
 }
+
+var _tkLoginTaps=0,_tkLoginTapTimer=null;
+function tapTituloLoginTK(){
+  _tkLoginTaps++;
+  if(_tkLoginTapTimer)clearTimeout(_tkLoginTapTimer);
+  _tkLoginTapTimer=setTimeout(function(){_tkLoginTaps=0;},2500);
+  if(_tkLoginTaps>=5){
+    _tkLoginTaps=0;
+    abrirModalMantOculto();
+  }
+}
+function abrirModalMantOculto(){
+  const m=document.getElementById("modalMantOculto");
+  if(!m)return;
+  const paso=document.getElementById("mantOcultoPasoClave");
+  const menu=document.getElementById("mantOcultoMenu");
+  const btnC=document.getElementById("btnCancelMantClave");
+  if(paso)paso.style.display="";
+  if(menu)menu.style.display="none";
+  if(btnC)btnC.style.display="";
+  const inp=document.getElementById("mantOcultoClave");
+  if(inp){inp.value="";}
+  m.style.display="flex";
+  m.style.zIndex="1000000";
+  setTimeout(function(){try{inp&&inp.focus();}catch(e){}},200);
+}
+function cerrarModalMantOculto(){
+  const m=document.getElementById("modalMantOculto");
+  if(m)m.style.display="none";
+}
+function validarClaveMantOculto(){
+  const inp=document.getElementById("mantOcultoClave");
+  const clave=String((inp&&inp.value)||"").trim();
+  if(typeof claveMantOcultoValida==="function"?!claveMantOcultoValida(clave):(clave!=="0310"&&clave.toLowerCase()!=="thermoking")){
+    alert("Código o palabra incorrectos");
+    if(inp){inp.value="";inp.focus();}
+    return;
+  }
+  const paso=document.getElementById("mantOcultoPasoClave");
+  const menu=document.getElementById("mantOcultoMenu");
+  const btnC=document.getElementById("btnCancelMantClave");
+  if(paso)paso.style.display="none";
+  if(menu)menu.style.display="";
+  if(btnC)btnC.style.display="none";
+}
+function appEnMantenimientoActivo(){
+  try{return localStorage.getItem("thermocontrol_app_mantenimiento")==="1";}catch(e){return false;}
+}
+function activarBloqueoMantenimientoApp(){
+  if(!confirm("¿Bloquear la app para todos los que la abran en este dispositivo?\n\nSe mostrará: «App en mantenimiento»."))return;
+  try{localStorage.setItem("thermocontrol_app_mantenimiento","1");}catch(e){}
+  try{localStorage.setItem("thermocontrol_app_mantenimiento_desde",new Date().toISOString());}catch(e){}
+  cerrarModalMantOculto();
+  aplicarBloqueoMantenimientoApp();
+  alert("App bloqueada.\nLos usuarios verán el aviso de mantenimiento.");
+}
+function desactivarBloqueoMantenimientoApp(){
+  try{localStorage.removeItem("thermocontrol_app_mantenimiento");}catch(e){}
+  try{localStorage.removeItem("thermocontrol_app_mantenimiento_desde");}catch(e){}
+  const ov=document.getElementById("overlayMantenimientoApp");
+  if(ov)ov.style.display="none";
+  cerrarModalMantOculto();
+  alert("Bloqueo de mantenimiento desactivado.");
+}
+function aplicarBloqueoMantenimientoApp(){
+  if(!appEnMantenimientoActivo())return;
+  const ov=document.getElementById("overlayMantenimientoApp");
+  if(!ov)return;
+  ov.style.display="flex";
+  // Ocultar login detrás
+  try{
+    const login=document.getElementById("loginOverlay");
+    if(login)login.style.display="none";
+  }catch(e){}
+}
+function claveMantOcultoValida(code){
+  const c=String(code||"").trim().toLowerCase();
+  return c==="0310"||c==="thermoking"||c==="thermo king";
+}
+function intentarDesbloquearMantenimiento(){
+  // 5 toques en el punto casi invisible → pide palabra/código
+  if(typeof intentarDesbloquearMantenimiento._t!=="number")intentarDesbloquearMantenimiento._t=0;
+  intentarDesbloquearMantenimiento._t++;
+  clearTimeout(intentarDesbloquearMantenimiento._tm);
+  intentarDesbloquearMantenimiento._tm=setTimeout(function(){intentarDesbloquearMantenimiento._t=0;},2000);
+  if(intentarDesbloquearMantenimiento._t>=5){
+    intentarDesbloquearMantenimiento._t=0;
+    const code=prompt("Escribe la palabra o código para desbloquear:");
+    if(claveMantOcultoValida(code)){
+      desactivarBloqueoMantenimientoApp();
+      try{
+        const login=document.getElementById("loginOverlay");
+        if(login)login.style.display="flex";
+      }catch(e){}
+    }else if(code!=null)alert("Palabra o código incorrecto");
+  }
+}
+// Al cargar: si está en mantenimiento, bloquear
+(function(){
+  function bootMant(){
+    try{aplicarBloqueoMantenimientoApp();}catch(e){}
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bootMant);
+  else bootMant();
+})();
+
 function abrirGuiaProcesos(tab){
   const m=document.getElementById("modalGuiaProcesos");
   if(!m){alert("No se encontró la guía");return;}
