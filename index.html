@@ -5948,17 +5948,25 @@ let _msgConfirmActual=null;
 let _mostrandoMsgConfirm=false;
 const MAX_MSG_CONFIRM_LOTE=5;
 
-function esMensajePersonalParaConfirmar(m){
-  if(!m||!sesion||sesion.area==="Cliente")return false;
-  if(m.de_persona===sesion.persona)return false;
-  // Solo dirigidos a mi nombre (órdenes / mensajes clave)
-  if(String(m.para_persona||"").trim()!==String(sesion.persona||"").trim())return false;
-  if(mensajeYaConfirmado(m))return false;
-  // Si ya está leído Y confirmado en evidencia local, skip
-  return true;
+function idsConfirmadosMsgSet(){
+  try{
+    const raw=localStorage.getItem("thermocontrol_msg_confirmados_ids");
+    const arr=raw?JSON.parse(raw):[];
+    return new Set((Array.isArray(arr)?arr:[]).map(String));
+  }catch(e){return new Set();}
+}
+function marcarIdConfirmadoMsg(id){
+  if(id==null||id==="")return;
+  const set=idsConfirmadosMsgSet();
+  const sid=String(id);
+  if(set.has(sid))return; // una sola vez
+  set.add(sid);
+  try{localStorage.setItem("thermocontrol_msg_confirmados_ids",JSON.stringify(Array.from(set)));}catch(e){}
 }
 function claveConfirmMsg(m){
-  return String(m&&m.id!=null?m.id:"")+"|"+String((m&&m.created_at)||"")+"|"+String((m&&m.de_persona)||"");
+  if(m&&m.id!=null&&m.id!=="")return "id:"+String(m.id);
+  // fallback si aún no hay id de servidor
+  return "f:"+String((m&&m.created_at)||"")+"|"+String((m&&m.de_persona)||"")+"|"+String((m&&m.texto)||"").substring(0,80);
 }
 function cargarEvidenciasConfirmMsg(){
   try{
@@ -5972,12 +5980,32 @@ function guardarEvidenciasConfirmMsg(arr){
 }
 function mensajeYaConfirmado(m){
   if(!m)return true;
+  // 1) Flag en memoria / servidor
   if(m.confirmado===true||m.confirmado_at)return true;
+  // 2) Ya leído en la base = no volver a exigir confirmación en pantalla
+  if(m.leido===true||m.leido===1||m.leido==="true")return true;
+  // 3) Lista rápida de IDs confirmados (una sola confirmación por mensaje)
+  if(m.id!=null&&m.id!==""&&idsConfirmadosMsgSet().has(String(m.id)))return true;
+  // 4) Evidencia detallada
   const key=claveConfirmMsg(m);
   const evid=cargarEvidenciasConfirmMsg();
-  if(evid.some(function(e){return e.clave===key||(m.id!=null&&String(e.mensaje_id)===String(m.id));}))return true;
-  // leído solo no basta si no hay evidencia de confirmación explícita
+  if(evid.some(function(e){
+    if(m.id!=null&&e.mensaje_id!=null&&String(e.mensaje_id)===String(m.id))return true;
+    if(e.clave&&e.clave===key)return true;
+    return false;
+  }))return true;
   return false;
+}
+function esMensajePersonalParaConfirmar(m){
+  if(!m||!sesion||sesion.area==="Cliente")return false;
+  if(m.de_persona===sesion.persona)return false;
+  // Solo dirigidos a mi nombre (órdenes / mensajes clave)
+  if(String(m.para_persona||"").trim()!==String(sesion.persona||"").trim())return false;
+  // Nunca repetir confirmados / leídos
+  if(mensajeYaConfirmado(m))return false;
+  // Acuses del sistema no requieren confirmación
+  if(/^§ACUSE§/i.test(String(m.texto||"")))return false;
+  return true;
 }
 function textoLimpioMensaje(m){
   let t=String(m&&m.texto||"");
@@ -6042,6 +6070,20 @@ function mostrarSiguienteMsgConfirm(){
 async function confirmarMensajeActual(){
   const m=_msgConfirmActual;
   if(!m)return;
+  // Una sola confirmación por mensaje: si ya estaba, solo avanzar cola
+  if(mensajeYaConfirmado(m)){
+    _colaMsgConfirm=_colaMsgConfirm.filter(function(x){return x!==m&&!(m.id!=null&&x.id===m.id);});
+    _msgConfirmActual=null;
+    if(_colaMsgConfirm.length)mostrarSiguienteMsgConfirm();
+    else if(_colaMsgConfirmResto&&_colaMsgConfirmResto.length&&sesion&&sesion.area==="Gerencia")mostrarOpcionContinuarMsgGerencia();
+    else{
+      _mostrandoMsgConfirm=false;
+      const ov=document.getElementById("modalConfirmacionMensaje");
+      if(ov)ov.classList.remove("open");
+      try{document.body.style.overflow="";}catch(e){}
+    }
+    return;
+  }
   const btn=document.getElementById("btnConfirmarMensaje");
   if(btn){btn.disabled=true;btn.textContent="Guardando evidencia…";}
   const ahora=(typeof fechaHistorialAhora==="function"?fechaHistorialAhora():new Date().toISOString());
@@ -6056,13 +6098,17 @@ async function confirmarMensajeActual(){
     confirmado_taller:sesion?sesion.taller:"",
     confirmado_at:ahora
   };
-  // 1) Evidencia local (siempre)
-  const lista=cargarEvidenciasConfirmMsg();
+  // 1) ID en lista rápida (evita que vuelva a salir al reabrir)
+  marcarIdConfirmadoMsg(m.id);
+  // 2) Evidencia local — no duplicar mismo mensaje_id
+  const lista=cargarEvidenciasConfirmMsg().filter(function(e){
+    return !(m.id!=null&&e.mensaje_id!=null&&String(e.mensaje_id)===String(m.id));
+  });
   lista.unshift(evid);
   guardarEvidenciasConfirmMsg(lista.slice(0,500));
-  // 2) Marcar en memoria
+  // 3) Marcar en memoria
   m.leido=true; m.confirmado=true; m.confirmado_at=ahora; m.confirmado_por=evid.confirmado_por;
-  (mensajesTodos||[]).forEach(function(x){if(x&&x.id===m.id){x.leido=true;x.confirmado=true;x.confirmado_at=ahora;}});
+  (mensajesTodos||[]).forEach(function(x){if(x&&(x.id===m.id||x===m)){x.leido=true;x.confirmado=true;x.confirmado_at=ahora;}});
   mensajes=(mensajes||[]).filter(function(x){return x.id!==m.id;});
   // 3) Intentar nube
   try{
@@ -6188,6 +6234,12 @@ function abrirHistorialConfirmacionesMsg(){
 }
 
 async function cargarMensajes(){if(!sesion||"Cliente"===sesion.area)return mensajes=[],void(mensajesTodos=[]);try{const{data:recibidos,error:e1}=await supabaseClient.from("mensajes").select("*").eq("para_persona",sesion.persona).order("created_at",{ascending:!1}).limit(120);if(e1)throw e1;let enviados=[];try{const{data:env,error:e2}=await supabaseClient.from("mensajes").select("*").eq("de_persona",sesion.persona).order("created_at",{ascending:!1}).limit(120);e2||(enviados=env||[])}catch(e){}const map=new Map;[...recibidos||[],...enviados].forEach(m=>{const p=parseMensajeTexto(m);p&&null!=p.id&&map.set(p.id,p)}),mensajesTodos=Array.from(map.values()).sort((a,b)=>{const ta=new Date(a.created_at||0).getTime();return new Date(b.created_at||0).getTime()-ta}),mensajes=mensajesTodos.filter(m=>m.para_persona===sesion.persona&&!m.leido&&m.de_persona!==sesion.persona);
+try{
+  // Sincronizar: lo que ya viene leído del servidor no debe pedir confirmación otra vez
+  (mensajesTodos||[]).forEach(function(m){
+    if(m&&m.id!=null&&(m.leido===true||m.leido===1||m.confirmado===true))marcarIdConfirmadoMsg(m.id);
+  });
+}catch(eSync){}
 try{setTimeout(function(){revisarMensajesPendientesConfirmacion();},400);}catch(eR){}
 }catch(e){console.warn("Mensajes:",e),mensajes=[],mensajesTodos=[]}}function listarConversacionesChat(){if(!sesion||!sesion.persona)return[];const yo=sesion.persona,map=new Map;return(mensajesTodos||[]).forEach(m=>{let parts=participantesDeMsg(m);if(parts.length<2&&(parts=[m.de_persona,m.para_persona].filter(Boolean)),parts.indexOf(yo)<0&&m.para_persona!==yo&&m.de_persona!==yo)return;const id=m.conversacion_id||chatIdDeParticipantes(parts);map.has(id)||map.set(id,{id,participantes:parts.length?parts:[m.de_persona,m.para_persona].filter(Boolean),ultimo:m,noLeidos:0});const c=map.get(id);new Date(m.created_at||0).getTime()>=new Date(c.ultimo&&c.ultimo.created_at||0).getTime()&&(c.ultimo=m),parts.forEach(p=>{p&&c.participantes.indexOf(p)<0&&c.participantes.push(p)}),m.para_persona!==yo||m.leido||m.de_persona===yo||c.noLeidos++}),Array.from(map.values()).sort((a,b)=>{const ta=new Date(a.ultimo&&a.ultimo.created_at||0).getTime();return new Date(b.ultimo&&b.ultimo.created_at||0).getTime()-ta})}function renderListaConversacionesChat(){const box=document.getElementById("chatListaConversaciones");if(!box)return;const lista=listarConversacionesChat();lista.length?box.innerHTML=lista.map(c=>{const ult=c.ultimo||{};let preview=String(ult.texto||"").replace(/^§CHAT§[^\n]*\n/,"").replace(/^§UNIDAD§\d+§\n?/,"").substring(0,48);const hora=ult.created_at?new Date(ult.created_at).toLocaleString():"",badge=c.noLeidos?`<span style="background:#25d366;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;">${c.noLeidos}</span>`:"",cid=String(c.id).replace(/\\/g,"\\\\").replace(/'/g,"\\'");return`<div style="padding:12px; border-bottom:1px solid #eee; display:flex; gap:10px; align-items:center;">\n                <div onclick="abrirChatConversacion('${cid}')" style="display:flex;gap:10px;align-items:center;flex:1;min-width:0;cursor:pointer;">\n                    <div style="width:42px;height:42px;border-radius:50%;background:#25d366;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">\n                        ${(chatTitulo(c.participantes)||"?").charAt(0).toUpperCase()}\n                    </div>\n                    <div style="flex:1;min-width:0;">\n                        <div style="display:flex;justify-content:space-between;gap:6px;">\n                            <strong style="font-size:14px;">${chatTitulo(c.participantes)}</strong>\n                            ${badge}\n                        </div>\n                        <div style="font-size:12px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview||"—"}</div>\n                        <div style="font-size:10px;color:#999;">${hora}</div>\n                    </div>\n                </div>\n                <button type="button" class="btn-accion" title="Borrar chat" style="color:#dc3545;flex-shrink:0;"\n                    onclick="event.stopPropagation(); borrarConversacionChat('${cid}')">🗑️</button>\n            </div>`}).join(""):box.innerHTML='<div style="text-align:center;color:#888;padding:24px;">No hay chats aún.<br>Toca <strong>Nuevo chat</strong>.</div>'}function chatMostrarVista(cual){const L=document.getElementById("chatVistaLista"),H=document.getElementById("chatVistaHilo"),N=document.getElementById("chatVistaNueva");L&&(L.style.display="lista"===cual?"block":"none"),H&&(H.style.display="hilo"===cual?"flex":"none"),N&&(N.style.display="nueva"===cual?"block":"none");const tit=document.getElementById("tituloChatModal");tit&&(tit.textContent="hilo"===cual?"💬 Chat":"💬 Mensajes")}function chatVolverLista(){chatActivo=null,chatReply=null,chatCancelarReply(),chatMostrarVista("lista"),renderListaConversacionesChat()}function chatNuevaConversacion(){try{abrirModalSafe("modalMensaje");}catch(e){}const box=document.getElementById("chatNuevaParticipantes");if(!box){alert("No se encontró la vista de nuevo chat");return;}const personas=(typeof listaTodasLasPersonas==="function"?listaTodasLasPersonas():[]).filter(function(p){return sesion&&p.persona!==sesion.persona;});box.innerHTML=personas.map(p=>`\n            <label style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #f0f0f0;cursor:pointer;">\n                <input type="checkbox" name="chatNuevoPart" value="${p.persona}|${p.area}">\n                <span>${p.persona} <small style="color:#888;">(${p.area})</small></span>\n            </label>\n        `).join("")||'<div style="color:#888;padding:12px;">No hay otros usuarios</div>',chatMostrarVista("nueva")}function chatIniciarConSeleccionados(){const checks=Array.from(document.querySelectorAll('input[name="chatNuevoPart"]:checked'));if(!checks.length)return void alert("Elige al menos un compañero");const nombres=checks.map(c=>c.value.split("|")[0]),id=chatIdDeParticipantes(nombres);chatActivo={id,participantes:Array.from(new Set([sesion.persona,...nombres]))},chatReply=null,chatMostrarVista("hilo"),renderHiloChat()}function abrirChatConversacion(id){const c=listarConversacionesChat().find(x=>x.id===id);chatActivo=c?{id:c.id,participantes:c.participantes.slice()}:{id,participantes:String(id).split("__")},chatReply=null,chatCancelarReply(),chatMostrarVista("hilo"),renderHiloChat(),marcarChatLeido(id)}async function marcarChatLeido(convId){const pendientes=(mensajesTodos||[]).filter(m=>(m.conversacion_id||chatIdDeParticipantes(participantesDeMsg(m)))===convId&&m.para_persona===sesion.persona&&!m.leido);for(const m of pendientes)try{await supabaseClient.from("mensajes").update({leido:!0}).eq("id",m.id),m.leido=!0}catch(e){}mensajes=(mensajes||[]).filter(m=>!pendientes.some(p=>p.id===m.id));try{actualizarNotificaciones()}catch(e){}}function mensajesDeConversacion(convId){const seen=new Set,list=[];return(mensajesTodos||[]).forEach(m=>{if((m.conversacion_id||chatIdDeParticipantes(participantesDeMsg(m)))!==convId)return;const key=(m.de_persona||"")+"|"+(m.texto||"")+"|"+String(m.created_at||"").slice(0,16);seen.has(key)||(seen.add(key),list.push(m))}),list.sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0))}function renderHiloChat(){if(!chatActivo)return;const tit=document.getElementById("chatHiloTitulo"),part=document.getElementById("chatHiloParticipantes"),box=document.getElementById("chatHiloMensajes");tit&&(tit.textContent=chatTitulo(chatActivo.participantes)),part&&(part.textContent=(chatActivo.participantes||[]).join(" · "));const msgs=mensajesDeConversacion(chatActivo.id);box&&(msgs.length?(box.innerHTML=msgs.map(m=>{const mio=m.de_persona===sesion.persona,reply=m.reply_texto?`<div style="font-size:11px;opacity:.85;border-left:3px solid ${mio?"#fff":"#25d366"};padding-left:6px;margin-bottom:4px;">↩ ${m.reply_de||""}: ${(m.reply_texto||"").substring(0,60)}</div>`:"",hora=m.created_at?new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"";return`<div data-msg-id="${m.id||""}" style="display:flex;justify-content:${mio?"flex-end":"flex-start"};margin-bottom:8px;">\n                <div style="max-width:82%; background:${mio?"#dcf8c6":"#fff"}; border-radius:12px; padding:8px 10px; box-shadow:0 1px 1px rgba(0,0,0,.08);">\n                    ${mio?"":`<div style="font-size:11px;font-weight:700;color:#075e54;margin-bottom:2px;">${m.de_persona||""}</div>`}\n                    ${reply}\n                    <div style="font-size:14px;white-space:pre-wrap;word-break:break-word;">${(m.texto||"").replace(/</g,"&lt;")}</div>\n                    <div style="text-align:right;font-size:10px;color:#667;margin-top:2px;">\n                        ${hora}\n                        ${mio?"":` · <a href="#" onclick="event.preventDefault();chatResponderA('${String(m.de_persona||"").replace(/'/g,"\\'")}','${String(m.texto||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'").substring(0,80)}');return false;" style="color:#075e54;">Responder</a>`}\n                    </div>\n                </div>\n            </div>`}).join(""),box.scrollTop=box.scrollHeight):box.innerHTML='<div style="text-align:center;color:#666;padding:20px;font-size:13px;">Escribe el primer mensaje</div>')}function chatResponderA(de,texto){chatReply={de:de||"",texto:texto||""};const bar=document.getElementById("chatReplyBar"),tx=document.getElementById("chatReplyTexto");bar&&(bar.style.display="block"),tx&&(tx.textContent="↩ Respondiendo a "+de+": "+(texto||"").substring(0,50));const ta=document.getElementById("mensajeTexto");ta&&ta.focus()}function chatCancelarReply(){chatReply=null;const bar=document.getElementById("chatReplyBar");bar&&(bar.style.display="none")}function chatAgregarParticipante(){if(!chatActivo)return;const personas=listaTodasLasPersonas().filter(p=>p.persona!==sesion.persona&&(chatActivo.participantes||[]).indexOf(p.persona)<0);if(!personas.length)return void alert("No hay más compañeros para agregar");const nombres=personas.map((p,i)=>i+1+") "+p.persona+" ("+p.area+")").join("\n"),elec=prompt("Agregar compañero al chat:\n\n"+nombres+"\n\nEscribe el nombre exacto:",personas[0].persona);if(!elec)return;const match=personas.find(p=>p.persona===elec.trim()||p.persona.toLowerCase()===elec.trim().toLowerCase());if(!match)return void alert("No se encontró ese usuario");const nuevos=Array.from(new Set([...chatActivo.participantes||[],match.persona,sesion.persona])),nuevoId=chatIdDeParticipantes(nuevos);chatActivo.participantes=nuevos;const idAnterior=chatActivo.id;chatActivo.id=nuevoId,enviarMensajeChatSistema(match.persona+" se unió al chat",idAnterior),renderHiloChat(),mostrarToastApp("👤 "+match.persona+" agregado al chat","#25d366")}async function enviarMensajeChatSistema(texto,convIdPrev){await enviarMensajeChatInterno(texto,!0)}async function enviarMensajeChat(){await enviarMensajeChatInterno(null,!1)}async function enviarMensajeChatInterno(textoForzado,esSistema){if(!requerirSesion()||!chatActivo)return;const ta=document.getElementById("mensajeTexto"),texto=(null!=textoForzado?textoForzado:ta&&ta.value||"").trim();if(!texto)return void(esSistema||alert("Escribe un mensaje"));const participantes=Array.from(new Set([...chatActivo.participantes||[],sesion.persona])),convId=chatIdDeParticipantes(participantes);chatActivo.id=convId,chatActivo.participantes=participantes;const destinatarios=participantes.filter(p=>p!==sesion.persona);if(!destinatarios.length)return void alert("Agrega al menos un compañero al chat");const areaDe=nombre=>{const p=listaTodasLasPersonas().find(x=>x.persona===nombre);return p?p.area:null};try{for(const dest of destinatarios)await insertMensajeFlexible({de_area:sesion.area,de_persona:sesion.persona,para_area:areaDe(dest),para_persona:dest,texto,leido:!1,conversacion_id:convId,participantes:JSON.stringify(participantes),reply_de:chatReply?chatReply.de:null,reply_texto:chatReply?chatReply.texto:null});const menciones=extraerMenciones(texto).filter(m=>participantes.indexOf(m.persona)<0);menciones.length&&await notificarMenciones(menciones,texto,"un chat"),ta&&!esSistema&&(ta.value=""),chatCancelarReply(),await cargarMensajes(),renderHiloChat();try{actualizarNotificaciones()}catch(e){}}catch(e){console.error(e),alert("❌ Error al enviar: "+(e.message||e))}}function abrirCentroMensajes(){
   try{cerrarPanelNotif()}catch(e){}
