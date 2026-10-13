@@ -3469,6 +3469,8 @@ try{for(let intento=0;intento<6;intento++){const{data,error}=await supabaseClien
     delete unidades[index]._offline;
   }
   try{if(prevU)anunciarCambioPuntos(prevU,Object.assign({},prevU,datos));}catch(eP){}
+  try{if(prevU)notificarAsesorUnidadFinalizada(prevU,Object.assign({},prevU,datos));}catch(eA){}
+  try{if(prevU)notificarCambioEstatusAreas(prevU,Object.assign({},prevU,datos));}catch(eB){}
   try{renderizarTablero();}catch(e){}
   try{actualizarStats();}catch(e){}
   return{success:!0,data:data&&data[0]};
@@ -5818,6 +5820,295 @@ function mostrarToastPuntos(delta,opts){
     }
   }catch(e){}
 }
+
+
+/** Avisos verdes por estatus → áreas (una sola vez, solo salen con OK) */
+const AVISO_ESTATUS_AREAS={
+  "Diagnosticando":{area:"Mantenimiento",titulo:"🔬 A DIAGNÓSTICO",texto:"Una unidad pasó a Diagnosticando"},
+  "Reparando":{area:"Mantenimiento",titulo:"🛠️ A REPARACIÓN",texto:"Una unidad pasó a Reparando"},
+  "Espera de refacciones":{area:"Compras",titulo:"📦 ESPERA DE REFACCIONES",texto:"Una unidad llegó a Espera de refacciones"},
+  "Cotizando":{area:"Ventas",titulo:"💰 A COTIZAR",texto:"Una unidad llegó a Cotizando"}
+};
+function nombresAreaTaller(area){
+  try{
+    const taller=(sesion&&sesion.taller)||"Chihuahua";
+    let list=[];
+    if(typeof getPersonasPorArea==="function"){
+      const pa=getPersonasPorArea(taller)||{};
+      list=pa[area]||[];
+    }
+    // listaUsuarios backup
+    if((!list||!list.length)&&Array.isArray(listaUsuarios)){
+      list=listaUsuarios.filter(function(u){
+        if(!u||!u.nombre||u.area!==area)return false;
+        if(u.taller&&sesion&&sesion.taller&&u.taller!==sesion.taller&&typeof idsEquivalentesTaller==="function"){
+          return idsEquivalentesTaller(u.taller,sesion.taller);
+        }
+        if(u.taller&&sesion&&sesion.taller)return u.taller===sesion.taller||!u.taller;
+        return true;
+      }).map(function(u){return u.nombre;});
+    }
+    // dedupe
+    const seen={}, out=[];
+    (list||[]).forEach(function(n){
+      const name=typeof n==="string"?n:(n&&n.persona)||(n&&n.nombre)||"";
+      if(!name||seen[name])return;
+      seen[name]=1; out.push(name);
+    });
+    return out;
+  }catch(e){return [];}
+}
+async function notificarCambioEstatusAreas(prev,next){
+  try{
+    if(!next)return;
+    const estPrev=(prev&&prev.estatus)||"";
+    const estNext=next.estatus||"";
+    if(!estNext||estPrev===estNext)return;
+    const cfg=AVISO_ESTATUS_AREAS[estNext];
+    if(!cfg)return;
+    const destinos=nombresAreaTaller(cfg.area);
+    if(!destinos.length){
+      // si no hay lista, mensaje genérico a "área" no sirve; salir
+      console.warn("Sin destinatarios para",cfg.area);
+      return;
+    }
+    const payload={
+      tipo:"estatus",
+      estatus:estNext,
+      area:cfg.area,
+      titulo:cfg.titulo,
+      texto:cfg.texto,
+      unidad_id:next.id,
+      no_unidad:next.no_unidad||"",
+      cliente:next.cliente||"",
+      modelo:next.modelo||"",
+      placas:next.placas||"",
+      por:(sesion&&sesion.persona)||"",
+      por_area:(sesion&&sesion.area)||"",
+      at:(typeof fechaHistorialAhora==="function"?fechaHistorialAhora():new Date().toISOString())
+    };
+    const claveBase="estavis:"+String(next.id||"")+":"+estNext+":";
+    for(let i=0;i<destinos.length;i++){
+      const quien=destinos[i];
+      // no avisarse a sí mismo si fue quien movió el estatus
+      if(sesion&&sesion.persona===quien)continue;
+      try{
+        if(sessionStorage.getItem(claveBase+quien))continue;
+        sessionStorage.setItem(claveBase+quien,"1");
+      }catch(e){}
+      if(typeof insertMensajeFlexible==="function"){
+        try{
+          await insertMensajeFlexible({
+            de_area:(sesion&&sesion.area)||"Sistema",
+            de_persona:(sesion&&sesion.persona)||"Sistema",
+            para_area:cfg.area,
+            para_persona:quien,
+            texto:"§AVISO_ESTATUS§\n"+JSON.stringify(payload)+"\n"+cfg.titulo+" · "+(payload.no_unidad||"")+" · "+(payload.cliente||""),
+            leido:false
+          });
+        }catch(e){console.warn("aviso estatus",quien,e);}
+      }
+    }
+  }catch(e){console.warn("notificarCambioEstatusAreas",e);}
+}
+function idsAvisosEstatusVistosSet(){
+  try{return new Set((JSON.parse(localStorage.getItem("thermocontrol_avisos_estatus_vistos")||"[]")||[]).map(String));}
+  catch(e){return new Set();}
+}
+function marcarAvisoEstatusVisto(id){
+  if(id==null||id==="")return;
+  const set=idsAvisosEstatusVistosSet();
+  if(set.has(String(id)))return;
+  set.add(String(id));
+  try{localStorage.setItem("thermocontrol_avisos_estatus_vistos",JSON.stringify(Array.from(set)));}catch(e){}
+}
+function esMensajeAvisoEstatus(m){
+  return !!(m&&/^§AVISO_ESTATUS§/i.test(String(m.texto||"")));
+}
+function revisarAvisosEstatusArea(){
+  try{
+    if(!sesion||sesion.area==="Cliente")return;
+    if(document.getElementById("modalAvisoEstatusArea")&&document.getElementById("modalAvisoEstatusArea").style.display==="flex")return;
+    if(document.getElementById("modalAvisoFinalAsesor")&&document.getElementById("modalAvisoFinalAsesor").style.display==="flex")return;
+    const fuente=mensajesTodos||mensajes||[];
+    const nuevas=fuente.filter(function(m){
+      if(!esMensajeAvisoEstatus(m))return false;
+      if(String(m.para_persona||"").trim()!==String(sesion.persona||"").trim())return false;
+      if(m.id!=null&&idsAvisosEstatusVistosSet().has(String(m.id)))return false;
+      return true;
+    }).sort(function(a,b){return new Date(a.created_at||0)-new Date(b.created_at||0);});
+    if(!nuevas.length)return;
+    mostrarAvisoEstatusVerde(nuevas[0], nuevas.slice(1));
+  }catch(e){console.warn(e);}
+}
+function mostrarAvisoEstatusVerde(m,resto){
+  if(!m)return;
+  if(m.id!=null)marcarAvisoEstatusVisto(m.id);
+  const d=(typeof parsePayloadTag==="function"?parsePayloadTag(m.texto,"AVISO_ESTATUS"):null)||{};
+  const titulo=d.titulo||("Aviso: "+(d.estatus||""));
+  const no=d.no_unidad||"S/N";
+  const cli=d.cliente||"—";
+  const mod=d.modelo||"";
+  const texto=d.texto||"";
+  const por=d.por||m.de_persona||"";
+  const cuando=typeof formatHoraMexico==="function"?formatHoraMexico(d.at||m.created_at):"";
+  let ov=document.getElementById("modalAvisoEstatusArea");
+  if(!ov){
+    ov=document.createElement("div");
+    ov.id="modalAvisoEstatusArea";
+    ov.style.cssText="position:fixed;inset:0;z-index:12950;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:16px";
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML=
+    '<div style="background:linear-gradient(160deg,#f0fdf4,#dcfce7);border:2px solid #16a34a;border-radius:18px;padding:22px;width:min(460px,96vw);box-shadow:0 20px 50px rgba(22,163,74,.4);color:#14532d">'+
+      '<div style="font-size:12px;font-weight:900;letter-spacing:.04em;color:#16a34a;margin-bottom:8px">'+String(titulo).replace(/</g,"&lt;")+'</div>'+
+      (texto?'<div style="font-size:14px;margin-bottom:10px;opacity:.95">'+String(texto).replace(/</g,"&lt;")+'</div>':'')+
+      '<div style="font-size:20px;font-weight:900;line-height:1.25;margin-bottom:6px">'+String(no).replace(/</g,"&lt;")+'</div>'+
+      '<div style="font-size:15px;font-weight:700">Cliente: '+String(cli).replace(/</g,"&lt;")+'</div>'+
+      (mod?'<div style="font-size:13px;margin-top:4px">Modelo: '+String(mod).replace(/</g,"&lt;")+'</div>':'')+
+      (por?'<div style="font-size:12px;margin-top:10px;opacity:.85">Movió: <b>'+String(por).replace(/</g,"&lt;")+'</b></div>':'')+
+      (cuando?'<div style="font-size:12px;opacity:.75">'+cuando+'</div>':'')+
+      '<button type="button" id="btnOkAvisoEstatus" style="width:100%;margin-top:18px;padding:15px;border:none;border-radius:12px;background:#16a34a;color:#fff;font-weight:900;font-size:17px;cursor:pointer">OK</button>'+
+    '</div>';
+  ov.style.display="flex";
+  try{document.body.style.overflow="hidden";}catch(e){}
+  const btn=document.getElementById("btnOkAvisoEstatus");
+  if(btn)btn.onclick=function(){
+    ov.style.display="none";
+    ov.innerHTML="";
+    try{document.body.style.overflow="";}catch(e){}
+    try{
+      if(m.id!=null&&typeof supabaseClient!=="undefined")
+        supabaseClient.from("mensajes").update({leido:true}).eq("id",m.id);
+    }catch(e){}
+    if(resto&&resto.length){
+      setTimeout(function(){mostrarAvisoEstatusVerde(resto[0], resto.slice(1));},250);
+    }
+  };
+}
+
+async function notificarAsesorUnidadFinalizada(prev,next){
+  try{
+    if(!next)return;
+    const estPrev=prev&&prev.estatus||"";
+    const estNext=next.estatus||"";
+    if(estNext!=="Finalizada"||estPrev==="Finalizada")return;
+    const asesor=(next.asesor_ventas||"").trim();
+    if(!asesor)return;
+    const payload={
+      unidad_id:next.id,
+      no_unidad:next.no_unidad||"",
+      cliente:next.cliente||"",
+      modelo:next.modelo||"",
+      placas:next.placas||"",
+      ubicacion:next.ubicacion_trabajo||next.ubicacion||"",
+      finalizado_por:(sesion&&sesion.persona)||"",
+      finalizado_area:(sesion&&sesion.area)||"",
+      at:(typeof fechaHistorialAhora==="function"?fechaHistorialAhora():new Date().toISOString())
+    };
+    // Evitar duplicar el mismo aviso en poco tiempo (mismo dispositivo)
+    const clave="finavis:"+String(next.id||"")+"|"+asesor;
+    try{
+      const ya=sessionStorage.getItem(clave);
+      if(ya)return;
+      sessionStorage.setItem(clave,"1");
+    }catch(e){}
+    if(typeof insertMensajeFlexible==="function"){
+      const areaAsesor=function(nombre){
+        const p=(listaUsuarios||[]).find(function(x){return (x.nombre||"")===nombre;});
+        return p?p.area:"Ventas";
+      };
+      await insertMensajeFlexible({
+        de_area:(sesion&&sesion.area)||"Sistema",
+        de_persona:(sesion&&sesion.persona)||"Sistema",
+        para_area:areaAsesor(asesor),
+        para_persona:asesor,
+        texto:"§AVISO_FINAL§\n"+JSON.stringify(payload)+"\n✅ Unidad finalizada: "+(payload.no_unidad||"S/N")+" · "+(payload.cliente||""),
+        leido:false
+      });
+    }
+    // Si el asesor está en este mismo dispositivo, mostrar ya
+    if(sesion&&sesion.persona===asesor){
+      mostrarAvisoFinalAsesorVerde(payload,null);
+    }
+  }catch(e){console.warn("notificarAsesorUnidadFinalizada",e);}
+}
+function idsAvisosFinalVistosSet(){
+  try{return new Set((JSON.parse(localStorage.getItem("thermocontrol_avisos_final_vistos")||"[]")||[]).map(String));}
+  catch(e){return new Set();}
+}
+function marcarAvisoFinalVisto(id){
+  if(id==null||id==="")return;
+  const set=idsAvisosFinalVistosSet();
+  if(set.has(String(id)))return;
+  set.add(String(id));
+  try{localStorage.setItem("thermocontrol_avisos_final_vistos",JSON.stringify(Array.from(set)));}catch(e){}
+}
+function esMensajeAvisoFinal(m){
+  return !!(m&&/^§AVISO_FINAL§/i.test(String(m.texto||"")));
+}
+function revisarAvisosFinalAsesor(){
+  try{
+    if(!sesion||sesion.area==="Cliente")return;
+    const fuente=mensajesTodos||mensajes||[];
+    const nuevas=fuente.filter(function(m){
+      if(!esMensajeAvisoFinal(m))return false;
+      if(String(m.para_persona||"").trim()!==String(sesion.persona||"").trim())return false;
+      if(m.id!=null&&idsAvisosFinalVistosSet().has(String(m.id)))return false;
+      return true;
+    }).sort(function(a,b){return new Date(a.created_at||0)-new Date(b.created_at||0);});
+    if(!nuevas.length)return;
+    const m=nuevas[0];
+    const data=typeof parsePayloadTag==="function"?parsePayloadTag(m.texto,"AVISO_FINAL"):null;
+    const payload=data||{no_unidad:"",cliente:"",finalizado_por:m.de_persona};
+    mostrarAvisoFinalAsesorVerde(payload, nuevas.slice(1), m);
+  }catch(e){console.warn(e);}
+}
+function mostrarAvisoFinalAsesorVerde(payload,resto,msgOrig){
+  payload=payload||{};
+  if(msgOrig&&msgOrig.id!=null)marcarAvisoFinalVisto(msgOrig.id);
+  const no=payload.no_unidad||"S/N";
+  const cli=payload.cliente||"—";
+  const mod=payload.modelo||"";
+  const por=payload.finalizado_por||"";
+  const cuando=typeof formatHoraMexico==="function"?formatHoraMexico(payload.at||(msgOrig&&msgOrig.created_at)):"";
+  let ov=document.getElementById("modalAvisoFinalAsesor");
+  if(!ov){
+    ov=document.createElement("div");
+    ov.id="modalAvisoFinalAsesor";
+    ov.style.cssText="position:fixed;inset:0;z-index:12900;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px";
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML=
+    '<div style="background:linear-gradient(160deg,#f0fdf4,#dcfce7);border:2px solid #16a34a;border-radius:18px;padding:22px;width:min(440px,96vw);box-shadow:0 20px 50px rgba(22,163,74,.4);color:#14532d">'+
+      '<div style="font-size:12px;font-weight:900;letter-spacing:.05em;color:#16a34a;margin-bottom:8px">✅ UNIDAD FINALIZADA</div>'+
+      '<div style="font-size:20px;font-weight:900;line-height:1.25;margin-bottom:8px">'+String(no).replace(/</g,"&lt;")+'</div>'+
+      '<div style="font-size:15px;font-weight:700;margin-bottom:4px">Cliente: '+String(cli).replace(/</g,"&lt;")+'</div>'+
+      (mod?'<div style="font-size:13px;opacity:.9;margin-bottom:4px">Modelo: '+String(mod).replace(/</g,"&lt;")+'</div>':'')+
+      (por?'<div style="font-size:12px;opacity:.85;margin-top:8px">Finalizó: <b>'+String(por).replace(/</g,"&lt;")+'</b></div>':'')+
+      (cuando?'<div style="font-size:12px;opacity:.75;margin-top:2px">'+cuando+'</div>':'')+
+      '<p style="font-size:13px;margin:14px 0 0;opacity:.9">Tu unidad como asesor de ventas ya está lista / finalizada.</p>'+
+      '<button type="button" id="btnOkAvisoFinal" style="width:100%;margin-top:16px;padding:14px;border:none;border-radius:12px;background:#16a34a;color:#fff;font-weight:900;font-size:17px;cursor:pointer">OK</button>'+
+    '</div>';
+  ov.style.display="flex";
+  const btn=document.getElementById("btnOkAvisoFinal");
+  if(btn)btn.onclick=function(){
+    ov.style.display="none";
+    ov.innerHTML="";
+    try{
+      if(msgOrig&&msgOrig.id!=null&&typeof supabaseClient!=="undefined")
+        supabaseClient.from("mensajes").update({leido:true}).eq("id",msgOrig.id);
+    }catch(e){}
+    if(resto&&resto.length){
+      setTimeout(function(){
+        const m2=resto[0];
+        const d2=typeof parsePayloadTag==="function"?parsePayloadTag(m2.texto,"AVISO_FINAL"):null;
+        mostrarAvisoFinalAsesorVerde(d2||{}, resto.slice(1), m2);
+      },200);
+    }
+  };
+}
+
 function anunciarCambioPuntos(prev,next){
   try{
     if(!prev||!next)return;
@@ -6040,7 +6331,7 @@ function esMensajePersonalParaConfirmar(m){
     if(m.id!=null)try{marcarIdConfirmadoMsg(m.id);}catch(e){}
     return false;
   }
-  if(/^§PREGUNTA§/i.test(rawTxt) || /^§RESPUESTA§/i.test(rawTxt)){
+  if(/^§PREGUNTA§/i.test(rawTxt) || /^§RESPUESTA§/i.test(rawTxt) || /^§AVISO_FINAL§/i.test(rawTxt) || /^§AVISO_ESTATUS§/i.test(rawTxt)){
     if(m.id!=null)try{marcarIdConfirmadoMsg(m.id);}catch(e){}
     return false;
   }
@@ -6324,6 +6615,14 @@ function formatTextoChatVisible(m){
       const r=d.respuesta||"";
       const q=d.pregunta?("\nSobre: "+d.pregunta):"";
       return "✓ Respuesta: "+r+q;
+    }
+    if(/^§AVISO_ESTATUS§/i.test(raw)){
+      const d=parsePayloadTag(raw,"AVISO_ESTATUS")||{};
+      return (d.titulo||"Aviso")+" · "+(d.no_unidad||"")+" · "+(d.cliente||"");
+    }
+    if(/^§AVISO_FINAL§/i.test(raw)){
+      const d=parsePayloadTag(raw,"AVISO_FINAL")||{};
+      return "✅ Unidad finalizada: "+(d.no_unidad||"")+" · "+(d.cliente||"");
     }
     if(/^§ACUSE§/i.test(raw)){
       return raw.replace(/^§ACUSE§\s*/i,"").trim()||"✓ Confirmado";
@@ -6664,6 +6963,8 @@ try{
 }catch(eSync){}
 try{setTimeout(function(){
   if(typeof revisarRespuestasRecibidas==="function")revisarRespuestasRecibidas();
+            if(typeof revisarAvisosFinalAsesor==="function")revisarAvisosFinalAsesor();
+            if(typeof revisarAvisosEstatusArea==="function")revisarAvisosEstatusArea();
   if(typeof revisarPreguntasPendientes==="function")revisarPreguntasPendientes();
   else if(typeof revisarMensajesPendientesConfirmacion==="function")revisarMensajesPendientesConfirmacion();
 },500);}catch(eR){}
@@ -6714,7 +7015,9 @@ document.addEventListener("visibilitychange",function(){
     if(typeof cargarMensajes==="function"){
       cargarMensajes().then(function(){
         try{actualizarNotificaciones();}catch(e){}
-        try{if(typeof revisarRespuestasRecibidas==="function")revisarRespuestasRecibidas();}catch(e){}
+        try{if(typeof revisarRespuestasRecibidas==="function")revisarRespuestasRecibidas();
+            if(typeof revisarAvisosFinalAsesor==="function")revisarAvisosFinalAsesor();
+            if(typeof revisarAvisosEstatusArea==="function")revisarAvisosEstatusArea();}catch(e){}
         try{if(typeof revisarPreguntasPendientes==="function")revisarPreguntasPendientes();}catch(e){}
         try{if(typeof revisarMensajesPendientesConfirmacion==="function")revisarMensajesPendientesConfirmacion();}catch(e){}
       }).catch(function(){});
@@ -6737,6 +7040,8 @@ document.addEventListener("visibilitychange",function(){
         try{
           if(!escribiendo){
             if(typeof revisarRespuestasRecibidas==="function")revisarRespuestasRecibidas();
+            if(typeof revisarAvisosFinalAsesor==="function")revisarAvisosFinalAsesor();
+            if(typeof revisarAvisosEstatusArea==="function")revisarAvisosEstatusArea();
             if(!_mostrandoPregunta&&typeof revisarPreguntasPendientes==="function")revisarPreguntasPendientes();
             if(!_mostrandoMsgConfirm&&typeof revisarMensajesPendientesConfirmacion==="function")revisarMensajesPendientesConfirmacion();
           }
