@@ -5943,8 +5943,10 @@ if(!confirm(`📅 Unidad ${u.no_unidad||""} — ${u.cliente||""}\nFecha programa
   try{if(typeof renderListaTrabajoHoy==="function")renderListaTrabajoHoy()}catch(e){}
 }function renderListaTrabajoHoy(){const box=document.getElementById("listaTrabajoHoy");if(!box)return;if(!trabajoHoy.length)return void(box.innerHTML='<div style="color:#888; text-align:center; padding:20px;">No hay unidades para trabajar en esta fecha</div>');const editable=puedeEditarTrabajoHoy();box.innerHTML=trabajoHoy.map((t,idx)=>{const u=unidades.find(x=>x.id===t.unidad_id),nombre=u?`${u.no_unidad||"—"} — ${u.cliente||"—"}`:`Unidad #${t.unidad_id}`,extra=u?`${u.estatus||""}`:"",pct=Math.max(0,Math.min(100,parseInt(t.pct_avance,10)||0)),pctColor=pct>=100?"#28a745":pct>=50?"#17a2b8":pct>0?"#ffc107":"#adb5bd",barra=`\n                <div style="margin-top:6px;">\n                    <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">\n                        <span>🔧 Avance trabajo</span>\n                        <strong style="color:${pctColor}">${pct}%</strong>\n                    </div>\n                    <div style="height:8px; background:#e9ecef; border-radius:6px; overflow:hidden;">\n                        <div style="height:100%; width:${pct}%; background:${pctColor}; transition:width .2s;"></div>\n                    </div>\n                    ${sesion&&!modoCliente&&"Mantenimiento"===sesion.area?`\n                    <div style="display:flex; gap:6px; align-items:center; margin-top:6px;" onclick="event.stopPropagation()">\n                        <input type="range" min="0" max="100" step="5" value="${pct}"\n                            style="flex:1;"\n                            onchange="actualizarPctTrabajoHoy(${t.id}, this.value)"\n                            oninput="this.nextElementSibling.textContent=this.value+'%'">\n                        <span style="font-size:12px; min-width:36px; text-align:right;">${pct}%</span>\n                    </div>`:""}\n                </div>`,nota=t.nota?`<div style="font-size:12px; color:#1a3a5c; margin-top:2px;">📝 ${t.nota}</div>`:"",quien=t.created_by_persona||t.creado_por?`<div style="font-size:11px; color:#666; margin-top:2px;">👤 Armó: ${t.created_by_persona||t.creado_por}${t.created_by_area?" ("+t.created_by_area+")":""}</div>`:"",cuando=t.created_at?`<div style="font-size:11px; color:#888;">🕒 ${formatearFechaHoraCorta(t.created_at)}</div>`:"",atendida=t.atendido?`<div style="font-size:11px; color:#155724; font-weight:600;">✅ Atendida${t.atendido_por?" por "+t.atendido_por:""}${t.atendido_at?" · "+formatearFechaHoraCorta(t.atendido_at):""}</div>`:'<div style="font-size:11px; color:#856404;">⏳ Pendiente de atender</div>',acciones=`\n                <div class="acciones">\n                    ${t.atendido||!sesion||modoCliente?t.atendido&&editable?`<button class="btn-accion" onclick="event.stopPropagation(); desmarcarTrabajoHoyAtendido(${t.id})" title="Quitar atendida">↩️</button>`:"":`<button class="btn-accion" style="color:#28a745; border-color:#28a745;" onclick="event.stopPropagation(); marcarTrabajoHoyAtendido(${t.id})" title="Marcar atendida">✅</button>`}\n                    ${editable?`\n                    <button class="btn-accion" onclick="moverTrabajoHoy(${t.id}, -1)" title="Subir">↑</button>\n                    <button class="btn-accion" onclick="moverTrabajoHoy(${t.id}, 1)" title="Bajar">↓</button>\n                    <button class="btn-accion" style="color:#dc3545;" onclick="quitarDeTrabajoHoy(${t.id})" title="Quitar">✕</button>`:""}\n                </div>`;return`\n            <div class="trabajo-item" style="${t.atendido?"opacity:0.75; background:#e8f5e9;":""}">\n                <div class="num">${idx+1}</div>\n                <div class="info" style="cursor:pointer;" onclick="cerrarModal('modalTrabajoHoy'); abrirModalDetalle(${t.unidad_id})">\n                    <strong>${nombre}</strong>\n                    <span>${extra}</span>\n                    ${nota}\n                    ${barra}\n                    ${quien}\n                    ${cuando}\n                    ${atendida}\n                </div>\n                ${acciones}\n            </div>`}).join("")}async function agregarATrabajoHoy(){if(!puedeEditarTrabajoHoy())return;const sel=document.getElementById("trabajoHoySelectUnidad"),unidadId=parseInt(sel.value,10);if(!unidadId)return void alert("⚠️ Selecciona una unidad");const uSel=unidades.find(x=>x.id===unidadId);if(!uSel||"Diagnosticando"!==uSel.estatus&&"Reparando"!==uSel.estatus)return void alert("⚠️ Solo se pueden poner a trabajar unidades en Diagnosticando o Reparando");if(trabajoHoy.some(t=>t.unidad_id===unidadId))return void alert("Esa unidad ya está en Trabajar hoy para esta fecha");const orden=trabajoHoy.length+1,nota=(document.getElementById("agendaNota")?.value||"").trim(),fecha=getFechaAgenda();if(!fecha||!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){alert("⚠️ Selecciona una fecha válida en el calendario");const el=document.getElementById("agendaFecha");return void(el&&(el.value=fechaHoyISO(),el.focus()))}try{const payload={fecha,unidad_id:unidadId,orden,created_by_area:sesion.area||null,created_by_persona:sesion.persona||null};nota&&(payload.nota=nota);const{error}=await supabaseClient.from("trabajo_hoy").insert([payload]);if(error)throw error;await cargarTrabajoHoy(),await cambiarFechaAgenda()}catch(e){console.error(e);const msg=e&&e.message?e.message:String(e);alert("❌ Error al agregar: "+msg+"\n\nRevisa que exista la tabla trabajo_hoy y la fecha esté elegida.")}}async function actualizarPctTrabajoHoy(id,valor){if(!requerirSesion())return;if(!sesion||"Mantenimiento"!==sesion.area)return void alert("⚠️ Solo Mantenimiento puede actualizar el porcentaje de avance.");const pct=Math.max(0,Math.min(100,parseInt(valor,10)||0));try{const patch={pct_avance:pct},{error}=await supabaseClient.from("trabajo_hoy").update(patch).eq("id",id);if(error){console.warn("pct_avance:",error.message);const item=trabajoHoy.find(x=>x.id===id);if(item){item.pct_avance=pct;const notaBase=(item.nota||"").replace(/\s*\[Avance:\s*\d+%\]\s*/g,"").trim(),nuevaNota=(notaBase?notaBase+" ":"")+"[Avance: "+pct+"%]";try{await supabaseClient.from("trabajo_hoy").update({nota:nuevaNota}).eq("id",id),item.nota=nuevaNota}catch(e2){}}return renderListaTrabajoHoy(),void mostrarToastApp("Avance "+pct+"% (guarda local si falta columna pct_avance)","#17a2b8")}const item=trabajoHoy.find(x=>x.id===id);item&&(item.pct_avance=pct),renderListaTrabajoHoy(),mostrarToastApp("🔧 Avance actualizado: "+pct+"%","#28a745")}catch(e){console.error(e),alert("No se pudo guardar el avance: "+(e.message||e))}}async function marcarTrabajoHoyAtendido(id){if(requerirSesion())try{const patch={atendido:!0,atendido_por:sesion.persona||null,atendido_at:(new Date).toISOString()},{error}=await supabaseClient.from("trabajo_hoy").update(patch).eq("id",id);if(error)throw error;await cargarTrabajoHoy(),renderListaTrabajoHoy(),mostrarToastApp("✅ Marcada como atendida","#28a745")}catch(e){try{const row=trabajoHoy.find(x=>x.id===id),nota=(row&&row.nota||"")+(row&&row.nota?" · ":"")+"Atendida por "+(sesion.persona||"")+" "+(new Date).toLocaleString();await supabaseClient.from("trabajo_hoy").update({nota}).eq("id",id),row&&(row.atendido=!0,row.atendido_por=sesion.persona,row.atendido_at=(new Date).toISOString()),renderListaTrabajoHoy(),mostrarToastApp("✅ Atendida (guardado en nota; opcional: columnas atendido en Supabase)","#28a745")}catch(e2){alert("❌ No se pudo marcar atendida: "+(e.message||e))}}}async function desmarcarTrabajoHoyAtendido(id){if(puedeEditarTrabajoHoy())try{const{error}=await supabaseClient.from("trabajo_hoy").update({atendido:!1,atendido_por:null,atendido_at:null}).eq("id",id);if(error)throw error;await cargarTrabajoHoy(),renderListaTrabajoHoy()}catch(e){alert("❌ "+(e.message||e))}}async function quitarDeTrabajoHoy(id){if(puedeEditarTrabajoHoy()&&confirm("¿Quitar esta unidad de la agenda?"))try{const{error}=await supabaseClient.from("trabajo_hoy").delete().eq("id",id);if(error)throw error;await cargarTrabajoHoy(),await reordenarTrabajoHoySecuencial(),await cargarTrabajoHoy(),await cambiarFechaAgenda()}catch(e){alert("❌ Error: "+(e.message||e))}}async function reordenarTrabajoHoySecuencial(){const ordenados=[...trabajoHoy].sort((a,b)=>a.orden-b.orden);for(let i=0;i<ordenados.length;i++)ordenados[i].orden!==i+1&&await supabaseClient.from("trabajo_hoy").update({orden:i+1}).eq("id",ordenados[i].id)}async function moverTrabajoHoy(id,dir){if(!puedeEditarTrabajoHoy())return;const lista=[...trabajoHoy].sort((a,b)=>a.orden-b.orden),idx=lista.findIndex(t=>t.id===id);if(idx<0)return;const nuevo=idx+dir;if(nuevo<0||nuevo>=lista.length)return;const a=lista[idx],b=lista[nuevo];try{await supabaseClient.from("trabajo_hoy").update({orden:b.orden}).eq("id",a.id),await supabaseClient.from("trabajo_hoy").update({orden:a.orden}).eq("id",b.id),await cargarTrabajoHoy(),renderListaTrabajoHoy()}catch(e){alert("❌ Error al reordenar: "+(e.message||e))}}function extraerMenciones(texto){const raw=String(texto||""),re=/@([A-Za-zÁÉÍÓÚáéíóúÑñüÜ][A-Za-zÁÉÍÓÚáéíóúÑñüÜ0-9]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñüÜ][A-Za-zÁÉÍÓÚáéíóúÑñüÜ0-9]*){0,2})/g,hallados=[];let m;for(;null!==(m=re.exec(raw));){const frag=m[1].trim();frag&&hallados.indexOf(frag)<0&&hallados.push(frag)}const personas=listaTodasLasPersonas(),norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim(),res=[];return hallados.forEach(frag=>{const nf=norm(frag);let match=personas.find(p=>norm(p.persona)===nf);match||(match=personas.find(p=>0===norm(p.persona).indexOf(nf)||0===nf.indexOf(norm(p.persona).split(" ")[0]))),match||(match=personas.find(p=>norm(p.persona).indexOf(nf)>=0||nf.indexOf(norm(p.persona))>=0)),match&&!res.some(r=>r.persona===match.persona&&r.area===match.area)&&res.push(match)}),res}async function notificarMenciones(menciones,texto,contexto,unidadId){if(!sesion||!menciones||!menciones.length)return;const preview=String(texto||"").substring(0,80),uid=null!=unidadId?unidadId:null;for(const m of menciones)if(m.persona!==sesion.persona)try{const prefijo=null!=uid?"§UNIDAD§"+uid+"§\n":"";await supabaseClient.from("mensajes").insert([{de_area:sesion.area,de_persona:sesion.persona,para_area:m.area||null,para_persona:m.persona,texto:prefijo+"🔔 Te mencionaron"+(contexto?" en "+contexto:"")+":\n"+preview+(String(texto||"").length>80?"…":""),leido:!1}])}catch(e){console.warn("Mención a",m.persona,e)}try{await cargarMensajes(),actualizarNotificaciones()}catch(e){}}function sugerirMencionesNota(ta){const box=document.getElementById("sugerenciasMencionNota");if(!box||!ta)return;const m=(ta.value||"").match(/@([A-Za-zÁÉÍÓÚáéíóúÑñüÜ]*)$/);if(!m)return box.style.display="none",void(box.innerHTML="");const q=m[1].toLowerCase(),filtradas=listaTodasLasPersonas().filter(p=>p.persona!==(sesion&&sesion.persona)).filter(p=>!q||p.persona.toLowerCase().indexOf(q)>=0).slice(0,8);filtradas.length?(box.style.display="flex",box.innerHTML=filtradas.map(p=>`<button type="button" class="btn-accion" style="font-size:12px;" onclick="insertarMencionNota('${String(p.persona).replace(/'/g,"\\'")}')">@${p.persona}</button>`).join("")):box.style.display="none"}function insertarMencionNota(nombre){const ta=document.getElementById("textoNota");if(!ta)return;const nuevo=(ta.value||"").replace(/@([A-Za-zÁÉÍÓÚáéíóúÑñüÜ]*)$/,"@"+nombre+" ");ta.value=nuevo;const box=document.getElementById("sugerenciasMencionNota");box&&(box.style.display="none",box.innerHTML=""),ta.focus()}function htmlLikesNota(u,notaIdx){const n=(u.historial||[])[notaIdx];if(!n)return"";const likes=Array.isArray(n.likes)?n.likes:[],yo=sesion&&likes.some(l=>l.persona===sesion.persona),nombres=likes.map(l=>l.persona+(l.area?" ("+l.area+")":"")).join(", "),lista=likes.length?`<div style="font-size:11px;color:#555;margin-top:2px;">👍 ${likes.length}: ${nombres}</div>`:"";return`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;">${sesion&&!modoCliente?`<button type="button" class="btn-accion" style="font-size:11px;padding:2px 8px;${yo?"background:#e7f1ff;border-color:#0d6efd;":""}"\n                onclick="event.stopPropagation(); toggleLikeNota(${u.id}, ${notaIdx})">${yo?"👍 Te gusta":"👍 Me gusta"}</button>`:""}${lista}</div>`}async function toggleLikeNota(unidadId,histIdx){if(!requerirSesion())return;if(modoCliente)return;const u=unidades.find(x=>x.id===unidadId);if(!u||!Array.isArray(u.historial)||!u.historial[histIdx])return;const historial=u.historial.map(h=>({...h,likes:Array.isArray(h.likes)?h.likes.slice():h.likes||[]})),nota=historial[histIdx];Array.isArray(nota.likes)||(nota.likes=[]);const i=nota.likes.findIndex(l=>l.persona===sesion.persona);if(i>=0?nota.likes.splice(i,1):nota.likes.push({persona:sesion.persona,area:sesion.area,fecha:fechaHistorialAhora()}),(await actualizarUnidad(unidadId,{historial})).success&&(abrirModalDetalle(unidadId),i<0))try{mostrarToastApp("👍 Like de "+sesion.persona,"#0d6efd")}catch(e){}}let chatActivo=null,chatReply=null,mensajesTodos=[];function chatIdDeParticipantes(nombres){const yo=sesion?sesion.persona:"",set=new Set((nombres||[]).map(n=>String(n).trim()).filter(Boolean));return yo&&set.add(yo),Array.from(set).sort((a,b)=>a.localeCompare(b,"es")).join("__")}function chatTitulo(participantes){const yo=sesion?sesion.persona:"",otros=(participantes||[]).filter(p=>p!==yo);return otros.length?1===otros.length?otros[0]:2===otros.length?otros[0]+", "+otros[1]:otros[0]+" +"+(otros.length-1):"Chat"}async function insertMensajeFlexible(row){let payload={...row};for(let intento=0;intento<8;intento++){const{data,error}=await supabaseClient.from("mensajes").insert([payload]).select();if(!error)return!data||!data[0]||data[0];const msg=error&&error.message||"",m=msg.match(/Could not find the '([^']+)' column/i);if(!m||!m[1]){if(/schema cache|Could not find/i.test(msg)){const meta={cid:row.conversacion_id,parts:row.participantes,reply_de:row.reply_de,reply_texto:row.reply_texto};payload={de_area:row.de_area,de_persona:row.de_persona,para_area:row.para_area,para_persona:row.para_persona,texto:"§CHAT§"+JSON.stringify(meta)+"\n"+(row.texto||""),leido:!0===row.leido};continue}throw error}delete payload[m[1]]}throw new Error("No se pudo guardar el mensaje")}function parseMensajeTexto(m){const t0=String(m.texto||"");if(0===t0.indexOf("§CHAT§")){const nl=t0.indexOf("\n");try{const meta=JSON.parse(nl>0?t0.slice(6,nl):t0.slice(6));return{...m,conversacion_id:m.conversacion_id||meta.cid,participantes:m.participantes||meta.parts,reply_de:m.reply_de||meta.reply_de,reply_texto:m.reply_texto||meta.reply_texto,texto:nl>0?t0.slice(nl+1):""}}catch(e){return m}}return m}function participantesDeMsg(m){if(Array.isArray(m.participantes))return m.participantes;if("string"==typeof m.participantes&&m.participantes.trim()){try{const j=JSON.parse(m.participantes);if(Array.isArray(j))return j}catch(e){}return m.participantes.split("|").map(s=>s.trim()).filter(Boolean)}if(m.conversacion_id&&String(m.conversacion_id).indexOf("__")>=0)return String(m.conversacion_id).split("__");const set=new Set;return m.de_persona&&set.add(m.de_persona),m.para_persona&&set.add(m.para_persona),Array.from(set)}
 let _colaMsgConfirm=[];
+let _colaMsgConfirmResto=[]; // pendientes fuera del lote actual (Gerencia)
 let _msgConfirmActual=null;
 let _mostrandoMsgConfirm=false;
+const MAX_MSG_CONFIRM_LOTE=5;
 
 function esMensajePersonalParaConfirmar(m){
   if(!m||!sesion||sesion.area==="Cliente")return false;
@@ -5992,8 +5994,19 @@ function revisarMensajesPendientesConfirmacion(){
     }).sort(function(a,b){
       return new Date(a.created_at||0).getTime()-new Date(b.created_at||0).getTime();
     });
-    _colaMsgConfirm=pend;
-    if(!_colaMsgConfirm.length)return;
+    if(!pend.length){
+      _colaMsgConfirm=[];
+      _colaMsgConfirmResto=[];
+      return;
+    }
+    // Gerencia: máximo 5 por ronda para no saturar el inicio
+    if(sesion.area==="Gerencia"&&pend.length>MAX_MSG_CONFIRM_LOTE){
+      _colaMsgConfirm=pend.slice(0,MAX_MSG_CONFIRM_LOTE);
+      _colaMsgConfirmResto=pend.slice(MAX_MSG_CONFIRM_LOTE);
+    }else{
+      _colaMsgConfirm=pend;
+      _colaMsgConfirmResto=[];
+    }
     mostrarSiguienteMsgConfirm();
   }catch(e){console.warn("revisarMensajesPendientesConfirmacion",e);}
 }
@@ -6014,8 +6027,14 @@ function mostrarSiguienteMsgConfirm(){
   const fecha=(m.created_at||"").toString().slice(0,19).replace("T"," ");
   document.getElementById("msgConfirmMeta").textContent="Para: "+(m.para_persona||"")+" · "+fecha+(m.para_area?" · Área: "+m.para_area:"");
   document.getElementById("msgConfirmBody").textContent=textoLimpioMensaje(m);
-  const rest=_colaMsgConfirm.length;
-  document.getElementById("msgConfirmQueue").textContent=rest>1?("Quedan "+rest+" mensajes por confirmar"):"1 mensaje por confirmar";
+  const enLote=_colaMsgConfirm.length;
+  const resto=(_colaMsgConfirmResto&&_colaMsgConfirmResto.length)||0;
+  let txt=enLote>1?("En esta ronda: "+enLote+" mensajes"):"En esta ronda: 1 mensaje";
+  if(sesion&&sesion.area==="Gerencia"){
+    txt+=" (máx. "+MAX_MSG_CONFIRM_LOTE+")";
+    if(resto)txt+=" · Quedan "+resto+" más después";
+  }
+  document.getElementById("msgConfirmQueue").textContent=txt;
   ov.classList.add("open");
   // bloquear scroll fondo
   try{document.body.style.overflow="hidden";}catch(e){}
@@ -6082,13 +6101,73 @@ async function confirmarMensajeActual(){
   _msgConfirmActual=null;
   if(_colaMsgConfirm.length){
     mostrarSiguienteMsgConfirm();
+  }else if(_colaMsgConfirmResto&&_colaMsgConfirmResto.length&&sesion&&sesion.area==="Gerencia"){
+    // Fin del lote de 5: preguntar si continuar con otros 5 o salir
+    mostrarOpcionContinuarMsgGerencia();
   }else{
     _mostrandoMsgConfirm=false;
+    _colaMsgConfirmResto=[];
     const ov=document.getElementById("modalConfirmacionMensaje");
     if(ov)ov.classList.remove("open");
     try{document.body.style.overflow="";}catch(e){}
     try{if(typeof mostrarToastApp==="function")mostrarToastApp("✅ Mensaje confirmado y registrado","#16a34a");}catch(e){}
   }
+}
+function mostrarOpcionContinuarMsgGerencia(){
+  const ov=document.getElementById("modalConfirmacionMensaje");
+  const box=document.getElementById("modalConfirmacionMensajeBox");
+  if(!ov||!box)return;
+  _mostrandoMsgConfirm=true;
+  const resto=_colaMsgConfirmResto.length;
+  const proximo=Math.min(MAX_MSG_CONFIRM_LOTE,resto);
+  document.getElementById("msgConfirmTitulo").textContent="Ronda de confirmaciones lista";
+  document.getElementById("msgConfirmMeta").textContent="Gerencia · máximo "+MAX_MSG_CONFIRM_LOTE+" mensajes por vez";
+  document.getElementById("msgConfirmBody").textContent="Confirmaste el lote actual.\n\nAún quedan "+resto+" mensaje(s) pendiente(s).\n\nPuedes continuar con los siguientes "+proximo+" o salir y retomarlos después (seguirán pendientes hasta confirmar).";
+  document.getElementById("msgConfirmQueue").textContent="Pendientes fuera de esta ronda: "+resto;
+  const btn=document.getElementById("btnConfirmarMensaje");
+  if(btn)btn.style.display="none";
+  let acciones=document.getElementById("msgConfirmAccionesGerencia");
+  if(!acciones){
+    acciones=document.createElement("div");
+    acciones.id="msgConfirmAccionesGerencia";
+    acciones.style.cssText="display:flex;flex-direction:column;gap:10px;margin-top:16px";
+    box.appendChild(acciones);
+  }
+  acciones.style.display="flex";
+  acciones.innerHTML=
+    '<button type="button" class="btn-confirmado" style="background:linear-gradient(135deg,#2563eb,#1d4ed8)" onclick="continuarSiguienteLoteMsgGerencia()">➡️ Continuar con otros '+proximo+'</button>'+
+    '<button type="button" class="btn-confirmado" style="background:#64748b;box-shadow:none" onclick="salirConfirmacionesMsgGerencia()">Salir (dejar pendientes)</button>';
+  ov.classList.add("open");
+  try{document.body.style.overflow="hidden";}catch(e){}
+}
+function continuarSiguienteLoteMsgGerencia(){
+  const acciones=document.getElementById("msgConfirmAccionesGerencia");
+  if(acciones)acciones.style.display="none";
+  const btn=document.getElementById("btnConfirmarMensaje");
+  if(btn){btn.style.display="";btn.disabled=false;btn.textContent="✓ CONFIRMADO — Lo leí";}
+  const lote=_colaMsgConfirmResto.slice(0,MAX_MSG_CONFIRM_LOTE);
+  _colaMsgConfirmResto=_colaMsgConfirmResto.slice(MAX_MSG_CONFIRM_LOTE);
+  _colaMsgConfirm=lote;
+  if(!_colaMsgConfirm.length){
+    salirConfirmacionesMsgGerencia();
+    return;
+  }
+  mostrarSiguienteMsgConfirm();
+}
+function salirConfirmacionesMsgGerencia(){
+  _colaMsgConfirm=[];
+  // Resto sigue pendiente (no confirmados); se mostrarán en el próximo inicio/revisión
+  _colaMsgConfirmResto=[];
+  _msgConfirmActual=null;
+  _mostrandoMsgConfirm=false;
+  const acciones=document.getElementById("msgConfirmAccionesGerencia");
+  if(acciones)acciones.style.display="none";
+  const btn=document.getElementById("btnConfirmarMensaje");
+  if(btn){btn.style.display="";btn.disabled=false;btn.textContent="✓ CONFIRMADO — Lo leí";}
+  const ov=document.getElementById("modalConfirmacionMensaje");
+  if(ov)ov.classList.remove("open");
+  try{document.body.style.overflow="";}catch(e){}
+  try{if(typeof mostrarToastApp==="function")mostrarToastApp("Saliste de confirmaciones. Los mensajes pendientes se mostrarán después.","#64748b");}catch(e){}
 }
 function abrirHistorialConfirmacionesMsg(){
   const lista=cargarEvidenciasConfirmMsg();
