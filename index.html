@@ -5458,37 +5458,108 @@ if(!reparador){
 }function obtenerEventosNotif(){try{return JSON.parse(localStorage.getItem("thermocontrol_notif_eventos")||"[]")}catch{return[]}}function registrarNotificacionEvento(ev){const cfg=getConfigNotif(),esMovimiento=!!ev.forzarNavegador;if(!1===cfg.cambios&&!esMovimiento)return;const lista=obtenerEventosNotif();lista.unshift({...ev,areaSesion:null,fecha:fechaHistorialAhora(),id:Date.now()}),localStorage.setItem("thermocontrol_notif_eventos",JSON.stringify(lista.slice(0,40))),ev.titulo&&(esMovimiento||sesion)&&mostrarNotifNavegador(nombreAppTaller(getTallerActual()),ev.titulo+(ev.detalle?" — "+ev.detalle:""))}function obtenerNotifsDescartadas(){try{return JSON.parse(localStorage.getItem("thermocontrol_notif_descartadas")||"[]")}catch{return[]}}
 
 
-function getPuntosEmpleado(nombre){
+function lunesDeEstaSemana(d){
+  d=d?new Date(d):new Date();
+  const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  const day=x.getDay(); // 0=dom .. 6=sab
+  const diff=day===0?-6:1-day; // lunes como inicio
+  x.setDate(x.getDate()+diff);
+  x.setHours(0,0,0,0);
+  return x;
+}
+function claveSemanaPuntos(d){
+  const lun=lunesDeEstaSemana(d);
+  const y=lun.getFullYear();
+  const m=String(lun.getMonth()+1).padStart(2,"0");
+  const day=String(lun.getDate()).padStart(2,"0");
+  return y+"-"+m+"-"+day; // lunes de la semana
+}
+function etiquetaSemanaPuntos(){
+  const lun=lunesDeEstaSemana();
+  const vie=new Date(lun); vie.setDate(vie.getDate()+4);
+  const f=function(dt){return dt.getDate()+"/"+String(dt.getMonth()+1).padStart(2,"0");};
+  return "Lun "+f(lun)+" — Vie "+f(vie);
+}
+function esDiaLaboralPuntos(d){
+  const day=(d?new Date(d):new Date()).getDay();
+  return day>=1&&day<=5; // lun-vie
+}
+function cargarMapaPuntosSemana(){
+  try{
+    const raw=localStorage.getItem("thermocontrol_puntos_semana");
+    const obj=raw?JSON.parse(raw):{};
+    return obj&&typeof obj==="object"?obj:{};
+  }catch(e){return {};}
+}
+function guardarMapaPuntosSemana(mapa){
+  try{localStorage.setItem("thermocontrol_puntos_semana",JSON.stringify(mapa||{}));}catch(e){}
+}
+function normalizarNombrePuntos(nombre){
+  return String(nombre||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+}
+function getPuntosEmpleado(nombre,opts){
+  opts=opts||{};
   if(!nombre)return 0;
-  const n=String(nombre).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
-  const u=(listaUsuarios||[]).find(function(x){
-    return String(x.nombre||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim()===n;
+  const sem=opts.semana||claveSemanaPuntos();
+  const mapa=cargarMapaPuntosSemana();
+  const week=mapa[sem]||{};
+  const key=normalizarNombrePuntos(nombre);
+  // buscar por nombre normalizado
+  let pts=0;
+  Object.keys(week).forEach(function(k){
+    if(normalizarNombrePuntos(k)===key)pts=Number(week[k])||0;
   });
-  return u?Number(u.puntos)||0:0;
+  if(pts)return pts;
+  // fallback usuario (legado)
+  if(opts.incluirLegado!==false){
+    const u=(listaUsuarios||[]).find(function(x){return normalizarNombrePuntos(x.nombre)===key;});
+    if(u&&Number(u.puntos_semana)>0&&u.puntos_semana_clave===sem)return Number(u.puntos_semana)||0;
+  }
+  return 0;
 }
 function sumarPuntosEmpleado(nombre,delta){
   if(!nombre||!delta)return 0;
-  const n=String(nombre).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
-  let u=(listaUsuarios||[]).find(function(x){
-    return String(x.nombre||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim()===n;
+  // Acumula lun→vie; sábado/domingo no suman a la semana laboral (sí quedan en historial total)
+  const ahora=new Date();
+  const sem=claveSemanaPuntos(ahora);
+  const mapa=cargarMapaPuntosSemana();
+  if(!mapa[sem]||typeof mapa[sem]!=="object")mapa[sem]={};
+  const keyNombre=String(nombre).trim();
+  const keyNorm=normalizarNombrePuntos(keyNombre);
+  // unificar clave existente
+  let claveUsar=keyNombre;
+  Object.keys(mapa[sem]).forEach(function(k){
+    if(normalizarNombrePuntos(k)===keyNorm)claveUsar=k;
   });
+  const laborable=esDiaLaboralPuntos(ahora);
+  if(laborable){
+    mapa[sem][claveUsar]=Math.round(((Number(mapa[sem][claveUsar])||0)+Number(delta))*10)/10;
+  }
+  // historial total por empleado (siempre, aunque sea fin de semana)
+  if(!mapa._total)mapa._total={};
+  let claveTot=keyNombre;
+  Object.keys(mapa._total).forEach(function(k){
+    if(normalizarNombrePuntos(k)===keyNorm)claveTot=k;
+  });
+  mapa._total[claveTot]=Math.round(((Number(mapa._total[claveTot])||0)+Number(delta))*10)/10;
+  guardarMapaPuntosSemana(mapa);
+
+  // espejo en listaUsuarios para ranking/admin
+  let u=(listaUsuarios||[]).find(function(x){return normalizarNombrePuntos(x.nombre)===keyNorm;});
   if(!u){
-    // crear entrada mínima para no perder puntos
-    u={id:"pts_"+Date.now().toString(36),nombre:nombre,area:(sesion&&sesion.area)||"",taller:(sesion&&sesion.taller)||"Chihuahua",puntos:0,permiso_total:false};
+    u={id:"pts_"+Date.now().toString(36),nombre:keyNombre,area:(sesion&&sesion.area)||"",taller:(sesion&&sesion.taller)||"Chihuahua",puntos:0,permiso_total:false};
+    if(!Array.isArray(listaUsuarios))listaUsuarios=[];
     listaUsuarios.push(u);
   }
-  u.puntos=Math.round(((Number(u.puntos)||0)+Number(delta))*10)/10;
+  u.puntos=Number(mapa._total[claveTot])||0;
+  u.puntos_semana=laborable?(Number(mapa[sem][claveUsar])||0):(Number(u.puntos_semana)||0);
+  u.puntos_semana_clave=sem;
   try{
     if(typeof persistirConfigUsuarios==="function")persistirConfigUsuarios();
     else if(typeof guardarConfigAdmin==="function")guardarConfigAdmin();
   }catch(e){}
-  try{
-    // upsert parcial en nube si existe
-    if(typeof supabaseClient!=="undefined"&&supabaseClient&&typeof aplicarConfigAdmin==="function"){
-      // guardarConfigAdmin usually upserts full config
-    }
-  }catch(e){}
-  return u.puntos;
+  try{localStorage.setItem("thermocontrol_puntos_usuarios_mirror",JSON.stringify((listaUsuarios||[]).map(function(x){return{id:x.id,nombre:x.nombre,puntos:x.puntos,puntos_semana:x.puntos_semana,puntos_semana_clave:x.puntos_semana_clave};})));}catch(e){}
+  return laborable?(Number(mapa[sem][claveUsar])||0):getPuntosEmpleado(nombre);
 }
 function renderContadorPuntosSesion(){
   try{
@@ -5500,32 +5571,41 @@ function renderContadorPuntosSesion(){
       if(!bar)return;
       badge=document.createElement("span");
       badge.id="badgePuntosSesion";
-      badge.title="Tus puntos acumulados";
+      badge.title="Puntos de esta semana (lunes a viernes). Toca para ver ranking.";
       badge.style.cssText="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;font-weight:800;font-size:12px;padding:4px 10px;border-radius:999px;margin-left:6px;cursor:pointer";
       badge.onclick=function(){try{abrirRankingPuntosEmpleados()}catch(e){}};
       bar.appendChild(badge);
     }
     badge.innerHTML="🪙 "+pts+" pts";
+    badge.title="Semana "+etiquetaSemanaPuntos()+" · "+pts+" pts (lun–vie)";
   }catch(e){}
 }
 function abrirRankingPuntosEmpleados(){
-  const lista=(listaUsuarios||[]).slice().filter(function(u){return u&&u.nombre&&u.area!=="Cliente"}).sort(function(a,b){return(Number(b.puntos)||0)-(Number(a.puntos)||0)});
-  let html='<div style="padding:12px 4px"><h3 style="margin:0 0 10px;font-size:16px">🪙 Puntos por empleado</h3>';
-  if(!lista.length)html+='<p style="color:#666">Sin usuarios</p>';
+  const sem=claveSemanaPuntos();
+  const mapa=cargarMapaPuntosSemana();
+  const week=mapa[sem]||{};
+  const total=mapa._total||{};
+  // unir nombres de usuarios + mapa
+  const nombres={};
+  (listaUsuarios||[]).forEach(function(u){
+    if(!u||!u.nombre||u.area==="Cliente")return;
+    nombres[u.nombre]=true;
+  });
+  Object.keys(week).forEach(function(k){nombres[k]=true;});
+  const lista=Object.keys(nombres).map(function(nom){
+    return{nombre:nom,semana:getPuntosEmpleado(nom,{incluirLegado:true}),total:Number(total[Object.keys(total).find(function(k){return normalizarNombrePuntos(k)===normalizarNombrePuntos(nom);})||nom])||0};
+  }).sort(function(a,b){return(b.semana||0)-(a.semana||0)||(b.total||0)-(a.total||0)});
+
+  let html='<div style="padding:12px 4px"><h3 style="margin:0 0 4px;font-size:16px">🪙 Puntos por empleado</h3>';
+  html+='<p style="font-size:12px;color:#666;margin:0 0 10px">Semana laboral: <b>'+etiquetaSemanaPuntos()+'</b><br>Se acumulan de <b>lunes a viernes</b>. El lunes reinicia el contador semanal.</p>';
+  if(!lista.length)html+='<p style="color:#666">Sin empleados aún</p>';
   lista.forEach(function(u,i){
     html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:6px">'
-      +'<div><b>'+(i+1)+'. '+String(u.nombre||"").replace(/</g,"&lt;")+'</b><br><span style="font-size:11px;color:#666">'+(u.area||"")+' · '+(u.taller||"")+'</span></div>'
-      +'<span style="background:#fef3c7;color:#92400e;font-weight:800;padding:4px 10px;border-radius:999px;font-size:13px">🪙 '+(Number(u.puntos)||0)+'</span></div>';
+      +'<div><b>'+(i+1)+'. '+String(u.nombre||"").replace(/</g,"&lt;")+'</b>'
+      +'<br><span style="font-size:11px;color:#666">Total histórico: 🪙 '+(u.total||0)+'</span></div>'
+      +'<span style="background:#fef3c7;color:#92400e;font-weight:800;padding:4px 10px;border-radius:999px;font-size:13px">🪙 '+(u.semana||0)+' sem</span></div>';
   });
-  html+='<p style="font-size:11px;color:#666;margin-top:8px">Los puntos suben al diagnosticar, reparar, finalizar o vender refacciones. Se guardan en la config de usuarios.</p></div>';
-  // reuse a simple modal if available
-  try{
-    const box=document.getElementById("modalBox")||document.getElementById("modalDetalleContenido");
-    if(document.getElementById("modalGenerico")){
-      // fallback alert-style modal via existing system
-    }
-  }catch(e){}
-  // Create lightweight overlay
+  html+='<p style="font-size:11px;color:#666;margin-top:8px">+8 venta refacciones · +10 finalizar reparación · +5 diagnóstico · +2/+3 al avanzar. Guardado en este dispositivo (y usuarios si hay nube).</p></div>';
   let ov=document.getElementById("overlayPuntosEmpleados");
   if(!ov){
     ov=document.createElement("div");
@@ -5537,7 +5617,6 @@ function abrirRankingPuntosEmpleados(){
   ov.innerHTML='<div style="background:#fff;width:100%;max-width:480px;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px" onclick="event.stopPropagation()">'+html+'<button class="btn-modal" style="width:100%;margin-top:8px" onclick="document.getElementById(\'overlayPuntosEmpleados\').remove()">Cerrar</button></div>';
   ov.style.display="flex";
 }
-
 function mostrarToastPuntos(delta,opts){
   opts=opts||{};
   const d=Number(delta);
