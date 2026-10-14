@@ -5811,35 +5811,66 @@ function renderContadorPuntosSesion(){
   }catch(e){}
 }
 
+function limpiarPuntosDePrueba(){
+  try{
+    const log=cargarLogPuntos().filter(function(e){
+      if(!e)return false;
+      const m=String(e.motivo||"").toLowerCase();
+      if(m.indexOf("prueba")>=0)return false;
+      if(String(e.id||"").indexOf("prueba")>=0)return false;
+      return true;
+    });
+    guardarLogPuntos(log);
+  }catch(e){}
+}
+function getPuntosTotalesEmpleado(nombre){
+  if(!nombre)return 0;
+  let sum=0;
+  cargarLogPuntos().forEach(function(e){
+    if(!e)return;
+    const m=String(e.motivo||"").toLowerCase();
+    if(m.indexOf("prueba")>=0)return;
+    if(nombresPuntosCoinciden(e.nombre,nombre))sum+=Number(e.delta)||0;
+  });
+  return Math.round(sum*10)/10;
+}
 function abrirRankingPuntosEmpleados(){
+  try{limpiarPuntosDePrueba();}catch(e){}
   try{recalcularPuntosDesdeUnidades();}catch(e){}
   try{renderContadorPuntosSesion();}catch(e){}
   const map=getTotalesPuntosSemana();
-  // Solo usuarios registrados en la app (listaUsuarios), no nombres sueltos del log
   const lista=(listaUsuarios||[]).filter(function(u){
     return u&&u.nombre&&String(u.nombre).trim()&&u.area!=="Cliente";
   }).map(function(u){
     const nom=String(u.nombre).trim();
-    let pts=0;
+    let ptsSem=0;
     Object.keys(map).forEach(function(k){
-      if(nombresPuntosCoinciden(k,nom))pts+=(Number(map[k])||0);
+      if(nombresPuntosCoinciden(k,nom))ptsSem+=(Number(map[k])||0);
     });
-    // también getPuntos por si el log usa otra clave
-    try{const g=getPuntosEmpleado(nom);if(g>pts)pts=g;}catch(e){}
-    return{nombre:nom,area:u.area||"",taller:u.taller||"",semana:Math.round(pts*10)/10};
-  }).sort(function(a,b){return b.semana-a.semana;}).slice(0,10);
-  const log=cargarLogPuntos().filter(function(e){return e&&e.semana===claveSemanaPuntos();})
-    .slice().reverse().slice(0,50);
+    try{const g=getPuntosEmpleado(nom);if(g>ptsSem)ptsSem=g;}catch(e){}
+    const ptsTot=getPuntosTotalesEmpleado(nom);
+    return{nombre:nom,area:u.area||"",taller:u.taller||"",semana:Math.round(ptsSem*10)/10,total:ptsTot};
+  }).sort(function(a,b){
+    // top por semana; si empate, por total
+    if(b.semana!==a.semana)return b.semana-a.semana;
+    return b.total-a.total;
+  }).slice(0,10);
+  const log=cargarLogPuntos().filter(function(e){
+    if(!e||e.semana!==claveSemanaPuntos())return false;
+    if(String(e.motivo||"").toLowerCase().indexOf("prueba")>=0)return false;
+    return true;
+  }).slice().reverse().slice(0,40);
   const misPts=sesion?getPuntosEmpleado(sesion.persona):0;
+  const misTot=sesion?getPuntosTotalesEmpleado(sesion.persona):0;
   let html="<div style='padding:14px'>";
-  html+="<h3 style='margin:0 0 4px'>🪙 Puntos v3 · "+etiquetaSemanaPuntos()+"</h3>";
-  html+="<p style='font-size:12px;color:#666;margin:0 0 8px'>Top 10 de la semana · usuarios registrados. Tus puntos: <b style='color:#92400e'>"+misPts+"</b></p>";
-  html+="<div style='display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap'>";
-  html+="<button type='button' onclick='recalcularPuntosDesdeUnidades();abrirRankingPuntosEmpleados()' style='flex:1;min-width:120px;padding:10px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-weight:800'>↻ Recalcular</button>";
-  html+="<button type='button' onclick='sumarPuntosEmpleado(sesion.persona,5,\"Prueba manual\");mostrarToastPuntos(5,{persona:sesion.persona,motivo:\"Prueba\"});abrirRankingPuntosEmpleados()' style='flex:1;min-width:120px;padding:10px;border:none;border-radius:10px;background:#16a34a;color:#fff;font-weight:800'>+5 prueba</button>";
-  html+="</div>";
-  if(!lista.length||lista.every(function(x){return !x.semana;})){
-    html+="<p style='color:#b45309;background:#fffbeb;padding:10px;border-radius:10px;font-size:13px'>Nadie tiene puntos aún esta semana. Usa <b>+5 prueba</b> para verificar, o mueve una unidad a Reparando/Finalizada.</p>";
+  html+="<h3 style='margin:0 0 4px'>🪙 Top 10 · "+etiquetaSemanaPuntos()+"</h3>";
+  html+="<p style='font-size:12px;color:#666;margin:0 0 8px'>Usuarios registrados · semana se reinicia lunes · <b>total</b> se acumula siempre</p>";
+  html+="<div style='background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:13px'>";
+  html+="Tú: <b style='color:#92400e'>🪙 "+misPts+" pts esta semana</b>";
+  html+=" · <b style='color:#78350f'>Σ "+misTot+" total</b></div>";
+  html+="<button type='button' onclick='recalcularPuntosDesdeUnidades();abrirRankingPuntosEmpleados()' style='width:100%;margin-bottom:12px;padding:10px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-weight:800'>↻ Recalcular desde unidades</button>";
+  if(!lista.length||lista.every(function(x){return !x.semana&&!x.total;})){
+    html+="<p style='color:#b45309;background:#fffbeb;padding:10px;border-radius:10px;font-size:13px'>Nadie tiene puntos aún. Mueve unidades a Diagnóstico, Cotizar, Espera, Reparación o Finalizada.</p>";
   }
   lista.forEach(function(u,i){
     const yo=sesion&&nombresPuntosCoinciden(u.nombre,sesion.persona);
@@ -5848,10 +5879,13 @@ function abrirRankingPuntosEmpleados(){
       +(yo?" <span style='font-size:11px;color:#92400e'>(tú)</span>":"")
       +(u.area?"<div style='font-size:11px;color:#64748b'>"+String(u.area).replace(/</g,"&lt;")+"</div>":"")
       +"</div>"
-      +"<span style='background:#fef3c7;color:#92400e;font-weight:900;padding:4px 12px;border-radius:999px'>🪙 "+u.semana+"</span></div>";
+      +"<div style='text-align:right'>"
+      +"<div style='background:#fef3c7;color:#92400e;font-weight:900;padding:4px 10px;border-radius:999px;font-size:13px'>🪙 "+u.semana+" sem</div>"
+      +"<div style='font-size:11px;color:#78350f;font-weight:700;margin-top:4px'>Σ "+u.total+" total</div>"
+      +"</div></div>";
   });
   if(log.length){
-    html+="<h4 style='margin:14px 0 6px;font-size:13px'>Movimientos ("+log.length+")</h4>";
+    html+="<h4 style='margin:14px 0 6px;font-size:13px'>Movimientos de la semana</h4>";
     log.forEach(function(e){
       const sign=e.delta>0?"+":"";
       html+="<div style='font-size:12px;padding:6px 0;border-bottom:1px solid #f1f5f9'>"
@@ -5859,8 +5893,6 @@ function abrirRankingPuntosEmpleados(){
         +"<span style='color:"+(e.delta>0?"#16a34a":"#dc2626")+";font-weight:800'>"+sign+e.delta+"</span> "
         +"<span style='color:#64748b'>"+String(e.motivo||"").replace(/</g,"&lt;")+"</span></div>";
     });
-  } else {
-    html+="<p style='font-size:12px;color:#94a3b8;margin-top:10px'>Sin movimientos guardados en este teléfono todavía.</p>";
   }
   html+="<button type='button' style='width:100%;margin-top:12px;padding:12px;border:none;border-radius:10px;background:#e2e8f0;font-weight:800' onclick='this.closest(\"div[style*=fixed]\").remove()'>Cerrar</button></div>";
   let ov=document.getElementById("overlayPuntosEmpleados");
