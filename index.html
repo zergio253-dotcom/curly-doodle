@@ -3091,7 +3091,7 @@ function expandirGruposMenuConItems(){
     try{ restaurarMenuGrupos(); }catch(e){}
   }catch(e){}
 }
-function aplicarMenuVisUsuario(){if(!sesion)return;const u=(listaUsuarios||[]).find(x=>(x.nombre||"").toLowerCase()===(sesion.persona||"").toLowerCase()&&(!x.taller||x.taller===sesion.taller));if(!u||!u.id)return;const cfg=menuVisPorUsuario[String(u.id)];cfg&&Object.keys(cfg).forEach(btnId=>{if(!1===cfg[btnId]){const el=document.getElementById(btnId);el&&(el.style.display="none")}})}function renderEditorMenuVis(){const box=document.getElementById("editorMenuVisUsuarios");if(!box)return void alert("Panel de menús no encontrado. Recarga la página.");menuVisPorUsuario&&"object"==typeof menuVisPorUsuario||(menuVisPorUsuario={});const lista=(listaUsuarios||[]).slice().sort((a,b)=>String(a.nombre||"").localeCompare(String(b.nombre||"")));lista.length?box.innerHTML=lista.map(u=>{const uid=String(u.id||u.nombre),cfg=menuVisPorUsuario[uid]||{},checks=MENU_VIS_OPTIONS.map(opt=>{const checked=!1!==cfg[opt.id];return`<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin:3px 8px 3px 0;white-space:nowrap;">\n                    <input type="checkbox" data-uid="${uid}" data-mid="${opt.id}" ${checked?"checked":""} onchange="onMenuVisChange(this)"> ${opt.label}\n                </label>`}).join("");return`<div style="border:1px solid #ddd;border-radius:10px;padding:10px;margin-bottom:8px;">\n                <strong>${u.nombre||"—"}</strong>\n                <span style="font-size:11px;color:#888;"> · ${u.area||""} · ${"function"==typeof etiquetaTaller?etiquetaTaller(u.taller):u.taller||""}</span>\n                <div style="margin-top:6px;">${checks}</div>\n            </div>`}).join("")+'\n            <button type="button" class="btn-modal primary" style="width:100%;margin-top:10px;" onclick="guardarMenuVisYNube()">💾 Guardar menús en la nube</button>\n            <p style="font-size:11px;color:#888;margin-top:8px;">Desmarca lo que el usuario <strong>no</strong> debe ver. Guarda para que aplique en todos los dispositivos.</p>':box.innerHTML='<p style="color:#888;">No hay usuarios. Agrégalos en la pestaña Usuarios y guarda en la nube.</p>'}async function guardarMenuVisYNube(){try{const r=await persistirConfigAdmin();r&&r.cloud?alert("✅ Menús guardados en la nube. Cada usuario verá solo lo permitido al entrar."):alert("✅ Guardado en este dispositivo.\n"+(r&&r.msg?r.msg:"Revisa que exista la tabla app_config en Supabase."))}catch(e){alert("Error: "+(e.message||e))}}function onMenuVisChange(el){try{const uid=String(el.getAttribute("data-uid")),mid=el.getAttribute("data-mid");menuVisPorUsuario&&"object"==typeof menuVisPorUsuario||(menuVisPorUsuario={}),menuVisPorUsuario[uid]||(menuVisPorUsuario[uid]={}),menuVisPorUsuario[uid][mid]=!!el.checked}catch(e){console.warn(e)}}function abrirDirectorioEmpleados(){if(!requerirSesion())return;const box=document.getElementById("listaDirectorioEmpleados");if(!box)return;const taller=sesion.taller,esGerencia="Gerencia"===sesion.area||"function"==typeof tienePermisoTotal&&tienePermisoTotal(),lista=(listaUsuarios||[]).filter(u=>!u.taller||u.taller===taller).slice().sort((a,b)=>String(a.area||"").localeCompare(String(b.area||""))||String(a.nombre||"").localeCompare(String(b.nombre||"")));lista.length?box.innerHTML=lista.map(u=>{let pref={};try{const key=PREF_KEY+"_"+(u.taller||taller)+"_"+(u.area||"")+"_"+u.nombre,raw=localStorage.getItem(key);raw&&(pref=JSON.parse(raw))}catch(e){}const tel=pref.telPersonal||u.tel_personal||"",emerg=pref.emergTel?{nombre:pref.emergNombre,parentesco:pref.emergParentesco,tel:pref.emergTel,visible:pref.emergVisible}:u.emergencia||{},mostrarEmerg=esGerencia||emerg.visible||emerg.visible_gerencia,cumple=pref.cumpleanos||u.cumpleanos||"",notas=pref.notasBienestar||"",lema=pref.lema||"";return`<div style="padding:12px;border:1px solid var(--border,#e0e0e0);border-radius:12px;margin-bottom:10px;background:var(--card,#fff);">\n                    <div style="font-weight:800;font-size:15px;">${u.nombre||"—"}</div>\n                    <div style="font-size:12px;color:#888;margin-bottom:6px;">${u.area||""} · ${etiquetaTaller(u.taller||taller)}${u.nivel?" · "+u.nivel:""}</div>\n                    ${tel?`<div style="font-size:13px;">📞 <a href="tel:${tel.replace(/\\s/g,"")}">${tel}</a></div>`:'<div style="font-size:12px;color:#aaa;">Sin teléfono personal</div>'}\n                    ${cumple?`<div style="font-size:13px;">🎂 ${cumple}</div>`:""}\n                    ${lema?`<div style="font-size:12px;font-style:italic;margin-top:4px;">“${lema}”</div>`:""}\n                    ${notas?`<div style="font-size:12px;margin-top:6px;padding:8px;background:#fff3cd;border-radius:8px;color:#856404;"><strong>Cuidados:</strong> ${notas}</div>`:""}\n                    ${mostrarEmerg&&emerg.tel?`<div style="font-size:13px;margin-top:8px;padding:8px;background:#f8d7da;border-radius:8px;color:#721c24;">\n                        🚨 Emergencia: <strong>${emerg.nombre||"—"}</strong> (${emerg.parentesco||"—"}) · <a href="tel:${String(emerg.tel).replace(/\\s/g,"")}" style="color:#721c24;font-weight:700;">${emerg.tel}</a>\n                    </div>`:emerg.tel&&!mostrarEmerg?'<div style="font-size:11px;color:#888;margin-top:4px;">Contacto de emergencia registrado (solo Gerencia)</div>':""}\n                </div>`}).join(""):box.innerHTML='<p style="color:#888;font-size:13px;">No hay empleados registrados en este taller.</p>',document.getElementById("modalDirectorioEmpleados").style.display="flex"}function abrirModalPreferenciasUsuario(){if(!requerirSesion())return;if(modoCliente)return void alert("Modo cliente: sin personalización.");const p=getPreferenciasUsuario(),u=(listaUsuarios||[]).find(x=>(x.nombre||"").toLowerCase()===(sesion.persona||"").toLowerCase()&&(!x.taller||x.taller===sesion.taller)),resumen=document.getElementById("prefUsuarioResumen");resumen&&(resumen.textContent=(sesion.persona||"")+" · "+(sesion.area||"")+" · "+etiquetaTaller(sesion.taller));const set=(id,val)=>{const el=document.getElementById(id);el&&(el.value=val||"")};set("prefApodo",p.apodo),set("prefCumpleanos",(p.cumpleanos||u&&u.cumpleanos||"").toString().substring(0,10)),set("prefLema",p.lema),set("prefTelPersonal",p.telPersonal||u&&u.tel_personal||""),set("prefEmergNombre",p.emergNombre||u&&u.emergencia&&u.emergencia.nombre||""),set("prefEmergParentesco",p.emergParentesco||u&&u.emergencia&&u.emergencia.parentesco||""),set("prefEmergTel",p.emergTel||u&&u.emergencia&&u.emergencia.tel||"");const ev=document.getElementById("prefEmergVisible");ev&&(ev.checked=!!(p.emergVisible||u&&u.emergencia&&u.emergencia.visible_gerencia)),set("prefTema",p.tema),set("prefFondo",p.fondo),set("prefDensidad",p.densidad||"compacta"),set("prefInicio",p.inicio);const sal=document.getElementById("prefSaludo");sal&&(sal.checked=!1!==p.saludo),set("prefNotasBienestar",p.notasBienestar),set("prefMotivacion",p.motivacion);const sw=document.getElementById("prefSwatches");sw&&(sw.innerHTML=PREF_COLORES.map(c=>'<button type="button" class="pref-swatch'+(p.acento===c.hex?" active":"")+'" title="'+c.label+'" data-hex="'+c.hex+'" style="background:'+c.hex+'" onclick="seleccionarAcentoPref(this)"></button>').join(""));const info=document.getElementById("prefInfoExtra");if(info){const nivel=u&&u.nivel?u.nivel:"—",rol=u&&u.rol_tecnico?u.rol_tecnico:"—",perm=u&&u.permiso_total||"function"==typeof tienePermisoTotal&&tienePermisoTotal()?"Sí":"No";info.innerHTML="<strong>Tu lugar en el equipo</strong><br>Taller: <strong>"+etiquetaTaller(sesion.taller)+"</strong><br>Área: <strong>"+(sesion.area||"—")+"</strong><br>"+("Mantenimiento"===sesion.area?"Nivel: "+nivel+" · Rol: "+rol+"<br>":"")+"Permiso ampliado: "+perm+'<br><span style="color:#666;">Eres parte de Thermo King. Esta app es una herramienta; tú haces el trabajo bien hecho.</span>'}document.getElementById("modalPreferenciasUsuario").style.display="flex"}function seleccionarAcentoPref(btn){document.querySelectorAll("#prefSwatches .pref-swatch").forEach(b=>b.classList.remove("active")),btn.classList.add("active")}function guardarPreferenciasUsuario(){if(!sesion)return;const active=document.querySelector("#prefSwatches .pref-swatch.active"),p={apodo:(document.getElementById("prefApodo")?.value||"").trim(),cumpleanos:(document.getElementById("prefCumpleanos")?.value||"").substring(0,10),lema:(document.getElementById("prefLema")?.value||"").trim(),telPersonal:(document.getElementById("prefTelPersonal")?.value||"").trim(),emergNombre:(document.getElementById("prefEmergNombre")?.value||"").trim(),emergParentesco:document.getElementById("prefEmergParentesco")?.value||"",emergTel:(document.getElementById("prefEmergTel")?.value||"").trim(),emergVisible:!!document.getElementById("prefEmergVisible")?.checked,tema:document.getElementById("prefTema")?.value||"",acento:active?active.getAttribute("data-hex"):"",fondo:document.getElementById("prefFondo")?.value||"",densidad:document.getElementById("prefDensidad")?.value||"compacta",inicio:document.getElementById("prefInicio")?.value||"",saludo:!!document.getElementById("prefSaludo")?.checked,notasBienestar:(document.getElementById("prefNotasBienestar")?.value||"").trim(),motivacion:(document.getElementById("prefMotivacion")?.value||"").trim()};if(setPreferenciasUsuario(p),Array.isArray(listaUsuarios)){listaUsuarios=listaUsuarios.map(u=>{if((u.nombre||"").toLowerCase()!==sesion.persona.toLowerCase())return u;if(u.taller&&u.taller!==sesion.taller)return u;const nu=Object.assign({},u);return p.cumpleanos&&(nu.cumpleanos=p.cumpleanos),p.telPersonal&&(nu.tel_personal=p.telPersonal),nu.emergencia={nombre:p.emergNombre,parentesco:p.emergParentesco,tel:p.emergTel,visible_gerencia:p.emergVisible},nu});try{"function"==typeof construirConfigAdmin&&localStorage.setItem(CONFIG_ADMIN_KEY,JSON.stringify(construirConfigAdmin()))}catch(e){}}aplicarPreferenciasUsuario(),cerrarModal("modalPreferenciasUsuario");try{mostrarToastApp("✅ Tu espacio personal quedó guardado","#28a745")}catch(e){alert("✅ Preferencias guardadas")}}function setStatusConexion(estado,texto){const st=document.getElementById("statusConexion");st&&(st.classList.remove("ok","err"),"ok"===estado&&st.classList.add("ok"),"err"===estado&&st.classList.add("err"),texto&&(st.textContent=texto))}function mostrarInfoSesion(){try{setTimeout(function(){try{renderContadorPuntosSesion()}catch(e){}},100);}catch(e){}try{var _cr=document.getElementById("headerClockRow");if(_cr){_cr.style.display="flex";_cr.style.visibility="visible";}if(typeof iniciarRelojHeader==="function")iniciarRelojHeader();}catch(eClk){}if(!sesion)return;const el=document.getElementById("sesionInfo"),sessionBar=document.getElementById("headerSessionBar"),tallerTxt=etiquetaTaller(sesion.taller),textoCorto="Cliente"===sesion.area?"Cliente · solo lectura":sesion.persona+" · "+sesion.area,textoFull="Cliente"===sesion.area?"Cliente · "+tallerTxt+" · solo lectura":sesion.persona+" · "+sesion.area+" · "+tallerTxt;if(el&&(el.textContent=textoCorto,el.title=textoFull+" · Toca para mediciones",el.style.cursor="Cliente"===sesion.area?"default":"pointer",el.style.display="",el.dataset.medicionBound||(el.dataset.medicionBound="1",el.addEventListener("click",function(e){e.stopPropagation(),"Cliente"!==sesion.area&&abrirPanelMedicionUsuario()})),!el.dataset.eggBound)){el.dataset.eggBound="1";let clicks=0,timer=null;el.addEventListener("click",function(){clicks++,clearTimeout(timer),timer=setTimeout(function(){clicks=0},900),clicks>=5&&(clicks=0,window.open("https://drive.google.com/drive/folders/16uXdN_NGhYV4iPJRZUIEVt4yt-_VOzYX","_blank"))})}sessionBar&&(sessionBar.style.display="block",sessionBar.classList.add("visible"));const barLegacy=document.getElementById("sesionInfoBar");barLegacy&&(barLegacy.style.display="none",barLegacy.textContent="");const h1=document.getElementById("headerTitle")||document.querySelector(".header-brand h1"),small=document.getElementById("headerSub")||document.querySelector(".header-brand small"),logo=document.getElementById("headerLogo");if(logo){const tryIcon=()=>{0===logo.naturalWidth&&(logo.src=ICONO_THERMOKING)};logo.complete?tryIcon():logo.addEventListener("error",function(){logo.src=ICONO_THERMOKING},{once:!0}),setTimeout(tryIcon,400)}try{const hl=document.getElementById("headerThermoDiagPRO");if(hl)hl.style.display=(sesion&&sesion.area==="Cliente")?"none":"";}catch(e){}if(h1&&(h1.textContent=etiquetaTaller(sesion.taller)||"Thermo King",small&&(small.textContent=""),h1.style.cursor="pointer",h1.title=nombreAppTaller(sesion.taller)+" · 5 toques: administración",!h1.dataset.adminEggBound)){h1.dataset.adminEggBound="1";let clicksAdmin=0,timerAdmin=null;h1.addEventListener("click",function(e){e.stopPropagation(),clicksAdmin++,clearTimeout(timerAdmin),timerAdmin=setTimeout(function(){clicksAdmin=0},1e3),clicksAdmin>=5&&(clicksAdmin=0,abrirModalAdmin())})}document.getElementById("btnCerrarSesion").style.display="inline-block";const showMenu=(id,visible)=>{const el=document.getElementById(id);el&&(el.style.display=visible?"":"none")};showMenu("btnReporteDiario","Gerencia"===sesion.area||(sesion&&"Abel"===sesion.persona)||(typeof tienePermisoTotal==="function"&&tienePermisoTotal())),showMenu("btnProduccion",sesion&&("Gerencia"===sesion.area||(typeof tienePermisoTotal==="function"&&tienePermisoTotal()))),showMenu("btnDashboardRT",sesion&&"Cliente"!==sesion.area),showMenu("btnConfigWip",sesion&&("Gerencia"===sesion.area||"function"==typeof tienePermisoTotal&&tienePermisoTotal())),showMenu("btnAsignarPendiente",sesion&&"Gerencia"===sesion.area),showMenu("btnMetasGerencia",sesion&&("Gerencia"===sesion.area||tienePermisoTotal())),showMenu("btnMiDia","Gerencia"!==sesion.area&&"Cliente"!==sesion.area),showMenu("btnInventario",!0),showMenu("btnDiagnosticosExt","Mantenimiento"===sesion.area),showMenu("btnThermoDiagPRO","Mantenimiento"===sesion.area),showMenu("btnMensaje",!1);try{actualizarUIModoBasicoKanban()}catch(e){}setTimeout(function(){try{aplicarMenuVisUsuario();expandirGruposMenuConItems()}catch(e){}},200);try{cargarPendientesTareas()}catch(e){}showMenu("btnTrabajoHoy",!0),showMenu("btnVistaLista",!0),showMenu("btnVistaHistorial",!0),"Cliente"===sesion.area?aplicarModoClienteUI(!0):aplicarModoClienteUI(!1);try{aplicarPreferenciasUsuario()}catch(e){}try{saludoPersonalSiCorresponde()}catch(e){}try{aplicarMenuVisUsuario()}catch(e){}}function requerirSesion(){return!!sesion||(alert("⚠️ Inicia sesión con tu departamento primero"),document.getElementById("loginOverlay").classList.remove("oculto"),!1)}let permisosCambio={Gerencia:null,Mantenimiento:{Diagnosticando:["Cotizando","Reparando"],Reparando:["Finalizada","Diagnosticando","Espera de refacciones","Cotizando"]},Ventas:{Agenda:["Recibida","Finalizada"],Recibida:["Diagnosticando","Cotizando","Agenda","Finalizada"],Cotizando:["Espera de refacciones","Reparando","Finalizada"],"Espera de refacciones":["Reparando","Cotizando","Finalizada"],Finalizada:[]},Compras:{"Espera de refacciones":["Reparando","Cotizando"]}};const CAMPOS_POR_LUGAR={Taller:{show:["cliente","modelo","no_unidad","placas","bloque_pdf_cliente","problema","hoja_servicio","orden_compra"],req:["cliente","modelo","no_unidad","placas","problema"],hint:"🏭 Taller: la unidad viene al taller. Ventas captura recepción; el técnico se asigna después en Diagnóstico/Reparación.",labelProblema:"Problema / descripción *",phProblema:"Describe el problema o falla..."},Kuzzy:{show:["cliente","modelo","no_unidad","placas","problema"],req:["cliente","modelo","no_unidad","placas","problema"],hint:"🚚 Kuzzy: trabajo de caja / en sitio (no es rescate de emergencia).",labelProblema:"Notas *",phProblema:"Notas del trabajo Kuzzy / lo que se cotiza..."},ServiciosSigma:{show:["cliente","modelo","no_unidad","placas","problema","reparador"],req:["cliente","modelo","no_unidad","placas","problema","reparador"],hint:"🟡 Servicios Sigma: servicio programado o visita fuera de taller (NO es emergencia en carretera). Ventas debe asignar al técnico que irá.",labelProblema:"Problema / descripción *",phProblema:"Describe la falla o el servicio en sitio (Sigma)..."},RescateCarretera:{show:["cliente","modelo","no_unidad","problema","tipo_pago","reparador"],req:["cliente","modelo","no_unidad","problema","tipo_pago","reparador"],hint:"🛣️ Rescate carretera: EMERGENCIA en vía. Ventas llena datos, tipo de pago y técnico, luego notifica por WhatsApp al técnico.",labelProblema:"Trabajo a realizar *",phProblema:"Describe el trabajo a realizar en carretera..."},Rescate:{show:["cliente","modelo","no_unidad","placas","problema","reparador"],req:["cliente","modelo","no_unidad","placas","problema","reparador"],hint:"🚨 Rescate legado → se trata como Servicios Sigma. Asigna técnico.",labelProblema:"Problema / descripción *",phProblema:"Describe la falla en sitio..."},VentasRefacciones:{show:["cliente","problema","asesor_ventas"],req:["cliente","problema"],hint:"🛒 Venta de refacciones: solo Cliente y qué se vende. El número de unidad se genera solo (REF-…). Sin placas, sin diagnóstico, sin técnico.",labelProblema:"¿Qué se vende? (piezas / notas) *",phProblema:"Ej. 2 filtros aceite 67-xxx, 1 correa…"}};function actualizarBoxDatosRecibidaNueva(){try{const box=document.getElementById("boxDatosRecibidaNueva");if(!box)return;const ubi=(document.getElementById("ubicacionTrabajoNueva")||{}).value||"Taller";const est=(document.getElementById("estatusNueva")||{}).value||"Recibida";box.style.display=(ubi==="Taller"||ubi==="taller")&&(est==="Recibida"||est==="Diagnosticando")?"":"none"}catch(e){}}
+function aplicarMenuVisUsuario(){if(!sesion)return;const u=(listaUsuarios||[]).find(x=>(x.nombre||"").toLowerCase()===(sesion.persona||"").toLowerCase()&&(!x.taller||x.taller===sesion.taller));if(!u||!u.id)return;const cfg=menuVisPorUsuario[String(u.id)];cfg&&Object.keys(cfg).forEach(btnId=>{if(!1===cfg[btnId]){const el=document.getElementById(btnId);el&&(el.style.display="none")}})}function renderEditorMenuVis(){const box=document.getElementById("editorMenuVisUsuarios");if(!box)return void alert("Panel de menús no encontrado. Recarga la página.");menuVisPorUsuario&&"object"==typeof menuVisPorUsuario||(menuVisPorUsuario={});const lista=(listaUsuarios||[]).slice().sort((a,b)=>String(a.nombre||"").localeCompare(String(b.nombre||"")));lista.length?box.innerHTML=lista.map(u=>{const uid=String(u.id||u.nombre),cfg=menuVisPorUsuario[uid]||{},checks=MENU_VIS_OPTIONS.map(opt=>{const checked=!1!==cfg[opt.id];return`<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin:3px 8px 3px 0;white-space:nowrap;">\n                    <input type="checkbox" data-uid="${uid}" data-mid="${opt.id}" ${checked?"checked":""} onchange="onMenuVisChange(this)"> ${opt.label}\n                </label>`}).join("");return`<div style="border:1px solid #ddd;border-radius:10px;padding:10px;margin-bottom:8px;">\n                <strong>${u.nombre||"—"}</strong>\n                <span style="font-size:11px;color:#888;"> · ${u.area||""} · ${"function"==typeof etiquetaTaller?etiquetaTaller(u.taller):u.taller||""}</span>\n                <div style="margin-top:6px;">${checks}</div>\n            </div>`}).join("")+'\n            <button type="button" class="btn-modal primary" style="width:100%;margin-top:10px;" onclick="guardarMenuVisYNube()">💾 Guardar menús en la nube</button>\n            <p style="font-size:11px;color:#888;margin-top:8px;">Desmarca lo que el usuario <strong>no</strong> debe ver. Guarda para que aplique en todos los dispositivos.</p>':box.innerHTML='<p style="color:#888;">No hay usuarios. Agrégalos en la pestaña Usuarios y guarda en la nube.</p>'}async function guardarMenuVisYNube(){try{const r=await persistirConfigAdmin();r&&r.cloud?alert("✅ Menús guardados en la nube. Cada usuario verá solo lo permitido al entrar."):alert("✅ Guardado en este dispositivo.\n"+(r&&r.msg?r.msg:"Revisa que exista la tabla app_config en Supabase."))}catch(e){alert("Error: "+(e.message||e))}}function onMenuVisChange(el){try{const uid=String(el.getAttribute("data-uid")),mid=el.getAttribute("data-mid");menuVisPorUsuario&&"object"==typeof menuVisPorUsuario||(menuVisPorUsuario={}),menuVisPorUsuario[uid]||(menuVisPorUsuario[uid]={}),menuVisPorUsuario[uid][mid]=!!el.checked}catch(e){console.warn(e)}}function abrirDirectorioEmpleados(){if(!requerirSesion())return;const box=document.getElementById("listaDirectorioEmpleados");if(!box)return;const taller=sesion.taller,esGerencia="Gerencia"===sesion.area||"function"==typeof tienePermisoTotal&&tienePermisoTotal(),lista=(listaUsuarios||[]).filter(u=>!u.taller||u.taller===taller).slice().sort((a,b)=>String(a.area||"").localeCompare(String(b.area||""))||String(a.nombre||"").localeCompare(String(b.nombre||"")));lista.length?box.innerHTML=lista.map(u=>{let pref={};try{const key=PREF_KEY+"_"+(u.taller||taller)+"_"+(u.area||"")+"_"+u.nombre,raw=localStorage.getItem(key);raw&&(pref=JSON.parse(raw))}catch(e){}const tel=pref.telPersonal||u.tel_personal||"",emerg=pref.emergTel?{nombre:pref.emergNombre,parentesco:pref.emergParentesco,tel:pref.emergTel,visible:pref.emergVisible}:u.emergencia||{},mostrarEmerg=esGerencia||emerg.visible||emerg.visible_gerencia,cumple=pref.cumpleanos||u.cumpleanos||"",notas=pref.notasBienestar||"",lema=pref.lema||"";return`<div style="padding:12px;border:1px solid var(--border,#e0e0e0);border-radius:12px;margin-bottom:10px;background:var(--card,#fff);">\n                    <div style="font-weight:800;font-size:15px;">${u.nombre||"—"}</div>\n                    <div style="font-size:12px;color:#888;margin-bottom:6px;">${u.area||""} · ${etiquetaTaller(u.taller||taller)}${u.nivel?" · "+u.nivel:""}</div>\n                    ${tel?`<div style="font-size:13px;">📞 <a href="tel:${tel.replace(/\\s/g,"")}">${tel}</a></div>`:'<div style="font-size:12px;color:#aaa;">Sin teléfono personal</div>'}\n                    ${cumple?`<div style="font-size:13px;">🎂 ${cumple}</div>`:""}\n                    ${lema?`<div style="font-size:12px;font-style:italic;margin-top:4px;">“${lema}”</div>`:""}\n                    ${notas?`<div style="font-size:12px;margin-top:6px;padding:8px;background:#fff3cd;border-radius:8px;color:#856404;"><strong>Cuidados:</strong> ${notas}</div>`:""}\n                    ${mostrarEmerg&&emerg.tel?`<div style="font-size:13px;margin-top:8px;padding:8px;background:#f8d7da;border-radius:8px;color:#721c24;">\n                        🚨 Emergencia: <strong>${emerg.nombre||"—"}</strong> (${emerg.parentesco||"—"}) · <a href="tel:${String(emerg.tel).replace(/\\s/g,"")}" style="color:#721c24;font-weight:700;">${emerg.tel}</a>\n                    </div>`:emerg.tel&&!mostrarEmerg?'<div style="font-size:11px;color:#888;margin-top:4px;">Contacto de emergencia registrado (solo Gerencia)</div>':""}\n                </div>`}).join(""):box.innerHTML='<p style="color:#888;font-size:13px;">No hay empleados registrados en este taller.</p>',document.getElementById("modalDirectorioEmpleados").style.display="flex"}function abrirModalPreferenciasUsuario(){if(!requerirSesion())return;if(modoCliente)return void alert("Modo cliente: sin personalización.");const p=getPreferenciasUsuario(),u=(listaUsuarios||[]).find(x=>(x.nombre||"").toLowerCase()===(sesion.persona||"").toLowerCase()&&(!x.taller||x.taller===sesion.taller)),resumen=document.getElementById("prefUsuarioResumen");resumen&&(resumen.textContent=(sesion.persona||"")+" · "+(sesion.area||"")+" · "+etiquetaTaller(sesion.taller));const set=(id,val)=>{const el=document.getElementById(id);el&&(el.value=val||"")};set("prefApodo",p.apodo),set("prefCumpleanos",(p.cumpleanos||u&&u.cumpleanos||"").toString().substring(0,10)),set("prefLema",p.lema),set("prefTelPersonal",p.telPersonal||u&&u.tel_personal||""),set("prefEmergNombre",p.emergNombre||u&&u.emergencia&&u.emergencia.nombre||""),set("prefEmergParentesco",p.emergParentesco||u&&u.emergencia&&u.emergencia.parentesco||""),set("prefEmergTel",p.emergTel||u&&u.emergencia&&u.emergencia.tel||"");const ev=document.getElementById("prefEmergVisible");ev&&(ev.checked=!!(p.emergVisible||u&&u.emergencia&&u.emergencia.visible_gerencia)),set("prefTema",p.tema),set("prefFondo",p.fondo),set("prefDensidad",p.densidad||"compacta"),set("prefInicio",p.inicio);const sal=document.getElementById("prefSaludo");sal&&(sal.checked=!1!==p.saludo),set("prefNotasBienestar",p.notasBienestar),set("prefMotivacion",p.motivacion);const sw=document.getElementById("prefSwatches");sw&&(sw.innerHTML=PREF_COLORES.map(c=>'<button type="button" class="pref-swatch'+(p.acento===c.hex?" active":"")+'" title="'+c.label+'" data-hex="'+c.hex+'" style="background:'+c.hex+'" onclick="seleccionarAcentoPref(this)"></button>').join(""));const info=document.getElementById("prefInfoExtra");if(info){const nivel=u&&u.nivel?u.nivel:"—",rol=u&&u.rol_tecnico?u.rol_tecnico:"—",perm=u&&u.permiso_total||"function"==typeof tienePermisoTotal&&tienePermisoTotal()?"Sí":"No";info.innerHTML="<strong>Tu lugar en el equipo</strong><br>Taller: <strong>"+etiquetaTaller(sesion.taller)+"</strong><br>Área: <strong>"+(sesion.area||"—")+"</strong><br>"+("Mantenimiento"===sesion.area?"Nivel: "+nivel+" · Rol: "+rol+"<br>":"")+"Permiso ampliado: "+perm+'<br><span style="color:#666;">Eres parte de Thermo King. Esta app es una herramienta; tú haces el trabajo bien hecho.</span>'}document.getElementById("modalPreferenciasUsuario").style.display="flex"}function seleccionarAcentoPref(btn){document.querySelectorAll("#prefSwatches .pref-swatch").forEach(b=>b.classList.remove("active")),btn.classList.add("active")}function guardarPreferenciasUsuario(){if(!sesion)return;const active=document.querySelector("#prefSwatches .pref-swatch.active"),p={apodo:(document.getElementById("prefApodo")?.value||"").trim(),cumpleanos:(document.getElementById("prefCumpleanos")?.value||"").substring(0,10),lema:(document.getElementById("prefLema")?.value||"").trim(),telPersonal:(document.getElementById("prefTelPersonal")?.value||"").trim(),emergNombre:(document.getElementById("prefEmergNombre")?.value||"").trim(),emergParentesco:document.getElementById("prefEmergParentesco")?.value||"",emergTel:(document.getElementById("prefEmergTel")?.value||"").trim(),emergVisible:!!document.getElementById("prefEmergVisible")?.checked,tema:document.getElementById("prefTema")?.value||"",acento:active?active.getAttribute("data-hex"):"",fondo:document.getElementById("prefFondo")?.value||"",densidad:document.getElementById("prefDensidad")?.value||"compacta",inicio:document.getElementById("prefInicio")?.value||"",saludo:!!document.getElementById("prefSaludo")?.checked,notasBienestar:(document.getElementById("prefNotasBienestar")?.value||"").trim(),motivacion:(document.getElementById("prefMotivacion")?.value||"").trim()};if(setPreferenciasUsuario(p),Array.isArray(listaUsuarios)){listaUsuarios=listaUsuarios.map(u=>{if((u.nombre||"").toLowerCase()!==sesion.persona.toLowerCase())return u;if(u.taller&&u.taller!==sesion.taller)return u;const nu=Object.assign({},u);return p.cumpleanos&&(nu.cumpleanos=p.cumpleanos),p.telPersonal&&(nu.tel_personal=p.telPersonal),nu.emergencia={nombre:p.emergNombre,parentesco:p.emergParentesco,tel:p.emergTel,visible_gerencia:p.emergVisible},nu});try{"function"==typeof construirConfigAdmin&&localStorage.setItem(CONFIG_ADMIN_KEY,JSON.stringify(construirConfigAdmin()))}catch(e){}}aplicarPreferenciasUsuario(),cerrarModal("modalPreferenciasUsuario");try{mostrarToastApp("✅ Tu espacio personal quedó guardado","#28a745")}catch(e){alert("✅ Preferencias guardadas")}}function setStatusConexion(estado,texto){const st=document.getElementById("statusConexion");st&&(st.classList.remove("ok","err"),"ok"===estado&&st.classList.add("ok"),"err"===estado&&st.classList.add("err"),texto&&(st.textContent=texto))}function mostrarInfoSesion(){try{setTimeout(function(){try{recalcularPuntosDesdeUnidades();renderContadorPuntosSesion();}catch(e){}},500);}catch(e){}/*pts-recalc-after-load*/try{setTimeout(function(){try{renderContadorPuntosSesion()}catch(e){}},100);}catch(e){}try{var _cr=document.getElementById("headerClockRow");if(_cr){_cr.style.display="flex";_cr.style.visibility="visible";}if(typeof iniciarRelojHeader==="function")iniciarRelojHeader();}catch(eClk){}if(!sesion)return;const el=document.getElementById("sesionInfo"),sessionBar=document.getElementById("headerSessionBar"),tallerTxt=etiquetaTaller(sesion.taller),textoCorto="Cliente"===sesion.area?"Cliente · solo lectura":sesion.persona+" · "+sesion.area,textoFull="Cliente"===sesion.area?"Cliente · "+tallerTxt+" · solo lectura":sesion.persona+" · "+sesion.area+" · "+tallerTxt;if(el&&(el.textContent=textoCorto,el.title=textoFull+" · Toca para mediciones",el.style.cursor="Cliente"===sesion.area?"default":"pointer",el.style.display="",el.dataset.medicionBound||(el.dataset.medicionBound="1",el.addEventListener("click",function(e){e.stopPropagation(),"Cliente"!==sesion.area&&abrirPanelMedicionUsuario()})),!el.dataset.eggBound)){el.dataset.eggBound="1";let clicks=0,timer=null;el.addEventListener("click",function(){clicks++,clearTimeout(timer),timer=setTimeout(function(){clicks=0},900),clicks>=5&&(clicks=0,window.open("https://drive.google.com/drive/folders/16uXdN_NGhYV4iPJRZUIEVt4yt-_VOzYX","_blank"))})}sessionBar&&(sessionBar.style.display="block",sessionBar.classList.add("visible"));const barLegacy=document.getElementById("sesionInfoBar");barLegacy&&(barLegacy.style.display="none",barLegacy.textContent="");const h1=document.getElementById("headerTitle")||document.querySelector(".header-brand h1"),small=document.getElementById("headerSub")||document.querySelector(".header-brand small"),logo=document.getElementById("headerLogo");if(logo){const tryIcon=()=>{0===logo.naturalWidth&&(logo.src=ICONO_THERMOKING)};logo.complete?tryIcon():logo.addEventListener("error",function(){logo.src=ICONO_THERMOKING},{once:!0}),setTimeout(tryIcon,400)}try{const hl=document.getElementById("headerThermoDiagPRO");if(hl)hl.style.display=(sesion&&sesion.area==="Cliente")?"none":"";}catch(e){}if(h1&&(h1.textContent=etiquetaTaller(sesion.taller)||"Thermo King",small&&(small.textContent=""),h1.style.cursor="pointer",h1.title=nombreAppTaller(sesion.taller)+" · 5 toques: administración",!h1.dataset.adminEggBound)){h1.dataset.adminEggBound="1";let clicksAdmin=0,timerAdmin=null;h1.addEventListener("click",function(e){e.stopPropagation(),clicksAdmin++,clearTimeout(timerAdmin),timerAdmin=setTimeout(function(){clicksAdmin=0},1e3),clicksAdmin>=5&&(clicksAdmin=0,abrirModalAdmin())})}document.getElementById("btnCerrarSesion").style.display="inline-block";const showMenu=(id,visible)=>{const el=document.getElementById(id);el&&(el.style.display=visible?"":"none")};showMenu("btnReporteDiario","Gerencia"===sesion.area||(sesion&&"Abel"===sesion.persona)||(typeof tienePermisoTotal==="function"&&tienePermisoTotal())),showMenu("btnProduccion",sesion&&("Gerencia"===sesion.area||(typeof tienePermisoTotal==="function"&&tienePermisoTotal()))),showMenu("btnDashboardRT",sesion&&"Cliente"!==sesion.area),showMenu("btnConfigWip",sesion&&("Gerencia"===sesion.area||"function"==typeof tienePermisoTotal&&tienePermisoTotal())),showMenu("btnAsignarPendiente",sesion&&"Gerencia"===sesion.area),showMenu("btnMetasGerencia",sesion&&("Gerencia"===sesion.area||tienePermisoTotal())),showMenu("btnMiDia","Gerencia"!==sesion.area&&"Cliente"!==sesion.area),showMenu("btnInventario",!0),showMenu("btnDiagnosticosExt","Mantenimiento"===sesion.area),showMenu("btnThermoDiagPRO","Mantenimiento"===sesion.area),showMenu("btnMensaje",!1);try{actualizarUIModoBasicoKanban()}catch(e){}setTimeout(function(){try{aplicarMenuVisUsuario();expandirGruposMenuConItems()}catch(e){}},200);try{cargarPendientesTareas()}catch(e){}showMenu("btnTrabajoHoy",!0),showMenu("btnVistaLista",!0),showMenu("btnVistaHistorial",!0),"Cliente"===sesion.area?aplicarModoClienteUI(!0):aplicarModoClienteUI(!1);try{aplicarPreferenciasUsuario()}catch(e){}try{saludoPersonalSiCorresponde()}catch(e){}try{aplicarMenuVisUsuario()}catch(e){}}function requerirSesion(){return!!sesion||(alert("⚠️ Inicia sesión con tu departamento primero"),document.getElementById("loginOverlay").classList.remove("oculto"),!1)}let permisosCambio={Gerencia:null,Mantenimiento:{Diagnosticando:["Cotizando","Reparando"],Reparando:["Finalizada","Diagnosticando","Espera de refacciones","Cotizando"]},Ventas:{Agenda:["Recibida","Finalizada"],Recibida:["Diagnosticando","Cotizando","Agenda","Finalizada"],Cotizando:["Espera de refacciones","Reparando","Finalizada"],"Espera de refacciones":["Reparando","Cotizando","Finalizada"],Finalizada:[]},Compras:{"Espera de refacciones":["Reparando","Cotizando"]}};const CAMPOS_POR_LUGAR={Taller:{show:["cliente","modelo","no_unidad","placas","bloque_pdf_cliente","problema","hoja_servicio","orden_compra"],req:["cliente","modelo","no_unidad","placas","problema"],hint:"🏭 Taller: la unidad viene al taller. Ventas captura recepción; el técnico se asigna después en Diagnóstico/Reparación.",labelProblema:"Problema / descripción *",phProblema:"Describe el problema o falla..."},Kuzzy:{show:["cliente","modelo","no_unidad","placas","problema"],req:["cliente","modelo","no_unidad","placas","problema"],hint:"🚚 Kuzzy: trabajo de caja / en sitio (no es rescate de emergencia).",labelProblema:"Notas *",phProblema:"Notas del trabajo Kuzzy / lo que se cotiza..."},ServiciosSigma:{show:["cliente","modelo","no_unidad","placas","problema","reparador"],req:["cliente","modelo","no_unidad","placas","problema","reparador"],hint:"🟡 Servicios Sigma: servicio programado o visita fuera de taller (NO es emergencia en carretera). Ventas debe asignar al técnico que irá.",labelProblema:"Problema / descripción *",phProblema:"Describe la falla o el servicio en sitio (Sigma)..."},RescateCarretera:{show:["cliente","modelo","no_unidad","problema","tipo_pago","reparador"],req:["cliente","modelo","no_unidad","problema","tipo_pago","reparador"],hint:"🛣️ Rescate carretera: EMERGENCIA en vía. Ventas llena datos, tipo de pago y técnico, luego notifica por WhatsApp al técnico.",labelProblema:"Trabajo a realizar *",phProblema:"Describe el trabajo a realizar en carretera..."},Rescate:{show:["cliente","modelo","no_unidad","placas","problema","reparador"],req:["cliente","modelo","no_unidad","placas","problema","reparador"],hint:"🚨 Rescate legado → se trata como Servicios Sigma. Asigna técnico.",labelProblema:"Problema / descripción *",phProblema:"Describe la falla en sitio..."},VentasRefacciones:{show:["cliente","problema","asesor_ventas"],req:["cliente","problema"],hint:"🛒 Venta de refacciones: solo Cliente y qué se vende. El número de unidad se genera solo (REF-…). Sin placas, sin diagnóstico, sin técnico.",labelProblema:"¿Qué se vende? (piezas / notas) *",phProblema:"Ej. 2 filtros aceite 67-xxx, 1 correa…"}};function actualizarBoxDatosRecibidaNueva(){try{const box=document.getElementById("boxDatosRecibidaNueva");if(!box)return;const ubi=(document.getElementById("ubicacionTrabajoNueva")||{}).value||"Taller";const est=(document.getElementById("estatusNueva")||{}).value||"Recibida";box.style.display=(ubi==="Taller"||ubi==="taller")&&(est==="Recibida"||est==="Diagnosticando")?"":"none"}catch(e){}}
     function onUbicacionTrabajoNuevaChange(){
   const v=normalizarUbicacionTrabajo(document.getElementById("ubicacionTrabajoNueva")?.value);
   const cfg=CAMPOS_POR_LUGAR[v]||CAMPOS_POR_LUGAR.Taller;
@@ -3462,7 +3462,21 @@ actualizarStats()}catch(e){}try{actualizarNotificaciones()}catch(e){}try{notific
     alert("❌ Error al agregar unidad: "+(error.message||error));
     return{success:!1,error:error.message};
   }
-}const COLA_OFFLINE_KEY="thermocontrol_cola_offline";function leerColaOffline(){try{return JSON.parse(localStorage.getItem(COLA_OFFLINE_KEY)||"[]")}catch(e){return[]}}function guardarColaOffline(arr){try{localStorage.setItem(COLA_OFFLINE_KEY,JSON.stringify(arr||[]))}catch(e){}}function encolarCambioOffline(id,datos){const cola=leerColaOffline();cola.push({id,datos,ts:Date.now()}),guardarColaOffline(cola);const index=unidades.findIndex(u=>u.id===id);-1!==index&&(unidades[index]={...unidades[index],...datos,_offline:!0}),renderizarTablero(),actualizarStats(),mostrarToastApp("📴 Guardado offline · se sincronizará al recuperar red","#fd7e14"),actualizarBadgeOffline()}function actualizarBadgeOffline(){const n=leerColaOffline().length;let b=document.getElementById("badgeOffline");if(!b){const header=document.querySelector(".header-right")||document.querySelector("header")||document.body;b=document.createElement("button"),b.id="badgeOffline",b.type="button",b.className="btn-header",b.style.cssText="display:none;background:#fd7e14;color:#fff;font-weight:700;",b.onclick=()=>sincronizarColaOffline(!0),header&&header.appendChild(b)}n>0?(b.style.display="",b.textContent="📴 "+n+" pendiente"+(n>1?"s":""),b.title="Toca para sincronizar cambios offline"):b.style.display="none"}async function sincronizarColaOffline(manual){if(!navigator.onLine)return void(manual&&alert("Sigues sin conexión. Los cambios se enviarán cuando haya red."));const cola=leerColaOffline();if(!cola.length)return void actualizarBadgeOffline();let ok=0,fail=0;const restantes=[];for(const item of cola)try{const{data,error}=await supabaseClient.from("unidades").update(item.datos).eq("id",item.id).select();if(error)throw error;const index=unidades.findIndex(u=>u.id===item.id);if(-1!==index){const merged={...unidades[index],...item.datos};delete merged._offline,unidades[index]=merged}ok++}catch(e){restantes.push(item),fail++}guardarColaOffline(restantes),actualizarBadgeOffline(),renderizarTablero(),actualizarStats(),(ok||manual)&&mostrarToastApp(ok?"✅ Sincronizados "+ok+" cambio(s)"+(fail?" · "+fail+" fallaron":""):"No se pudo sincronizar",fail?"#dc3545":"#28a745")}window.addEventListener("online",()=>{mostrarToastApp("🌐 Conexión recuperada · sincronizando…","#28a745"),sincronizarColaOffline(!1)}),window.addEventListener("offline",()=>{mostrarToastApp("📴 Sin conexión · los cambios se guardarán localmente","#fd7e14")});const COLUMNAS_OPCIONALES_UNIDAD=["horas_equipo","crono_inicio","crono_estatus","crono_persona","crono_acum_diagnosticando","crono_acum_cotizando","crono_acum_reparando","tipo_servicio","tipo_servicio_codigo","pct_avance","venta_refacciones","pausa_compras","pausa_compras_nota","pausa_compras_desde","espera_cliente","espera_cliente_nota","espera_cliente_desde","es_garantia","es_reingreso","unidad_origen_id","dias_desde_fin_prev","direccion","ciudad","estado","rfc","telefono","contacto","cel","serie_camion","km","marca","compresor","motor","trabajo_realizado"];function quitarColumnasDesconocidas(datos,mensajeError){const msg=String(mensajeError||""),limpio={...datos};let quitadas=[];const m=msg.match(/Could not find the '([^']+)' column/i);return m&&m[1]&&(delete limpio[m[1]],quitadas.push(m[1])),COLUMNAS_OPCIONALES_UNIDAD.forEach(c=>{c in limpio&&/schema cache|Could not find/i.test(msg)&&m&&m[1]}),{limpio,quitadas}}async function actualizarUnidad(id,datos){if("undefined"!=typeof navigator&&!1===navigator.onLine)return encolarCambioOffline(id,datos),{success:!0,offline:!0};let payload={...datos};
+}const COLA_OFFLINE_KEY="thermocontrol_cola_offline";function leerColaOffline(){try{return JSON.parse(localStorage.getItem(COLA_OFFLINE_KEY)||"[]")}catch(e){return[]}}function guardarColaOffline(arr){try{localStorage.setItem(COLA_OFFLINE_KEY,JSON.stringify(arr||[]))}catch(e){}}function encolarCambioOffline(id,datos){const cola=leerColaOffline();cola.push({id,datos,ts:Date.now()}),guardarColaOffline(cola);const index=unidades.findIndex(u=>u.id===id);-1!==index&&(unidades[index]={...unidades[index],...datos,_offline:!0}),renderizarTablero(),actualizarStats(),mostrarToastApp("📴 Guardado offline · se sincronizará al recuperar red","#fd7e14"),actualizarBadgeOffline()}function actualizarBadgeOffline(){const n=leerColaOffline().length;let b=document.getElementById("badgeOffline");if(!b){const header=document.querySelector(".header-right")||document.querySelector("header")||document.body;b=document.createElement("button"),b.id="badgeOffline",b.type="button",b.className="btn-header",b.style.cssText="display:none;background:#fd7e14;color:#fff;font-weight:700;",b.onclick=()=>sincronizarColaOffline(!0),header&&header.appendChild(b)}n>0?(b.style.display="",b.textContent="📴 "+n+" pendiente"+(n>1?"s":""),b.title="Toca para sincronizar cambios offline"):b.style.display="none"}async function sincronizarColaOffline(manual){if(!navigator.onLine)return void(manual&&alert("Sigues sin conexión. Los cambios se enviarán cuando haya red."));const cola=leerColaOffline();if(!cola.length)return void actualizarBadgeOffline();let ok=0,fail=0;const restantes=[];for(const item of cola)try{const{data,error}=await supabaseClient.from("unidades").update(item.datos).eq("id",item.id).select();if(error)throw error;const index=unidades.findIndex(u=>u.id===item.id);if(-1!==index){const merged={...unidades[index],...item.datos};delete merged._offline,unidades[index]=merged}ok++}catch(e){restantes.push(item),fail++}guardarColaOffline(restantes),actualizarBadgeOffline(),renderizarTablero(),actualizarStats(),(ok||manual)&&mostrarToastApp(ok?"✅ Sincronizados "+ok+" cambio(s)"+(fail?" · "+fail+" fallaron":""):"No se pudo sincronizar",fail?"#dc3545":"#28a745")}window.addEventListener("online",()=>{mostrarToastApp("🌐 Conexión recuperada · sincronizando…","#28a745"),sincronizarColaOffline(!1)}),window.addEventListener("offline",()=>{mostrarToastApp("📴 Sin conexión · los cambios se guardarán localmente","#fd7e14")});const COLUMNAS_OPCIONALES_UNIDAD=["horas_equipo","crono_inicio","crono_estatus","crono_persona","crono_acum_diagnosticando","crono_acum_cotizando","crono_acum_reparando","tipo_servicio","tipo_servicio_codigo","pct_avance","venta_refacciones","pausa_compras","pausa_compras_nota","pausa_compras_desde","espera_cliente","espera_cliente_nota","espera_cliente_desde","es_garantia","es_reingreso","unidad_origen_id","dias_desde_fin_prev","direccion","ciudad","estado","rfc","telefono","contacto","cel","serie_camion","km","marca","compresor","motor","trabajo_realizado"];function quitarColumnasDesconocidas(datos,mensajeError){const msg=String(mensajeError||""),limpio={...datos};let quitadas=[];const m=msg.match(/Could not find the '([^']+)' column/i);return m&&m[1]&&(delete limpio[m[1]],quitadas.push(m[1])),COLUMNAS_OPCIONALES_UNIDAD.forEach(c=>{c in limpio&&/schema cache|Could not find/i.test(msg)&&m&&m[1]}),{limpio,quitadas}}async function actualizarUnidad(id,datos){
+if("undefined"!=typeof navigator&&!1===navigator.onLine){
+  try{
+    const index=unidades.findIndex(u=>u.id===id);
+    let prevU=null;
+    if(-1!==index){
+      prevU=Object.assign({},unidades[index]);
+      unidades[index]={...unidades[index],...datos};
+    }
+    try{if(prevU)anunciarCambioPuntos(prevU,Object.assign({},prevU,datos));}catch(eP){}
+    try{if(prevU)notificarAsesorUnidadFinalizada(prevU,Object.assign({},prevU,datos));}catch(eA){}
+    try{if(prevU)notificarCambioEstatusAreas(prevU,Object.assign({},prevU,datos));}catch(eB){}
+  }catch(eOff){}
+  return encolarCambioOffline(id,datos),{success:!0,offline:!0};
+}let payload={...datos};
 // Respaldo de trabajo realizado en historial (por si la columna no existe en BD)
 try{
   if(payload.trabajo_realizado&&String(payload.trabajo_realizado).trim()){
@@ -4450,7 +4464,7 @@ for(const[status,color]of Object.entries(colores)){
   html+=`<div class="stat-item ${filtroEstatus===status?"activo":""}" onclick="filtrarPorEstatus('${status}')" title="${nombresEstatus[status]||status}"><span class="dot" style="background:${color}"></span> <b>${n}</b> ${lab}</div>`;
 }
 if(filtroEstatus)html+='<div class="stat-item" style="background:#fff3cd;color:#856404" onclick="filtrarPorEstatus(null)">✖ Quitar filtro</div>';
-container.innerHTML=html}function renderizarTablero(){try{void 0!==unidades&&unidades&&alertarLlegadasAEstacion(unidades)}catch(e){}try{setTimeout(actualizarTimersEstacionDOM,200)}catch(e){}const _sg=document.getElementById("searchGlobal");const search=((_sg&&_sg.value)||"").toLowerCase();let filtered=unidades.filter(u=>!u.eliminado&&((u.no_unidad||"").toLowerCase().includes(search)||(u.cliente||"").toLowerCase().includes(search)||u.modelo&&u.modelo.toLowerCase().includes(search)||u.placas&&u.placas.toLowerCase().includes(search)||u.no_serie&&u.no_serie.toLowerCase().includes(search)||u.folio&&u.folio.toLowerCase().includes(search)||u.orden_compra&&u.orden_compra.toLowerCase().includes(search)));puedeVerAgenda()||(filtered=filtered.filter(u=>"Agenda"!==u.estatus)),filtroEstatus&&("Agenda"!==filtroEstatus||puedeVerAgenda()?filtered=filtered.filter(u=>u.estatus===filtroEstatus):filtroEstatus=null);const container=document.getElementById("kanbanContainer");container.innerHTML="",container.style.gridTemplateColumns=filtroEstatus?"1fr":"";const estatusOrden=columnasKanbanParaSesion();let columnas=filtroEstatus?[filtroEstatus]:estatusOrden;filtroEstatus&&estatusOrden.indexOf(filtroEstatus)<0&&(columnas=[filtroEstatus]);const nCol=columnas.length;!filtroEstatus&&nCol<=3&&(container.style.gridTemplateColumns=1===nCol?"1fr":2===nCol?"1fr 1fr":"1fr 1fr 1fr"),columnas.forEach(status=>{const items=filtered.filter(u=>u.estatus===status),colapsada=estaColumnaColapsada(status),col=document.createElement("div");col.className="kanban-col"+(filtroEstatus===status?" filtro-activo":"")+(colapsada?" colapsada":"");const wip="function"==typeof wipEstado?wipEstado(status):{n:items.length,lim:null,nivel:"ok"},wipBadge=wip.lim&&"Finalizada"!==status&&"Agenda"!==status?`<span class="wip-badge ${"sobre"===wip.nivel?"sobre":"limite"===wip.nivel?"limite":""}" title="WIP ${wip.n}/${wip.lim}">${wip.n}/${wip.lim}</span>`:"";col.innerHTML=`\n                <h4 style="background:${getColor(status)}" title="Clic en el nombre para filtrar">\n                    <span onclick="filtrarPorEstatus('${status}')" style="cursor:pointer;">${nombresEstatus[status]} <span class="count">${items.length}</span>${wipBadge}</span>\n                    <button type="button" class="btn-colapsar" onclick="event.stopPropagation(); toggleColumnaKanban('${status}')" title="${colapsada?"Expandir":"Contraer"}">\n                        ${colapsada?"▸":"▾"}\n                    </button>\n                </h4>\n                <div class="cards-wrap"></div>\n            `;const wrap=col.querySelector(".cards-wrap");items.forEach(u=>{if(typeof unidadEsMia==="function"&&!unidadEsMia(u))return;const dias=diasEnTaller(u),esFinalizada="Finalizada"===u.estatus,colorDias=esFinalizada?"":claseColorDias(dias),card=document.createElement("div");card.className="card-compact card-collapsed"+(colorDias?" "+colorDias:""),card.style.borderLeftColor=getColor(u.estatus);
+container.innerHTML=html}function renderizarTablero(){try{if(!window._ptsRecalcOnce&&(unidades||[]).length){window._ptsRecalcOnce=1;setTimeout(function(){try{recalcularPuntosDesdeUnidades();renderContadorPuntosSesion();}catch(e){}},400);}}catch(e){}try{void 0!==unidades&&unidades&&alertarLlegadasAEstacion(unidades)}catch(e){}try{setTimeout(actualizarTimersEstacionDOM,200)}catch(e){}const _sg=document.getElementById("searchGlobal");const search=((_sg&&_sg.value)||"").toLowerCase();let filtered=unidades.filter(u=>!u.eliminado&&((u.no_unidad||"").toLowerCase().includes(search)||(u.cliente||"").toLowerCase().includes(search)||u.modelo&&u.modelo.toLowerCase().includes(search)||u.placas&&u.placas.toLowerCase().includes(search)||u.no_serie&&u.no_serie.toLowerCase().includes(search)||u.folio&&u.folio.toLowerCase().includes(search)||u.orden_compra&&u.orden_compra.toLowerCase().includes(search)));puedeVerAgenda()||(filtered=filtered.filter(u=>"Agenda"!==u.estatus)),filtroEstatus&&("Agenda"!==filtroEstatus||puedeVerAgenda()?filtered=filtered.filter(u=>u.estatus===filtroEstatus):filtroEstatus=null);const container=document.getElementById("kanbanContainer");container.innerHTML="",container.style.gridTemplateColumns=filtroEstatus?"1fr":"";const estatusOrden=columnasKanbanParaSesion();let columnas=filtroEstatus?[filtroEstatus]:estatusOrden;filtroEstatus&&estatusOrden.indexOf(filtroEstatus)<0&&(columnas=[filtroEstatus]);const nCol=columnas.length;!filtroEstatus&&nCol<=3&&(container.style.gridTemplateColumns=1===nCol?"1fr":2===nCol?"1fr 1fr":"1fr 1fr 1fr"),columnas.forEach(status=>{const items=filtered.filter(u=>u.estatus===status),colapsada=estaColumnaColapsada(status),col=document.createElement("div");col.className="kanban-col"+(filtroEstatus===status?" filtro-activo":"")+(colapsada?" colapsada":"");const wip="function"==typeof wipEstado?wipEstado(status):{n:items.length,lim:null,nivel:"ok"},wipBadge=wip.lim&&"Finalizada"!==status&&"Agenda"!==status?`<span class="wip-badge ${"sobre"===wip.nivel?"sobre":"limite"===wip.nivel?"limite":""}" title="WIP ${wip.n}/${wip.lim}">${wip.n}/${wip.lim}</span>`:"";col.innerHTML=`\n                <h4 style="background:${getColor(status)}" title="Clic en el nombre para filtrar">\n                    <span onclick="filtrarPorEstatus('${status}')" style="cursor:pointer;">${nombresEstatus[status]} <span class="count">${items.length}</span>${wipBadge}</span>\n                    <button type="button" class="btn-colapsar" onclick="event.stopPropagation(); toggleColumnaKanban('${status}')" title="${colapsada?"Expandir":"Contraer"}">\n                        ${colapsada?"▸":"▾"}\n                    </button>\n                </h4>\n                <div class="cards-wrap"></div>\n            `;const wrap=col.querySelector(".cards-wrap");items.forEach(u=>{if(typeof unidadEsMia==="function"&&!unidadEsMia(u))return;const dias=diasEnTaller(u),esFinalizada="Finalizada"===u.estatus,colorDias=esFinalizada?"":claseColorDias(dias),card=document.createElement("div");card.className="card-compact card-collapsed"+(colorDias?" "+colorDias:""),card.style.borderLeftColor=getColor(u.estatus);
 try{
   const ubiC=typeof ubicacionTrabajoUnidad==="function"?ubicacionTrabajoUnidad(u):"";
   if(ubiC==="RescateCarretera"){card.style.boxShadow="inset 0 0 0 2px #ea580c";}
@@ -5658,21 +5672,20 @@ if(!reparador){
 }function obtenerEventosNotif(){try{return JSON.parse(localStorage.getItem("thermocontrol_notif_eventos")||"[]")}catch{return[]}}function registrarNotificacionEvento(ev){const cfg=getConfigNotif(),esMovimiento=!!ev.forzarNavegador;if(!1===cfg.cambios&&!esMovimiento)return;const lista=obtenerEventosNotif();lista.unshift({...ev,areaSesion:null,fecha:fechaHistorialAhora(),id:Date.now()}),localStorage.setItem("thermocontrol_notif_eventos",JSON.stringify(lista.slice(0,40))),ev.titulo&&(esMovimiento||sesion)&&mostrarNotifNavegador(nombreAppTaller(getTallerActual()),ev.titulo+(ev.detalle?" — "+ev.detalle:""))}function obtenerNotifsDescartadas(){try{return JSON.parse(localStorage.getItem("thermocontrol_notif_descartadas")||"[]")}catch{return[]}}
 
 
+
+/* ===== PUNTOS v3: log local + recálculo desde historial ===== */
 function lunesDeEstaSemana(d){
   d=d?new Date(d):new Date();
   const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());
-  const day=x.getDay(); // 0=dom .. 6=sab
-  const diff=day===0?-6:1-day; // lunes como inicio
+  const day=x.getDay();
+  const diff=day===0?-6:1-day;
   x.setDate(x.getDate()+diff);
   x.setHours(0,0,0,0);
   return x;
 }
 function claveSemanaPuntos(d){
   const lun=lunesDeEstaSemana(d);
-  const y=lun.getFullYear();
-  const m=String(lun.getMonth()+1).padStart(2,"0");
-  const day=String(lun.getDate()).padStart(2,"0");
-  return y+"-"+m+"-"+day; // lunes de la semana
+  return lun.getFullYear()+"-"+String(lun.getMonth()+1).padStart(2,"0")+"-"+String(lun.getDate()).padStart(2,"0");
 }
 function etiquetaSemanaPuntos(){
   const lun=lunesDeEstaSemana();
@@ -5682,174 +5695,342 @@ function etiquetaSemanaPuntos(){
 }
 function esDiaLaboralPuntos(d){
   const day=(d?new Date(d):new Date()).getDay();
-  return day>=1&&day<=5; // lun-vie
-}
-function cargarMapaPuntosSemana(){
-  try{
-    const raw=localStorage.getItem("thermocontrol_puntos_semana");
-    const obj=raw?JSON.parse(raw):{};
-    return obj&&typeof obj==="object"?obj:{};
-  }catch(e){return {};}
-}
-function guardarMapaPuntosSemana(mapa){
-  try{localStorage.setItem("thermocontrol_puntos_semana",JSON.stringify(mapa||{}));}catch(e){}
+  return day>=1&&day<=5;
 }
 function normalizarNombrePuntos(nombre){
   return String(nombre||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
 }
+function nombresPuntosCoinciden(a,b){
+  const na=normalizarNombrePuntos(a), nb=normalizarNombrePuntos(b);
+  if(!na||!nb)return false;
+  if(na===nb)return true;
+  // primer nombre o contiene
+  const fa=na.split(" ")[0], fb=nb.split(" ")[0];
+  if(fa.length>=3&&(na.indexOf(fb)===0||nb.indexOf(fa)===0))return true;
+  if(na.indexOf(nb)>=0||nb.indexOf(na)>=0)return true;
+  return false;
+}
+
+const PTS_LOG_KEY="thermocontrol_puntos_log_v3";
+function cargarLogPuntos(){
+  try{
+    const raw=localStorage.getItem(PTS_LOG_KEY);
+    const arr=raw?JSON.parse(raw):[];
+    return Array.isArray(arr)?arr:[];
+  }catch(e){return [];}
+}
+function guardarLogPuntos(arr){
+  try{localStorage.setItem(PTS_LOG_KEY,JSON.stringify((arr||[]).slice(-2000)));}catch(e){console.warn("guardarLogPuntos",e);}
+}
+
+/** Suma puntos y guarda evidencia. idUnico evita duplicados. */
+function sumarPuntosEmpleado(nombre,delta,motivo,idUnico){
+  try{
+    if(!nombre)return 0;
+    delta=Number(delta);
+    if(!delta||isNaN(delta))return 0;
+    const log=cargarLogPuntos();
+    if(idUnico){
+      const existe=log.some(function(e){return e.id===idUnico;});
+      if(existe)return getPuntosEmpleado(nombre);
+    }
+    const entry={
+      id:idUnico||("p_"+Date.now()+"_"+Math.random().toString(36).slice(2,7)),
+      nombre:String(nombre).trim(),
+      delta:delta,
+      motivo:motivo||"",
+      at:new Date().toISOString(),
+      semana:claveSemanaPuntos(),
+      taller:(sesion&&sesion.taller)||""
+    };
+    log.push(entry);
+    guardarLogPuntos(log);
+    // espejo semana en mapa legado
+    try{
+      const mapa=JSON.parse(localStorage.getItem("thermocontrol_puntos_semana")||"{}")||{};
+      const sem=entry.semana;
+      if(!mapa[sem])mapa[sem]={};
+      if(!mapa._total)mapa._total={};
+      const k=entry.nombre;
+      mapa[sem][k]=Math.round(((Number(mapa[sem][k])||0)+delta)*10)/10;
+      mapa._total[k]=Math.round(((Number(mapa._total[k])||0)+delta)*10)/10;
+      localStorage.setItem("thermocontrol_puntos_semana",JSON.stringify(mapa));
+    }catch(e){}
+    try{renderContadorPuntosSesion();}catch(e){}
+    return getPuntosEmpleado(nombre);
+  }catch(e){console.warn("sumarPuntosEmpleado",e);return 0;}
+}
+
 function getPuntosEmpleado(nombre,opts){
   opts=opts||{};
   if(!nombre)return 0;
   const sem=opts.semana||claveSemanaPuntos();
-  const mapa=cargarMapaPuntosSemana();
-  const week=mapa[sem]||{};
-  const key=normalizarNombrePuntos(nombre);
-  // buscar por nombre normalizado
-  let pts=0;
-  Object.keys(week).forEach(function(k){
-    if(normalizarNombrePuntos(k)===key)pts=Number(week[k])||0;
+  const log=cargarLogPuntos();
+  let sum=0;
+  log.forEach(function(e){
+    if(!e)return;
+    if(!opts.total && e.semana!==sem)return;
+    if(nombresPuntosCoinciden(e.nombre,nombre))sum+=Number(e.delta)||0;
   });
-  if(pts)return pts;
-  // fallback usuario (legado)
-  if(opts.incluirLegado!==false){
-    const u=(listaUsuarios||[]).find(function(x){return normalizarNombrePuntos(x.nombre)===key;});
-    if(u&&Number(u.puntos_semana)>0&&u.puntos_semana_clave===sem)return Number(u.puntos_semana)||0;
-  }
-  return 0;
+  return Math.round(sum*10)/10;
 }
-function sumarPuntosEmpleado(nombre,delta){
-  if(!nombre||!delta)return 0;
-  // Acumula lun→vie; sábado/domingo no suman a la semana laboral (sí quedan en historial total)
-  const ahora=new Date();
-  const sem=claveSemanaPuntos(ahora);
-  const mapa=cargarMapaPuntosSemana();
-  if(!mapa[sem]||typeof mapa[sem]!=="object")mapa[sem]={};
-  const keyNombre=String(nombre).trim();
-  const keyNorm=normalizarNombrePuntos(keyNombre);
-  // unificar clave existente
-  let claveUsar=keyNombre;
-  Object.keys(mapa[sem]).forEach(function(k){
-    if(normalizarNombrePuntos(k)===keyNorm)claveUsar=k;
-  });
-  const laborable=esDiaLaboralPuntos(ahora);
-  if(laborable){
-    mapa[sem][claveUsar]=Math.round(((Number(mapa[sem][claveUsar])||0)+Number(delta))*10)/10;
-  }
-  // historial total por empleado (siempre, aunque sea fin de semana)
-  if(!mapa._total)mapa._total={};
-  let claveTot=keyNombre;
-  Object.keys(mapa._total).forEach(function(k){
-    if(normalizarNombrePuntos(k)===keyNorm)claveTot=k;
-  });
-  mapa._total[claveTot]=Math.round(((Number(mapa._total[claveTot])||0)+Number(delta))*10)/10;
-  guardarMapaPuntosSemana(mapa);
 
-  // espejo en listaUsuarios para ranking/admin
-  let u=(listaUsuarios||[]).find(function(x){return normalizarNombrePuntos(x.nombre)===keyNorm;});
-  if(!u){
-    u={id:"pts_"+Date.now().toString(36),nombre:keyNombre,area:(sesion&&sesion.area)||"",taller:(sesion&&sesion.taller)||"Chihuahua",puntos:0,permiso_total:false};
-    if(!Array.isArray(listaUsuarios))listaUsuarios=[];
-    listaUsuarios.push(u);
-  }
-  u.puntos=Number(mapa._total[claveTot])||0;
-  u.puntos_semana=laborable?(Number(mapa[sem][claveUsar])||0):(Number(u.puntos_semana)||0);
-  u.puntos_semana_clave=sem;
-  try{
-    if(typeof persistirConfigUsuarios==="function")persistirConfigUsuarios();
-    else if(typeof guardarConfigAdmin==="function")guardarConfigAdmin();
-  }catch(e){}
-  try{localStorage.setItem("thermocontrol_puntos_usuarios_mirror",JSON.stringify((listaUsuarios||[]).map(function(x){return{id:x.id,nombre:x.nombre,puntos:x.puntos,puntos_semana:x.puntos_semana,puntos_semana_clave:x.puntos_semana_clave};})));}catch(e){}
-  return laborable?(Number(mapa[sem][claveUsar])||0):getPuntosEmpleado(nombre);
+function getTotalesPuntosSemana(){
+  const sem=claveSemanaPuntos();
+  const map={};
+  cargarLogPuntos().forEach(function(e){
+    if(!e||e.semana!==sem)return;
+    const n=String(e.nombre||"").trim();
+    if(!n)return;
+    // unificar por nombre normalizado
+    let key=n;
+    Object.keys(map).forEach(function(k){
+      if(nombresPuntosCoinciden(k,n))key=k;
+    });
+    map[key]=(map[key]||0)+(Number(e.delta)||0);
+  });
+  return map;
 }
+
 function renderContadorPuntosSesion(){
   try{
     if(!sesion||sesion.area==="Cliente")return;
     const pts=getPuntosEmpleado(sesion.persona);
     let badge=document.getElementById("badgePuntosSesion");
     if(!badge){
-      const bar=document.getElementById("headerSessionBar")||document.getElementById("sesionInfo")||document.querySelector(".header-user-corner");
+      const bar=document.getElementById("headerSessionBar")||document.getElementById("sesionInfo")||document.querySelector(".header-user-corner")||document.querySelector(".header-top");
       if(!bar)return;
       badge=document.createElement("span");
       badge.id="badgePuntosSesion";
-      badge.title="Puntos de esta semana (lunes a viernes). Toca para ver ranking.";
-      badge.style.cssText="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;font-weight:800;font-size:12px;padding:4px 10px;border-radius:999px;margin-left:6px;cursor:pointer";
-      badge.onclick=function(){try{abrirRankingPuntosEmpleados()}catch(e){}};
+      badge.style.cssText="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;font-weight:900;font-size:13px;padding:5px 12px;border-radius:999px;margin-left:6px;cursor:pointer;border:1px solid #fcd34d";
+      badge.onclick=function(){try{abrirRankingPuntosEmpleados();}catch(e){}};
       bar.appendChild(badge);
     }
     badge.innerHTML="🪙 "+pts+" pts";
-    badge.title="Semana "+etiquetaSemanaPuntos()+" · "+pts+" pts (lun–vie)";
+    badge.title="Semana "+etiquetaSemanaPuntos()+" · toca para ver detalle";
   }catch(e){}
 }
+
 function abrirRankingPuntosEmpleados(){
-  const sem=claveSemanaPuntos();
-  const mapa=cargarMapaPuntosSemana();
-  const week=mapa[sem]||{};
-  const total=mapa._total||{};
-  // unir nombres de usuarios + mapa
-  const nombres={};
-  (listaUsuarios||[]).forEach(function(u){
-    if(!u||!u.nombre||u.area==="Cliente")return;
-    nombres[u.nombre]=true;
-  });
-  Object.keys(week).forEach(function(k){nombres[k]=true;});
-  const lista=Object.keys(nombres).map(function(nom){
-    return{nombre:nom,semana:getPuntosEmpleado(nom,{incluirLegado:true}),total:Number(total[Object.keys(total).find(function(k){return normalizarNombrePuntos(k)===normalizarNombrePuntos(nom);})||nom])||0};
-  }).sort(function(a,b){return(b.semana||0)-(a.semana||0)||(b.total||0)-(a.total||0)});
-
-  let html='<div style="padding:12px 4px"><h3 style="margin:0 0 4px;font-size:16px">🪙 Puntos por empleado</h3>';
-  html+='<p style="font-size:12px;color:#666;margin:0 0 10px">Semana laboral: <b>'+etiquetaSemanaPuntos()+'</b><br>Se acumulan de <b>lunes a viernes</b>. El lunes reinicia el contador semanal.</p>';
-  if(!lista.length)html+='<p style="color:#666">Sin empleados aún</p>';
-  lista.forEach(function(u,i){
-    html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:6px">'
-      +'<div><b>'+(i+1)+'. '+String(u.nombre||"").replace(/</g,"&lt;")+'</b>'
-      +'<br><span style="font-size:11px;color:#666">Total histórico: 🪙 '+(u.total||0)+'</span></div>'
-      +'<span style="background:#fef3c7;color:#92400e;font-weight:800;padding:4px 10px;border-radius:999px;font-size:13px">🪙 '+(u.semana||0)+' sem</span></div>';
-  });
-  html+='<p style="font-size:11px;color:#666;margin-top:8px">+8 venta refacciones · +10 finalizar reparación · +5 diagnóstico · +2/+3 al avanzar. Guardado en este dispositivo (y usuarios si hay nube).</p></div>';
-  let ov=document.getElementById("overlayPuntosEmpleados");
-  if(!ov){
-    ov=document.createElement("div");
-    ov.id="overlayPuntosEmpleados";
-    ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10080;display:flex;align-items:flex-end;justify-content:center";
-    ov.onclick=function(e){if(e.target===ov)ov.remove()};
-    document.body.appendChild(ov);
+  try{recalcularPuntosDesdeUnidades();}catch(e){}
+  try{renderContadorPuntosSesion();}catch(e){}
+  const map=getTotalesPuntosSemana();
+  // Solo usuarios registrados en la app (listaUsuarios), no nombres sueltos del log
+  const lista=(listaUsuarios||[]).filter(function(u){
+    return u&&u.nombre&&String(u.nombre).trim()&&u.area!=="Cliente";
+  }).map(function(u){
+    const nom=String(u.nombre).trim();
+    let pts=0;
+    Object.keys(map).forEach(function(k){
+      if(nombresPuntosCoinciden(k,nom))pts+=(Number(map[k])||0);
+    });
+    // también getPuntos por si el log usa otra clave
+    try{const g=getPuntosEmpleado(nom);if(g>pts)pts=g;}catch(e){}
+    return{nombre:nom,area:u.area||"",taller:u.taller||"",semana:Math.round(pts*10)/10};
+  }).sort(function(a,b){return b.semana-a.semana;}).slice(0,10);
+  const log=cargarLogPuntos().filter(function(e){return e&&e.semana===claveSemanaPuntos();})
+    .slice().reverse().slice(0,50);
+  const misPts=sesion?getPuntosEmpleado(sesion.persona):0;
+  let html="<div style='padding:14px'>";
+  html+="<h3 style='margin:0 0 4px'>🪙 Puntos v3 · "+etiquetaSemanaPuntos()+"</h3>";
+  html+="<p style='font-size:12px;color:#666;margin:0 0 8px'>Top 10 de la semana · usuarios registrados. Tus puntos: <b style='color:#92400e'>"+misPts+"</b></p>";
+  html+="<div style='display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap'>";
+  html+="<button type='button' onclick='recalcularPuntosDesdeUnidades();abrirRankingPuntosEmpleados()' style='flex:1;min-width:120px;padding:10px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-weight:800'>↻ Recalcular</button>";
+  html+="<button type='button' onclick='sumarPuntosEmpleado(sesion.persona,5,\"Prueba manual\");mostrarToastPuntos(5,{persona:sesion.persona,motivo:\"Prueba\"});abrirRankingPuntosEmpleados()' style='flex:1;min-width:120px;padding:10px;border:none;border-radius:10px;background:#16a34a;color:#fff;font-weight:800'>+5 prueba</button>";
+  html+="</div>";
+  if(!lista.length||lista.every(function(x){return !x.semana;})){
+    html+="<p style='color:#b45309;background:#fffbeb;padding:10px;border-radius:10px;font-size:13px'>Nadie tiene puntos aún esta semana. Usa <b>+5 prueba</b> para verificar, o mueve una unidad a Reparando/Finalizada.</p>";
   }
-  ov.innerHTML='<div style="background:#fff;width:100%;max-width:480px;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px" onclick="event.stopPropagation()">'+html+'<button class="btn-modal" style="width:100%;margin-top:8px" onclick="document.getElementById(\'overlayPuntosEmpleados\').remove()">Cerrar</button></div>';
-  ov.style.display="flex";
+  lista.forEach(function(u,i){
+    const yo=sesion&&nombresPuntosCoinciden(u.nombre,sesion.persona);
+    html+="<div style='display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid "+(yo?"#fcd34d":"#e2e8f0")+";background:"+(yo?"#fffbeb":"#fff")+";border-radius:10px;margin-bottom:6px'>"
+      +"<div><b>"+(i+1)+". "+String(u.nombre).replace(/</g,"&lt;")+"</b>"
+      +(yo?" <span style='font-size:11px;color:#92400e'>(tú)</span>":"")
+      +(u.area?"<div style='font-size:11px;color:#64748b'>"+String(u.area).replace(/</g,"&lt;")+"</div>":"")
+      +"</div>"
+      +"<span style='background:#fef3c7;color:#92400e;font-weight:900;padding:4px 12px;border-radius:999px'>🪙 "+u.semana+"</span></div>";
+  });
+  if(log.length){
+    html+="<h4 style='margin:14px 0 6px;font-size:13px'>Movimientos ("+log.length+")</h4>";
+    log.forEach(function(e){
+      const sign=e.delta>0?"+":"";
+      html+="<div style='font-size:12px;padding:6px 0;border-bottom:1px solid #f1f5f9'>"
+        +"<b>"+String(e.nombre||"").replace(/</g,"&lt;")+"</b> "
+        +"<span style='color:"+(e.delta>0?"#16a34a":"#dc2626")+";font-weight:800'>"+sign+e.delta+"</span> "
+        +"<span style='color:#64748b'>"+String(e.motivo||"").replace(/</g,"&lt;")+"</span></div>";
+    });
+  } else {
+    html+="<p style='font-size:12px;color:#94a3b8;margin-top:10px'>Sin movimientos guardados en este teléfono todavía.</p>";
+  }
+  html+="<button type='button' style='width:100%;margin-top:12px;padding:12px;border:none;border-radius:10px;background:#e2e8f0;font-weight:800' onclick='this.closest(\"div[style*=fixed]\").remove()'>Cerrar</button></div>";
+  let ov=document.getElementById("overlayPuntosEmpleados");
+  if(!ov){ov=document.createElement("div");ov.id="overlayPuntosEmpleados";document.body.appendChild(ov);}
+  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10080;display:flex;align-items:flex-end;justify-content:center";
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  ov.innerHTML="<div style='background:#fff;width:100%;max-width:480px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0' onclick='event.stopPropagation()'>"+html+"</div>";
 }
-function mostrarToastPuntos(delta,opts){
-  opts=opts||{};
-  const d=Number(delta);
-  if(!d||isNaN(d))return;
-  const plus=d>0;
-  const abs=Math.abs(Math.round(d*10)/10);
-  const absTxt=Number.isInteger(abs)?String(abs):String(abs);
-  const coins=plus?"🪙🪙🪙":"🪙";
-  const signo=plus?"+":"−";
-  const el=document.createElement("div");
-  el.className="toast-puntos";
-  const nStack=document.querySelectorAll(".toast-puntos.visible").length;
-  if(nStack>=1)el.classList.add("stack-"+Math.min(3,nStack+1));
-  el.innerHTML='<div class="tp-coins">'+coins+'</div>'
-    +'<div class="tp-delta '+(plus?"plus":"minus")+'">'+signo+absTxt+' pts</div>'
-    +(opts.persona?'<div class="tp-persona">'+String(opts.persona).replace(/</g,"&lt;")+'</div>':"")
-    +(opts.motivo?'<div class="tp-motivo">'+String(opts.motivo).replace(/</g,"&lt;")+'</div>':"");
-  document.body.appendChild(el);
-  requestAnimationFrame(function(){el.classList.add("visible");});
-  const dur=opts.duracion||3200;
-  setTimeout(function(){
-    el.classList.remove("visible");
-    setTimeout(function(){try{el.remove();}catch(e){}},300);
-  },dur);
+
+function recalcularPuntosDesdeUnidades(){
   try{
-    if(sesion&&opts.persona&&String(opts.persona).toLowerCase()===String(sesion.persona||"").toLowerCase()){
-      // feedback extra al propio usuario
+    const sem=claveSemanaPuntos();
+    const lun=lunesDeEstaSemana();
+    const finSem=new Date(lun); finSem.setDate(finSem.getDate()+7);
+    function enSemana(fechaStr){
+      if(!fechaStr)return false;
+      const f=new Date(fechaStr);
+      if(isNaN(f.getTime()))return false;
+      return f>=lun&&f<finSem;
     }
-  }catch(e){}
+    const lista=unidades||[];
+    lista.forEach(function(u){
+      if(!u||!u.id)return;
+      const uni=u.no_unidad||"";
+      // 1) Historial de la semana
+      (u.historial||[]).forEach(function(h,idx){
+        if(!h||!h.estatus)return;
+        if(!enSemana(h.fecha))return;
+        let persona=(h.persona||"").trim();
+        if(persona==="Sistema"||persona==="sistema")persona="";
+        if(h.estatus==="Finalizada"){
+          const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(u):[(u.reparador||"").trim()].filter(Boolean);
+          if(reps.length){
+            reps.forEach(function(nombre){
+              const frac=reps.length>1?(typeof fraccionPuntosReparador==="function"?fraccionPuntosReparador(u,nombre):0.5):1;
+              let p=Math.round(5*frac*10)/10;
+              if(u.es_garantia||u.es_reingreso)p=Math.round(p*0.5*10)/10;
+              sumarPuntosEmpleado(nombre,p,"Finalizar · "+uni,"hist:"+u.id+":"+idx+":fin:"+nombre);
+            });
+
+            return;
+          }
+          if(!persona&&sesion)persona=sesion.persona||"";
+        }
+        const reglas={"Diagnosticando":5,"Reparando":3,"Cotizando":5,"Recibida":1,"Espera de refacciones":5,"Finalizada":5};
+        const pts=reglas[h.estatus];
+        if(!pts)return;
+        if(!persona){
+          if(h.estatus==="Diagnosticando")persona=(u.diagnosticador||"").trim();
+          else if(h.estatus==="Reparando")persona=(u.reparador||"").trim();
+          else if(h.estatus==="Cotizando")persona=(u.asesor_ventas||"").trim();
+        }
+        if(!persona)return;
+        sumarPuntosEmpleado(persona,pts,h.estatus+" · "+uni,"hist:"+u.id+":"+idx+":"+h.estatus);
+      });
+      // 2) Estado actual (por si no hay historial detallado)
+      if(u.estatus==="Reparando"){
+        const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(u):[(u.reparador||"").trim()].filter(Boolean);
+        if(reps.length)reps.forEach(function(n){sumarPuntosEmpleado(n,3,"En reparación · "+uni,"cur:rep:"+u.id+":"+n);});
+        else if((u.reparador||"").trim())sumarPuntosEmpleado(u.reparador.trim(),3,"En reparación · "+uni,"cur:rep:"+u.id);
+      }
+      if(u.estatus==="Diagnosticando"){
+        const d=(u.diagnosticador||"").trim();
+        if(d)sumarPuntosEmpleado(d,5,"En diagnóstico · "+uni,"cur:diag:"+u.id+":"+d);
+      }
+      if(u.estatus==="Cotizando"){
+        const a=(u.asesor_ventas||"").trim();
+        if(a)sumarPuntosEmpleado(a,5,"Cotizando · "+uni,"cur:cot:"+u.id+":"+a);
+      }
+      if(u.estatus==="Finalizada"&&(enSemana(u.fecha_salida)||enSemana(u.updated_at)||enSemana(u.fecha_llegada))){
+        const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(u):[(u.reparador||"").trim()].filter(Boolean);
+        if(reps.length){
+          reps.forEach(function(n){
+            const frac=reps.length>1?0.5:1;
+            sumarPuntosEmpleado(n,Math.round(5*frac*10)/10,"Finalizada · "+uni,"cur:fin:"+u.id+":"+n);
+          });
+        }
+      }
+    });
+    try{renderContadorPuntosSesion();}catch(e){}
+  }catch(e){console.warn("recalcularPuntosDesdeUnidades",e);}
+}
+
+function anunciarCambioPuntos(prev,next){
+  try{
+    if(!prev||!next)return;
+    const estPrev=String(prev.estatus||"");
+    const estNext=String(next.estatus||"");
+    if(estPrev===estNext)return;
+    const yo=(sesion&&sesion.persona)?String(sesion.persona).trim():"";
+    const uni=next.no_unidad||prev.no_unidad||"";
+    const uid=next.id||prev.id||"";
+    const items=[];
+
+    if(estNext==="Finalizada"&&estPrev!=="Finalizada"){
+      if(typeof esTrabajoVentasRefacciones==="function"&&esTrabajoVentasRefacciones(next)){
+        const ases=(next.asesor_ventas||"").trim()||(sesion&&sesion.area==="Ventas"?yo:yo);
+        if(ases)items.push({persona:ases,delta:5,motivo:"Venta refacciones · "+uni,id:"ev:"+uid+":fin:ref:"+ases});
+      } else {
+        const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(next):[(next.reparador||"").trim()].filter(Boolean);
+        if(reps.length){
+          reps.forEach(function(nombre){
+            const frac=typeof fraccionPuntosReparador==="function"?fraccionPuntosReparador(next,nombre):(reps.length>1?0.5:1);
+            let pts=Math.round(5*frac*10)/10;
+            if(next.es_garantia||next.es_reingreso)pts=Math.round(pts*0.5*10)/10;
+            items.push({persona:nombre,delta:pts,motivo:"Finalizar · "+uni,id:"ev:"+uid+":fin:"+nombre});
+          });
+        } else if(yo){
+          items.push({persona:yo,delta:5,motivo:"Finalizar · "+uni,id:"ev:"+uid+":fin:"+yo});
+        }
+      }
+    }
+    if(estPrev==="Finalizada"&&estNext!=="Finalizada"){
+      const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(prev):[(prev.reparador||"").trim()].filter(Boolean);
+      (reps.length?reps:[yo]).forEach(function(nombre){
+        if(!nombre)return;
+        items.push({persona:nombre,delta:-5,motivo:"Reabrir · "+uni,id:"ev:"+uid+":reopen:"+nombre+":"+Date.now()});
+      });
+    }
+    if(estNext==="Diagnosticando"&&estPrev!=="Diagnosticando"){
+      const p=(next.diagnosticador||"").trim()||yo;
+      if(p)items.push({persona:p,delta:5,motivo:"Diagnóstico · "+uni,id:"ev:"+uid+":d:"+p});
+    }
+    if(estNext==="Reparando"&&estPrev!=="Reparando"){
+      const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(next):[(next.reparador||"").trim()].filter(Boolean);
+      if(reps.length)reps.forEach(function(n){items.push({persona:n,delta:3,motivo:"Reparación · "+uni,id:"ev:"+uid+":r:"+n});});
+      else if(yo)items.push({persona:yo,delta:3,motivo:"Reparación · "+uni,id:"ev:"+uid+":r:"+yo});
+    }
+    if(estNext==="Cotizando"&&estPrev!=="Cotizando"){
+      const p=(next.asesor_ventas||"").trim()||yo;
+      if(p)items.push({persona:p,delta:5,motivo:"Cotizar · "+uni,id:"ev:"+uid+":c:"+p});
+    }
+    if(estNext==="Recibida"&&estPrev!=="Recibida"&&yo){
+      items.push({persona:yo,delta:1,motivo:"Recepción · "+uni,id:"ev:"+uid+":rec:"+yo});
+    }
+    if(estNext==="Espera de refacciones"&&estPrev!=="Espera de refacciones"&&yo){
+      items.push({persona:yo,delta:5,motivo:"Espera refacciones · "+uni,id:"ev:"+uid+":esp:"+yo});
+    }
+
+    items.forEach(function(it,idx){
+      try{sumarPuntosEmpleado(it.persona,it.delta,it.motivo,it.id);}catch(e){console.warn(e);}
+      setTimeout(function(){
+        try{mostrarToastPuntos(it.delta,{persona:it.persona,motivo:it.motivo});}catch(e){}
+        try{renderContadorPuntosSesion();}catch(e){}
+      },idx*300);
+    });
+    try{renderContadorPuntosSesion();}catch(e){}
+  }catch(e){console.warn("anunciarCambioPuntos",e);}
 }
 
 
-/** Avisos verdes por estatus → áreas (una sola vez, solo salen con OK) */
+function mostrarToastPuntos(delta,opts){
+  try{
+    opts=opts||{};
+    if(!delta)return;
+    const el=document.createElement("div");
+    el.className="toast-puntos";
+    const nStack=document.querySelectorAll(".toast-puntos.visible").length;
+    if(nStack)el.classList.add("stack-"+Math.min(nStack,3));
+    const plus=delta>0;
+    el.innerHTML='<div class="tp-coins">🪙🪙</div>'
+      +'<div class="tp-delta '+(plus?"plus":"minus")+'">'+(plus?"+":"")+delta+' pts</div>'
+      +(opts.persona?'<div class="tp-persona">'+String(opts.persona).replace(/</g,"&lt;")+'</div>':'')
+      +(opts.motivo?'<div class="tp-motivo">'+String(opts.motivo).replace(/</g,"&lt;")+'</div>':'');
+    document.body.appendChild(el);
+    requestAnimationFrame(function(){el.classList.add("visible");});
+    setTimeout(function(){el.classList.remove("visible");setTimeout(function(){try{el.remove();}catch(e){}},300);},2800);
+  }catch(e){console.warn("toast puntos",e);}
+}
+
 const AVISO_ESTATUS_AREAS={
   "Diagnosticando":{area:"Mantenimiento",titulo:"🔬 A DIAGNÓSTICO",texto:"Una unidad pasó a Diagnosticando"},
   "Reparando":{area:"Mantenimiento",titulo:"🛠️ A REPARACIÓN",texto:"Una unidad pasó a Reparando"},
@@ -5864,23 +6045,16 @@ function nombresAreaTaller(area){
       const pa=getPersonasPorArea(taller)||{};
       list=pa[area]||[];
     }
-    // listaUsuarios backup
     if((!list||!list.length)&&Array.isArray(listaUsuarios)){
       list=listaUsuarios.filter(function(u){
-        if(!u||!u.nombre||u.area!==area)return false;
-        if(u.taller&&sesion&&sesion.taller&&u.taller!==sesion.taller&&typeof idsEquivalentesTaller==="function"){
-          return idsEquivalentesTaller(u.taller,sesion.taller);
-        }
-        if(u.taller&&sesion&&sesion.taller)return u.taller===sesion.taller||!u.taller;
-        return true;
+        return u&&u.nombre&&u.area===area;
       }).map(function(u){return u.nombre;});
     }
-    // dedupe
-    const seen={}, out=[];
+    const seen={},out=[];
     (list||[]).forEach(function(n){
       const name=typeof n==="string"?n:(n&&n.persona)||(n&&n.nombre)||"";
       if(!name||seen[name])return;
-      seen[name]=1; out.push(name);
+      seen[name]=1;out.push(name);
     });
     return out;
   }catch(e){return [];}
@@ -5894,53 +6068,32 @@ async function notificarCambioEstatusAreas(prev,next){
     const cfg=AVISO_ESTATUS_AREAS[estNext];
     if(!cfg)return;
     const destinos=nombresAreaTaller(cfg.area);
-    if(!destinos.length){
-      // si no hay lista, mensaje genérico a "área" no sirve; salir
-      console.warn("Sin destinatarios para",cfg.area);
-      return;
-    }
+    if(!destinos.length)return;
     const payload={
-      tipo:"estatus",
-      estatus:estNext,
-      area:cfg.area,
-      titulo:cfg.titulo,
-      texto:cfg.texto,
-      unidad_id:next.id,
-      no_unidad:next.no_unidad||"",
-      cliente:next.cliente||"",
-      modelo:next.modelo||"",
-      placas:next.placas||"",
-      por:(sesion&&sesion.persona)||"",
-      por_area:(sesion&&sesion.area)||"",
-      at:(typeof fechaHistorialAhora==="function"?fechaHistorialAhora():new Date().toISOString())
+      tipo:"estatus",estatus:estNext,area:cfg.area,titulo:cfg.titulo,texto:cfg.texto,
+      unidad_id:next.id,no_unidad:next.no_unidad||"",cliente:next.cliente||"",modelo:next.modelo||"",
+      por:(sesion&&sesion.persona)||"",at:(typeof fechaHistorialAhora==="function"?fechaHistorialAhora():new Date().toISOString())
     };
     const claveBase="estavis:"+String(next.id||"")+":"+estNext+":";
     for(let i=0;i<destinos.length;i++){
       const quien=destinos[i];
-      // no avisarse a sí mismo si fue quien movió el estatus
       if(sesion&&sesion.persona===quien)continue;
-      try{
-        if(sessionStorage.getItem(claveBase+quien))continue;
-        sessionStorage.setItem(claveBase+quien,"1");
-      }catch(e){}
+      try{if(sessionStorage.getItem(claveBase+quien))continue;sessionStorage.setItem(claveBase+quien,"1");}catch(e){}
       if(typeof insertMensajeFlexible==="function"){
         try{
           await insertMensajeFlexible({
-            de_area:(sesion&&sesion.area)||"Sistema",
-            de_persona:(sesion&&sesion.persona)||"Sistema",
-            para_area:cfg.area,
-            para_persona:quien,
-            texto:"§AVISO_ESTATUS§\n"+JSON.stringify(payload)+"\n"+cfg.titulo+" · "+(payload.no_unidad||"")+" · "+(payload.cliente||""),
+            de_area:(sesion&&sesion.area)||"Sistema",de_persona:(sesion&&sesion.persona)||"Sistema",
+            para_area:cfg.area,para_persona:quien,
+            texto:"§AVISO_ESTATUS§\n"+JSON.stringify(payload)+"\n"+cfg.titulo+" · "+(payload.no_unidad||""),
             leido:false
           });
-        }catch(e){console.warn("aviso estatus",quien,e);}
+        }catch(e){}
       }
     }
-  }catch(e){console.warn("notificarCambioEstatusAreas",e);}
+  }catch(e){console.warn(e);}
 }
 function idsAvisosEstatusVistosSet(){
-  try{return new Set((JSON.parse(localStorage.getItem("thermocontrol_avisos_estatus_vistos")||"[]")||[]).map(String));}
-  catch(e){return new Set();}
+  try{return new Set((JSON.parse(localStorage.getItem("thermocontrol_avisos_estatus_vistos")||"[]")||[]).map(String));}catch(e){return new Set();}
 }
 function marcarAvisoEstatusVisto(id){
   if(id==null||id==="")return;
@@ -5949,14 +6102,10 @@ function marcarAvisoEstatusVisto(id){
   set.add(String(id));
   try{localStorage.setItem("thermocontrol_avisos_estatus_vistos",JSON.stringify(Array.from(set)));}catch(e){}
 }
-function esMensajeAvisoEstatus(m){
-  return !!(m&&/^§AVISO_ESTATUS§/i.test(String(m.texto||"")));
-}
+function esMensajeAvisoEstatus(m){return !!(m&&/^§AVISO_ESTATUS§/i.test(String(m.texto||"")));}
 function revisarAvisosEstatusArea(){
   try{
     if(!sesion||sesion.area==="Cliente")return;
-    if(document.getElementById("modalAvisoEstatusArea")&&document.getElementById("modalAvisoEstatusArea").style.display==="flex")return;
-    if(document.getElementById("modalAvisoFinalAsesor")&&document.getElementById("modalAvisoFinalAsesor").style.display==="flex")return;
     const fuente=mensajesTodos||mensajes||[];
     const nuevas=fuente.filter(function(m){
       if(!esMensajeAvisoEstatus(m))return false;
@@ -5965,244 +6114,94 @@ function revisarAvisosEstatusArea(){
       return true;
     }).sort(function(a,b){return new Date(a.created_at||0)-new Date(b.created_at||0);});
     if(!nuevas.length)return;
-    mostrarAvisoEstatusVerde(nuevas[0], nuevas.slice(1));
-  }catch(e){console.warn(e);}
+    mostrarAvisoEstatusVerde(nuevas[0],nuevas.slice(1));
+  }catch(e){}
 }
 function mostrarAvisoEstatusVerde(m,resto){
   if(!m)return;
   if(m.id!=null)marcarAvisoEstatusVisto(m.id);
   const d=(typeof parsePayloadTag==="function"?parsePayloadTag(m.texto,"AVISO_ESTATUS"):null)||{};
-  const titulo=d.titulo||("Aviso: "+(d.estatus||""));
-  const no=d.no_unidad||"S/N";
-  const cli=d.cliente||"—";
-  const mod=d.modelo||"";
-  const texto=d.texto||"";
-  const por=d.por||m.de_persona||"";
-  const cuando=typeof formatHoraMexico==="function"?formatHoraMexico(d.at||m.created_at):"";
   let ov=document.getElementById("modalAvisoEstatusArea");
-  if(!ov){
-    ov=document.createElement("div");
-    ov.id="modalAvisoEstatusArea";
-    ov.style.cssText="position:fixed;inset:0;z-index:12950;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:16px";
-    document.body.appendChild(ov);
-  }
-  ov.innerHTML=
-    '<div style="background:linear-gradient(160deg,#f0fdf4,#dcfce7);border:2px solid #16a34a;border-radius:18px;padding:22px;width:min(460px,96vw);box-shadow:0 20px 50px rgba(22,163,74,.4);color:#14532d">'+
-      '<div style="font-size:12px;font-weight:900;letter-spacing:.04em;color:#16a34a;margin-bottom:8px">'+String(titulo).replace(/</g,"&lt;")+'</div>'+
-      (texto?'<div style="font-size:14px;margin-bottom:10px;opacity:.95">'+String(texto).replace(/</g,"&lt;")+'</div>':'')+
-      '<div style="font-size:20px;font-weight:900;line-height:1.25;margin-bottom:6px">'+String(no).replace(/</g,"&lt;")+'</div>'+
-      '<div style="font-size:15px;font-weight:700">Cliente: '+String(cli).replace(/</g,"&lt;")+'</div>'+
-      (mod?'<div style="font-size:13px;margin-top:4px">Modelo: '+String(mod).replace(/</g,"&lt;")+'</div>':'')+
-      (por?'<div style="font-size:12px;margin-top:10px;opacity:.85">Movió: <b>'+String(por).replace(/</g,"&lt;")+'</b></div>':'')+
-      (cuando?'<div style="font-size:12px;opacity:.75">'+cuando+'</div>':'')+
-      '<button type="button" id="btnOkAvisoEstatus" style="width:100%;margin-top:18px;padding:15px;border:none;border-radius:12px;background:#16a34a;color:#fff;font-weight:900;font-size:17px;cursor:pointer">OK</button>'+
-    '</div>';
-  ov.style.display="flex";
-  try{document.body.style.overflow="hidden";}catch(e){}
+  if(!ov){ov=document.createElement("div");ov.id="modalAvisoEstatusArea";document.body.appendChild(ov);}
+  ov.style.cssText="position:fixed;inset:0;z-index:12950;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:16px";
+  ov.innerHTML='<div style="background:linear-gradient(160deg,#f0fdf4,#dcfce7);border:2px solid #16a34a;border-radius:18px;padding:22px;width:min(460px,96vw);color:#14532d">'
+    +'<div style="font-weight:900;color:#16a34a;margin-bottom:8px">'+String(d.titulo||"Aviso").replace(/</g,"&lt;")+'</div>'
+    +'<div style="font-size:20px;font-weight:900">'+(d.no_unidad||"S/N").replace(/</g,"&lt;")+'</div>'
+    +'<div style="font-weight:700">Cliente: '+String(d.cliente||"—").replace(/</g,"&lt;")+'</div>'
+    +'<button type="button" id="btnOkAvisoEstatus" style="width:100%;margin-top:16px;padding:14px;border:none;border-radius:12px;background:#16a34a;color:#fff;font-weight:900;font-size:17px">OK</button></div>';
   const btn=document.getElementById("btnOkAvisoEstatus");
   if(btn)btn.onclick=function(){
-    ov.style.display="none";
-    ov.innerHTML="";
-    try{document.body.style.overflow="";}catch(e){}
-    try{
-      if(m.id!=null&&typeof supabaseClient!=="undefined")
-        supabaseClient.from("mensajes").update({leido:true}).eq("id",m.id);
-    }catch(e){}
-    if(resto&&resto.length){
-      setTimeout(function(){mostrarAvisoEstatusVerde(resto[0], resto.slice(1));},250);
-    }
+    ov.style.display="none";ov.innerHTML="";
+    try{if(m.id!=null&&supabaseClient)supabaseClient.from("mensajes").update({leido:true}).eq("id",m.id);}catch(e){}
+    if(resto&&resto.length)setTimeout(function(){mostrarAvisoEstatusVerde(resto[0],resto.slice(1));},250);
   };
 }
 
 async function notificarAsesorUnidadFinalizada(prev,next){
   try{
     if(!next)return;
-    const estPrev=prev&&prev.estatus||"";
-    const estNext=next.estatus||"";
-    if(estNext!=="Finalizada"||estPrev==="Finalizada")return;
+    if((next.estatus||"")!=="Finalizada"||(prev&&prev.estatus)==="Finalizada")return;
     const asesor=(next.asesor_ventas||"").trim();
     if(!asesor)return;
-    const payload={
-      unidad_id:next.id,
-      no_unidad:next.no_unidad||"",
-      cliente:next.cliente||"",
-      modelo:next.modelo||"",
-      placas:next.placas||"",
-      ubicacion:next.ubicacion_trabajo||next.ubicacion||"",
-      finalizado_por:(sesion&&sesion.persona)||"",
-      finalizado_area:(sesion&&sesion.area)||"",
-      at:(typeof fechaHistorialAhora==="function"?fechaHistorialAhora():new Date().toISOString())
-    };
-    // Evitar duplicar el mismo aviso en poco tiempo (mismo dispositivo)
-    const clave="finavis:"+String(next.id||"")+"|"+asesor;
-    try{
-      const ya=sessionStorage.getItem(clave);
-      if(ya)return;
-      sessionStorage.setItem(clave,"1");
-    }catch(e){}
+    const payload={unidad_id:next.id,no_unidad:next.no_unidad||"",cliente:next.cliente||"",modelo:next.modelo||"",
+      finalizado_por:(sesion&&sesion.persona)||"",at:(typeof fechaHistorialAhora==="function"?fechaHistorialAhora():new Date().toISOString())};
+    const clave="finavis:"+String(next.id)+"|"+asesor;
+    try{if(sessionStorage.getItem(clave))return;sessionStorage.setItem(clave,"1");}catch(e){}
     if(typeof insertMensajeFlexible==="function"){
-      const areaAsesor=function(nombre){
-        const p=(listaUsuarios||[]).find(function(x){return (x.nombre||"")===nombre;});
-        return p?p.area:"Ventas";
-      };
       await insertMensajeFlexible({
-        de_area:(sesion&&sesion.area)||"Sistema",
-        de_persona:(sesion&&sesion.persona)||"Sistema",
-        para_area:areaAsesor(asesor),
-        para_persona:asesor,
-        texto:"§AVISO_FINAL§\n"+JSON.stringify(payload)+"\n✅ Unidad finalizada: "+(payload.no_unidad||"S/N")+" · "+(payload.cliente||""),
+        de_area:(sesion&&sesion.area)||"Sistema",de_persona:(sesion&&sesion.persona)||"Sistema",
+        para_area:"Ventas",para_persona:asesor,
+        texto:"§AVISO_FINAL§\n"+JSON.stringify(payload)+"\n✅ Unidad finalizada: "+payload.no_unidad,
         leido:false
       });
     }
-    // Si el asesor está en este mismo dispositivo, mostrar ya
-    if(sesion&&sesion.persona===asesor){
-      mostrarAvisoFinalAsesorVerde(payload,null);
-    }
-  }catch(e){console.warn("notificarAsesorUnidadFinalizada",e);}
+    if(sesion&&sesion.persona===asesor)mostrarAvisoFinalAsesorVerde(payload,null,null);
+  }catch(e){console.warn(e);}
 }
 function idsAvisosFinalVistosSet(){
-  try{return new Set((JSON.parse(localStorage.getItem("thermocontrol_avisos_final_vistos")||"[]")||[]).map(String));}
-  catch(e){return new Set();}
+  try{return new Set((JSON.parse(localStorage.getItem("thermocontrol_avisos_final_vistos")||"[]")||[]).map(String));}catch(e){return new Set();}
 }
 function marcarAvisoFinalVisto(id){
   if(id==null||id==="")return;
-  const set=idsAvisosFinalVistosSet();
-  if(set.has(String(id)))return;
-  set.add(String(id));
+  const set=idsAvisosFinalVistosSet();set.add(String(id));
   try{localStorage.setItem("thermocontrol_avisos_final_vistos",JSON.stringify(Array.from(set)));}catch(e){}
 }
-function esMensajeAvisoFinal(m){
-  return !!(m&&/^§AVISO_FINAL§/i.test(String(m.texto||"")));
-}
+function esMensajeAvisoFinal(m){return !!(m&&/^§AVISO_FINAL§/i.test(String(m.texto||"")));}
 function revisarAvisosFinalAsesor(){
   try{
-    if(!sesion||sesion.area==="Cliente")return;
+    if(!sesion)return;
     const fuente=mensajesTodos||mensajes||[];
     const nuevas=fuente.filter(function(m){
-      if(!esMensajeAvisoFinal(m))return false;
-      if(String(m.para_persona||"").trim()!==String(sesion.persona||"").trim())return false;
-      if(m.id!=null&&idsAvisosFinalVistosSet().has(String(m.id)))return false;
-      return true;
-    }).sort(function(a,b){return new Date(a.created_at||0)-new Date(b.created_at||0);});
+      return esMensajeAvisoFinal(m)&&String(m.para_persona||"").trim()===String(sesion.persona||"").trim()
+        &&!(m.id!=null&&idsAvisosFinalVistosSet().has(String(m.id)));
+    });
     if(!nuevas.length)return;
     const m=nuevas[0];
-    const data=typeof parsePayloadTag==="function"?parsePayloadTag(m.texto,"AVISO_FINAL"):null;
-    const payload=data||{no_unidad:"",cliente:"",finalizado_por:m.de_persona};
-    mostrarAvisoFinalAsesorVerde(payload, nuevas.slice(1), m);
-  }catch(e){console.warn(e);}
+    const data=typeof parsePayloadTag==="function"?parsePayloadTag(m.texto,"AVISO_FINAL"):{};
+    mostrarAvisoFinalAsesorVerde(data||{},nuevas.slice(1),m);
+  }catch(e){}
 }
 function mostrarAvisoFinalAsesorVerde(payload,resto,msgOrig){
   payload=payload||{};
   if(msgOrig&&msgOrig.id!=null)marcarAvisoFinalVisto(msgOrig.id);
-  const no=payload.no_unidad||"S/N";
-  const cli=payload.cliente||"—";
-  const mod=payload.modelo||"";
-  const por=payload.finalizado_por||"";
-  const cuando=typeof formatHoraMexico==="function"?formatHoraMexico(payload.at||(msgOrig&&msgOrig.created_at)):"";
   let ov=document.getElementById("modalAvisoFinalAsesor");
-  if(!ov){
-    ov=document.createElement("div");
-    ov.id="modalAvisoFinalAsesor";
-    ov.style.cssText="position:fixed;inset:0;z-index:12900;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px";
-    document.body.appendChild(ov);
-  }
-  ov.innerHTML=
-    '<div style="background:linear-gradient(160deg,#f0fdf4,#dcfce7);border:2px solid #16a34a;border-radius:18px;padding:22px;width:min(440px,96vw);box-shadow:0 20px 50px rgba(22,163,74,.4);color:#14532d">'+
-      '<div style="font-size:12px;font-weight:900;letter-spacing:.05em;color:#16a34a;margin-bottom:8px">✅ UNIDAD FINALIZADA</div>'+
-      '<div style="font-size:20px;font-weight:900;line-height:1.25;margin-bottom:8px">'+String(no).replace(/</g,"&lt;")+'</div>'+
-      '<div style="font-size:15px;font-weight:700;margin-bottom:4px">Cliente: '+String(cli).replace(/</g,"&lt;")+'</div>'+
-      (mod?'<div style="font-size:13px;opacity:.9;margin-bottom:4px">Modelo: '+String(mod).replace(/</g,"&lt;")+'</div>':'')+
-      (por?'<div style="font-size:12px;opacity:.85;margin-top:8px">Finalizó: <b>'+String(por).replace(/</g,"&lt;")+'</b></div>':'')+
-      (cuando?'<div style="font-size:12px;opacity:.75;margin-top:2px">'+cuando+'</div>':'')+
-      '<p style="font-size:13px;margin:14px 0 0;opacity:.9">Tu unidad como asesor de ventas ya está lista / finalizada.</p>'+
-      '<button type="button" id="btnOkAvisoFinal" style="width:100%;margin-top:16px;padding:14px;border:none;border-radius:12px;background:#16a34a;color:#fff;font-weight:900;font-size:17px;cursor:pointer">OK</button>'+
-    '</div>';
-  ov.style.display="flex";
+  if(!ov){ov=document.createElement("div");ov.id="modalAvisoFinalAsesor";document.body.appendChild(ov);}
+  ov.style.cssText="position:fixed;inset:0;z-index:12900;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px";
+  ov.innerHTML='<div style="background:linear-gradient(160deg,#f0fdf4,#dcfce7);border:2px solid #16a34a;border-radius:18px;padding:22px;width:min(440px,96vw);color:#14532d">'
+    +'<div style="font-weight:900;color:#16a34a">✅ UNIDAD FINALIZADA</div>'
+    +'<div style="font-size:20px;font-weight:900;margin:8px 0">'+String(payload.no_unidad||"S/N").replace(/</g,"&lt;")+'</div>'
+    +'<div>Cliente: <b>'+String(payload.cliente||"—").replace(/</g,"&lt;")+'</b></div>'
+    +'<button type="button" id="btnOkAvisoFinal" style="width:100%;margin-top:16px;padding:14px;border:none;border-radius:12px;background:#16a34a;color:#fff;font-weight:900;font-size:17px">OK</button></div>';
   const btn=document.getElementById("btnOkAvisoFinal");
   if(btn)btn.onclick=function(){
-    ov.style.display="none";
-    ov.innerHTML="";
-    try{
-      if(msgOrig&&msgOrig.id!=null&&typeof supabaseClient!=="undefined")
-        supabaseClient.from("mensajes").update({leido:true}).eq("id",msgOrig.id);
-    }catch(e){}
+    ov.style.display="none";ov.innerHTML="";
+    try{if(msgOrig&&msgOrig.id!=null&&supabaseClient)supabaseClient.from("mensajes").update({leido:true}).eq("id",msgOrig.id);}catch(e){}
     if(resto&&resto.length){
-      setTimeout(function(){
-        const m2=resto[0];
-        const d2=typeof parsePayloadTag==="function"?parsePayloadTag(m2.texto,"AVISO_FINAL"):null;
-        mostrarAvisoFinalAsesorVerde(d2||{}, resto.slice(1), m2);
-      },200);
+      const m2=resto[0];
+      const d2=typeof parsePayloadTag==="function"?parsePayloadTag(m2.texto,"AVISO_FINAL"):{};
+      setTimeout(function(){mostrarAvisoFinalAsesorVerde(d2||{},resto.slice(1),m2);},200);
     }
   };
-}
-
-function anunciarCambioPuntos(prev,next){
-  try{
-    if(!prev||!next)return;
-    const estPrev=prev.estatus||"";
-    const estNext=next.estatus||"";
-    if(estPrev===estNext)return;
-    const items=[]; // {persona,delta,motivo}
-    // Finalizar → sumar puntos a reparadores y diagnosticador
-    if(estNext==="Finalizada"&&estPrev!=="Finalizada"){
-      if(typeof esTrabajoVentasRefacciones==="function"&&esTrabajoVentasRefacciones(next)){
-        const ases=(next.asesor_ventas||"").trim()||(typeof sesion!=="undefined"&&sesion&&sesion.area==="Ventas"?sesion.persona:"");
-        if(ases)items.push({persona:ases,delta:8,motivo:"Venta de refacciones finalizada · "+(next.no_unidad||"")});
-      } else {
-        const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(next):[(next.reparador||"").trim()].filter(Boolean);
-        const baseRep=10;
-        if(reps.length){
-          reps.forEach(function(nombre){
-            const frac=typeof fraccionPuntosReparador==="function"?fraccionPuntosReparador(next,nombre):(reps.length>1?0.5:1);
-            let pts=Math.round(baseRep*frac*10)/10;
-            let motivo="Finalizar reparación · "+(next.no_unidad||"");
-            if(next.es_garantia||next.es_reingreso){
-              pts=Math.round(pts*0.5*10)/10;
-              motivo="Reingreso/garantía (puntos a mitad) · "+(next.no_unidad||"");
-            }
-            if(pts)items.push({persona:nombre,delta:pts,motivo:motivo});
-          });
-        }
-        const diag=(next.diagnosticador||"").trim();
-        if(diag){
-          items.push({persona:diag,delta:5,motivo:"Diagnóstico en unidad finalizada · "+(next.no_unidad||"")});
-        }
-      }
-    }
-    // Reabrir desde Finalizada → restar
-    if(estPrev==="Finalizada"&&estNext!=="Finalizada"){
-      const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(prev):[(prev.reparador||"").trim()].filter(Boolean);
-      reps.forEach(function(nombre){
-        const frac=typeof fraccionPuntosReparador==="function"?fraccionPuntosReparador(prev,nombre):(reps.length>1?0.5:1);
-        const pts=-Math.round(10*frac*10)/10;
-        items.push({persona:nombre,delta:pts,motivo:"Unidad reabierta · se restan puntos · "+(prev.no_unidad||"")});
-      });
-      const diag=(prev.diagnosticador||"").trim();
-      if(diag)items.push({persona:diag,delta:-5,motivo:"Unidad reabierta · diag. · "+(prev.no_unidad||"")});
-    }
-    // Llegar a Diagnosticando con diagnosticador asignado (pequeño bono)
-    if(estNext==="Diagnosticando"&&estPrev!=="Diagnosticando"){
-      const diag=(next.diagnosticador||"").trim()||(sesion&&sesion.area==="Mantenimiento"?sesion.persona:"");
-      if(diag)items.push({persona:diag,delta:2,motivo:"Tomó diagnóstico · "+(next.no_unidad||"")});
-    }
-    // Llegar a Reparando
-    if(estNext==="Reparando"&&estPrev!=="Reparando"){
-      const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(next):[(next.reparador||"").trim()].filter(Boolean);
-      if(!reps.length&&sesion&&sesion.area==="Mantenimiento")reps.push(sesion.persona);
-      reps.forEach(function(nombre){
-        const frac=reps.length>1?(typeof fraccionPuntosReparador==="function"?fraccionPuntosReparador(next,nombre):0.5):1;
-        items.push({persona:nombre,delta:Math.round(3*frac*10)/10,motivo:"En reparación · "+(next.no_unidad||"")});
-      });
-    }
-    items.forEach(function(it,idx){
-      setTimeout(function(){
-        try{sumarPuntosEmpleado(it.persona,it.delta);}catch(e){}
-        mostrarToastPuntos(it.delta,{persona:it.persona,motivo:it.motivo});
-        try{renderContadorPuntosSesion();}catch(e){}
-      },idx*400);
-    });
-    try{if(typeof guardarConfigAdmin==="function")setTimeout(function(){try{guardarConfigAdmin();}catch(e){}},800);}catch(e){}
-  }catch(e){console.warn("anunciarCambioPuntos",e);}
 }
 
 function nombreSesionNorm(){
