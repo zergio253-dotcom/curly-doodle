@@ -5935,7 +5935,6 @@ function abrirRankingPuntosEmpleados(){
 
 function recalcularPuntosDesdeUnidades(){
   try{
-    const sem=claveSemanaPuntos();
     const lun=lunesDeEstaSemana();
     const finSem=new Date(lun); finSem.setDate(finSem.getDate()+7);
     function enSemana(fechaStr){
@@ -5944,47 +5943,47 @@ function recalcularPuntosDesdeUnidades(){
       if(isNaN(f.getTime()))return false;
       return f>=lun&&f<finSem;
     }
-    const lista=unidades||[];
-    lista.forEach(function(u){
+    (unidades||[]).forEach(function(u){
       if(!u||!u.id)return;
       const uni=u.no_unidad||"";
-      // 1) Historial de la semana
       (u.historial||[]).forEach(function(h,idx){
-        if(!h||!h.estatus)return;
-        if(!enSemana(h.fecha))return;
+        if(!h||!h.estatus||!enSemana(h.fecha))return;
         let persona=(h.persona||"").trim();
         if(persona==="Sistema"||persona==="sistema")persona="";
-        if(h.estatus==="Finalizada"){
-          const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(u):[(u.reparador||"").trim()].filter(Boolean);
-          if(reps.length){
-            reps.forEach(function(nombre){
-              const frac=reps.length>1?(typeof fraccionPuntosReparador==="function"?fraccionPuntosReparador(u,nombre):0.5):1;
-              let p=Math.round(5*frac*10)/10;
-              if(u.es_garantia||u.es_reingreso)p=Math.round(p*0.5*10)/10;
-              sumarPuntosEmpleado(nombre,p,"Finalizar · "+uni,"hist:"+u.id+":"+idx+":fin:"+nombre);
-            });
-
-            return;
+        const areaH=(h.area||"").trim();
+        if(h.estatus==="Diagnosticando"){
+          const p=persona||(u.diagnosticador||"").trim();
+          if(p)sumarPuntosEmpleado(p,5,"Diagnóstico (Mantenimiento) · "+uni,"hist:"+u.id+":"+idx+":diag");
+        } else if(h.estatus==="Cotizando"){
+          const p=persona||(u.asesor_ventas||"").trim();
+          if(p)sumarPuntosEmpleado(p,5,"Cotización (Ventas) · "+uni,"hist:"+u.id+":"+idx+":cot");
+        } else if(h.estatus==="Espera de refacciones"){
+          const p=(u.asesor_ventas||"").trim()||(areaH==="Ventas"?persona:"");
+          if(p)sumarPuntosEmpleado(p,5,"Pedido Compras → Ventas · "+uni,"hist:"+u.id+":"+idx+":esp");
+        } else if(h.estatus==="Finalizada"){
+          if(typeof esTrabajoVentasRefacciones==="function"&&esTrabajoVentasRefacciones(u)){
+            const p=(u.asesor_ventas||"").trim()||persona;
+            if(p)sumarPuntosEmpleado(p,5,"Venta refacciones · "+uni,"hist:"+u.id+":"+idx+":finref");
+          } else {
+            const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(u):[(u.reparador||"").trim()].filter(Boolean);
+            if(reps.length){
+              reps.forEach(function(nombre){
+                const frac=reps.length>1?(typeof fraccionPuntosReparador==="function"?fraccionPuntosReparador(u,nombre):0.5):1;
+                let p=Math.round(5*frac*10)/10;
+                if(u.es_garantia||u.es_reingreso)p=Math.round(p*0.5*10)/10;
+                sumarPuntosEmpleado(nombre,p,"Finalizar (Mantenimiento) · "+uni,"hist:"+u.id+":"+idx+":fin:"+nombre);
+              });
+            } else if(persona&&areaH==="Mantenimiento"){
+              sumarPuntosEmpleado(persona,5,"Finalizar (Mantenimiento) · "+uni,"hist:"+u.id+":"+idx+":fin");
+            }
           }
-          if(!persona&&sesion)persona=sesion.persona||"";
+        } else if(h.estatus==="Reparando"){
+          const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(u):[(u.reparador||"").trim()].filter(Boolean);
+          if(reps.length)reps.forEach(function(n){sumarPuntosEmpleado(n,3,"Reparación · "+uni,"hist:"+u.id+":"+idx+":rep:"+n);});
+          else if(persona&&areaH==="Mantenimiento")sumarPuntosEmpleado(persona,3,"Reparación · "+uni,"hist:"+u.id+":"+idx+":rep");
         }
-        const reglas={"Diagnosticando":5,"Reparando":3,"Cotizando":5,"Recibida":1,"Espera de refacciones":5,"Finalizada":5};
-        const pts=reglas[h.estatus];
-        if(!pts)return;
-        if(!persona){
-          if(h.estatus==="Diagnosticando")persona=(u.diagnosticador||"").trim();
-          else if(h.estatus==="Reparando")persona=(u.reparador||"").trim();
-          else if(h.estatus==="Cotizando")persona=(u.asesor_ventas||"").trim();
-        }
-        if(!persona)return;
-        sumarPuntosEmpleado(persona,pts,h.estatus+" · "+uni,"hist:"+u.id+":"+idx+":"+h.estatus);
       });
-      // 2) Estado actual (por si no hay historial detallado)
-      if(u.estatus==="Reparando"){
-        const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(u):[(u.reparador||"").trim()].filter(Boolean);
-        if(reps.length)reps.forEach(function(n){sumarPuntosEmpleado(n,3,"En reparación · "+uni,"cur:rep:"+u.id+":"+n);});
-        else if((u.reparador||"").trim())sumarPuntosEmpleado(u.reparador.trim(),3,"En reparación · "+uni,"cur:rep:"+u.id);
-      }
+      // estado actual
       if(u.estatus==="Diagnosticando"){
         const d=(u.diagnosticador||"").trim();
         if(d)sumarPuntosEmpleado(d,5,"En diagnóstico · "+uni,"cur:diag:"+u.id+":"+d);
@@ -5993,10 +5992,21 @@ function recalcularPuntosDesdeUnidades(){
         const a=(u.asesor_ventas||"").trim();
         if(a)sumarPuntosEmpleado(a,5,"Cotizando · "+uni,"cur:cot:"+u.id+":"+a);
       }
-      if(u.estatus==="Finalizada"&&(enSemana(u.fecha_salida)||enSemana(u.updated_at)||enSemana(u.fecha_llegada))){
+      if(u.estatus==="Espera de refacciones"){
+        const a=(u.asesor_ventas||"").trim();
+        if(a)sumarPuntosEmpleado(a,5,"Espera refacciones → Ventas · "+uni,"cur:esp:"+u.id+":"+a);
+      }
+      if(u.estatus==="Reparando"){
         const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(u):[(u.reparador||"").trim()].filter(Boolean);
-        if(reps.length){
-          reps.forEach(function(n){
+        if(reps.length)reps.forEach(function(n){sumarPuntosEmpleado(n,3,"En reparación · "+uni,"cur:rep:"+u.id+":"+n);});
+      }
+      if(u.estatus==="Finalizada"&&(enSemana(u.fecha_salida)||enSemana(u.updated_at))){
+        if(typeof esTrabajoVentasRefacciones==="function"&&esTrabajoVentasRefacciones(u)){
+          const a=(u.asesor_ventas||"").trim();
+          if(a)sumarPuntosEmpleado(a,5,"Finalizada venta · "+uni,"cur:finref:"+u.id);
+        } else {
+          const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(u):[(u.reparador||"").trim()].filter(Boolean);
+          if(reps.length)reps.forEach(function(n){
             const frac=reps.length>1?0.5:1;
             sumarPuntosEmpleado(n,Math.round(5*frac*10)/10,"Finalizada · "+uni,"cur:fin:"+u.id+":"+n);
           });
@@ -6014,53 +6024,81 @@ function anunciarCambioPuntos(prev,next){
     const estNext=String(next.estatus||"");
     if(estPrev===estNext)return;
     const yo=(sesion&&sesion.persona)?String(sesion.persona).trim():"";
+    const areaYo=(sesion&&sesion.area)?String(sesion.area):"";
     const uni=next.no_unidad||prev.no_unidad||"";
     const uid=next.id||prev.id||"";
     const items=[];
+    function personaVentasUnidad(u){
+      return (u.asesor_ventas||"").trim()||(areaYo==="Ventas"?yo:"");
+    }
+    function personasMantenimientoFinal(u){
+      const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(u):[(u.reparador||"").trim()].filter(Boolean);
+      if(reps.length)return reps;
+      if(areaYo==="Mantenimiento"&&yo)return [yo];
+      return [];
+    }
 
+    // DIAGNÓSTICO → puntos a Mantenimiento (quien diagnostica)
+    if(estNext==="Diagnosticando"&&estPrev!=="Diagnosticando"){
+      let p=(next.diagnosticador||"").trim();
+      if(!p&&areaYo==="Mantenimiento")p=yo;
+      if(p)items.push({persona:p,delta:5,motivo:"Diagnóstico (Mantenimiento) · "+uni,id:"ev:"+uid+":diag:"+p});
+    }
+
+    // COTIZAR → puntos a Ventas
+    if(estNext==="Cotizando"&&estPrev!=="Cotizando"){
+      const p=personaVentasUnidad(next)||(areaYo==="Ventas"?yo:"");
+      if(p)items.push({persona:p,delta:5,motivo:"Cotización (Ventas) · "+uni,id:"ev:"+uid+":cot:"+p});
+    }
+
+    // ESPERA DE REFACCIONES (Compras recibe el pedido) → puntos a Ventas
+    if(estNext==="Espera de refacciones"&&estPrev!=="Espera de refacciones"){
+      const p=personaVentasUnidad(next)||(areaYo==="Ventas"?yo:"");
+      if(p)items.push({persona:p,delta:5,motivo:"Pedido a Compras → pts Ventas · "+uni,id:"ev:"+uid+":esp:"+p});
+    }
+
+    // FINALIZAR → Mantenimiento (o Ventas si es venta de refacciones)
     if(estNext==="Finalizada"&&estPrev!=="Finalizada"){
       if(typeof esTrabajoVentasRefacciones==="function"&&esTrabajoVentasRefacciones(next)){
-        const ases=(next.asesor_ventas||"").trim()||(sesion&&sesion.area==="Ventas"?yo:yo);
-        if(ases)items.push({persona:ases,delta:5,motivo:"Venta refacciones · "+uni,id:"ev:"+uid+":fin:ref:"+ases});
+        const ases=personaVentasUnidad(next)||(areaYo==="Ventas"?yo:"");
+        if(ases)items.push({persona:ases,delta:5,motivo:"Venta refacciones (Ventas) · "+uni,id:"ev:"+uid+":fin:ref:"+ases});
       } else {
-        const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(next):[(next.reparador||"").trim()].filter(Boolean);
+        const reps=personasMantenimientoFinal(next);
         if(reps.length){
           reps.forEach(function(nombre){
             const frac=typeof fraccionPuntosReparador==="function"?fraccionPuntosReparador(next,nombre):(reps.length>1?0.5:1);
             let pts=Math.round(5*frac*10)/10;
             if(next.es_garantia||next.es_reingreso)pts=Math.round(pts*0.5*10)/10;
-            items.push({persona:nombre,delta:pts,motivo:"Finalizar · "+uni,id:"ev:"+uid+":fin:"+nombre});
+            if(pts)items.push({persona:nombre,delta:pts,motivo:"Finalizar (Mantenimiento) · "+uni,id:"ev:"+uid+":fin:"+nombre});
           });
-        } else if(yo){
-          items.push({persona:yo,delta:5,motivo:"Finalizar · "+uni,id:"ev:"+uid+":fin:"+yo});
+        } else if(areaYo==="Mantenimiento"&&yo){
+          items.push({persona:yo,delta:5,motivo:"Finalizar (Mantenimiento) · "+uni,id:"ev:"+uid+":fin:"+yo});
         }
       }
     }
+
+    // Reabrir: restar a quienes se les había sumado al finalizar
     if(estPrev==="Finalizada"&&estNext!=="Finalizada"){
-      const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(prev):[(prev.reparador||"").trim()].filter(Boolean);
-      (reps.length?reps:[yo]).forEach(function(nombre){
-        if(!nombre)return;
-        items.push({persona:nombre,delta:-5,motivo:"Reabrir · "+uni,id:"ev:"+uid+":reopen:"+nombre+":"+Date.now()});
-      });
+      if(typeof esTrabajoVentasRefacciones==="function"&&esTrabajoVentasRefacciones(prev)){
+        const ases=personaVentasUnidad(prev);
+        if(ases)items.push({persona:ases,delta:-5,motivo:"Reabrir venta · "+uni,id:"ev:"+uid+":reopen:ref:"+ases+":"+Date.now()});
+      } else {
+        const reps=personasMantenimientoFinal(prev);
+        (reps.length?reps:(areaYo==="Mantenimiento"&&yo?[yo]:[])).forEach(function(nombre){
+          if(!nombre)return;
+          items.push({persona:nombre,delta:-5,motivo:"Reabrir · "+uni,id:"ev:"+uid+":reopen:"+nombre+":"+Date.now()});
+        });
+      }
     }
-    if(estNext==="Diagnosticando"&&estPrev!=="Diagnosticando"){
-      const p=(next.diagnosticador||"").trim()||yo;
-      if(p)items.push({persona:p,delta:5,motivo:"Diagnóstico · "+uni,id:"ev:"+uid+":d:"+p});
-    }
+
+    // Reparando: opcional mantenimiento (sin puntos extra de otras áreas)
     if(estNext==="Reparando"&&estPrev!=="Reparando"){
       const reps=typeof listaReparadoresUnidad==="function"?listaReparadoresUnidad(next):[(next.reparador||"").trim()].filter(Boolean);
-      if(reps.length)reps.forEach(function(n){items.push({persona:n,delta:3,motivo:"Reparación · "+uni,id:"ev:"+uid+":r:"+n});});
-      else if(yo)items.push({persona:yo,delta:3,motivo:"Reparación · "+uni,id:"ev:"+uid+":r:"+yo});
-    }
-    if(estNext==="Cotizando"&&estPrev!=="Cotizando"){
-      const p=(next.asesor_ventas||"").trim()||yo;
-      if(p)items.push({persona:p,delta:5,motivo:"Cotizar · "+uni,id:"ev:"+uid+":c:"+p});
-    }
-    if(estNext==="Recibida"&&estPrev!=="Recibida"&&yo){
-      items.push({persona:yo,delta:1,motivo:"Recepción · "+uni,id:"ev:"+uid+":rec:"+yo});
-    }
-    if(estNext==="Espera de refacciones"&&estPrev!=="Espera de refacciones"&&yo){
-      items.push({persona:yo,delta:5,motivo:"Espera refacciones · "+uni,id:"ev:"+uid+":esp:"+yo});
+      if(reps.length){
+        reps.forEach(function(n){items.push({persona:n,delta:3,motivo:"Reparación (Mantenimiento) · "+uni,id:"ev:"+uid+":rep:"+n});});
+      } else if(areaYo==="Mantenimiento"&&yo){
+        items.push({persona:yo,delta:3,motivo:"Reparación (Mantenimiento) · "+uni,id:"ev:"+uid+":rep:"+yo});
+      }
     }
 
     items.forEach(function(it,idx){
@@ -6074,198 +6112,6 @@ function anunciarCambioPuntos(prev,next){
   }catch(e){console.warn("anunciarCambioPuntos",e);}
 }
 
-
-function mostrarToastPuntos(delta,opts){
-  try{
-    opts=opts||{};
-    if(!delta)return;
-    const el=document.createElement("div");
-    el.className="toast-puntos";
-    const nStack=document.querySelectorAll(".toast-puntos.visible").length;
-    if(nStack)el.classList.add("stack-"+Math.min(nStack,3));
-    const plus=delta>0;
-    el.innerHTML='<div class="tp-coins">🪙🪙</div>'
-      +'<div class="tp-delta '+(plus?"plus":"minus")+'">'+(plus?"+":"")+delta+' pts</div>'
-      +(opts.persona?'<div class="tp-persona">'+String(opts.persona).replace(/</g,"&lt;")+'</div>':'')
-      +(opts.motivo?'<div class="tp-motivo">'+String(opts.motivo).replace(/</g,"&lt;")+'</div>':'');
-    document.body.appendChild(el);
-    requestAnimationFrame(function(){el.classList.add("visible");});
-    setTimeout(function(){el.classList.remove("visible");setTimeout(function(){try{el.remove();}catch(e){}},300);},2800);
-  }catch(e){console.warn("toast puntos",e);}
-}
-
-const AVISO_ESTATUS_AREAS={
-  "Diagnosticando":{area:"Mantenimiento",titulo:"🔬 A DIAGNÓSTICO",texto:"Una unidad pasó a Diagnosticando"},
-  "Reparando":{area:"Mantenimiento",titulo:"🛠️ A REPARACIÓN",texto:"Una unidad pasó a Reparando"},
-  "Espera de refacciones":{area:"Compras",titulo:"📦 ESPERA DE REFACCIONES",texto:"Una unidad llegó a Espera de refacciones"},
-  "Cotizando":{area:"Ventas",titulo:"💰 A COTIZAR",texto:"Una unidad llegó a Cotizando"}
-};
-function nombresAreaTaller(area){
-  try{
-    const taller=(sesion&&sesion.taller)||"Chihuahua";
-    let list=[];
-    if(typeof getPersonasPorArea==="function"){
-      const pa=getPersonasPorArea(taller)||{};
-      list=pa[area]||[];
-    }
-    if((!list||!list.length)&&Array.isArray(listaUsuarios)){
-      list=listaUsuarios.filter(function(u){
-        return u&&u.nombre&&u.area===area;
-      }).map(function(u){return u.nombre;});
-    }
-    const seen={},out=[];
-    (list||[]).forEach(function(n){
-      const name=typeof n==="string"?n:(n&&n.persona)||(n&&n.nombre)||"";
-      if(!name||seen[name])return;
-      seen[name]=1;out.push(name);
-    });
-    return out;
-  }catch(e){return [];}
-}
-async function notificarCambioEstatusAreas(prev,next){
-  try{
-    if(!next)return;
-    const estPrev=(prev&&prev.estatus)||"";
-    const estNext=next.estatus||"";
-    if(!estNext||estPrev===estNext)return;
-    const cfg=AVISO_ESTATUS_AREAS[estNext];
-    if(!cfg)return;
-    const destinos=nombresAreaTaller(cfg.area);
-    if(!destinos.length)return;
-    const payload={
-      tipo:"estatus",estatus:estNext,area:cfg.area,titulo:cfg.titulo,texto:cfg.texto,
-      unidad_id:next.id,no_unidad:next.no_unidad||"",cliente:next.cliente||"",modelo:next.modelo||"",
-      por:(sesion&&sesion.persona)||"",at:(typeof fechaHistorialAhora==="function"?fechaHistorialAhora():new Date().toISOString())
-    };
-    const claveBase="estavis:"+String(next.id||"")+":"+estNext+":";
-    for(let i=0;i<destinos.length;i++){
-      const quien=destinos[i];
-      if(sesion&&sesion.persona===quien)continue;
-      try{if(sessionStorage.getItem(claveBase+quien))continue;sessionStorage.setItem(claveBase+quien,"1");}catch(e){}
-      if(typeof insertMensajeFlexible==="function"){
-        try{
-          await insertMensajeFlexible({
-            de_area:(sesion&&sesion.area)||"Sistema",de_persona:(sesion&&sesion.persona)||"Sistema",
-            para_area:cfg.area,para_persona:quien,
-            texto:"§AVISO_ESTATUS§\n"+JSON.stringify(payload)+"\n"+cfg.titulo+" · "+(payload.no_unidad||""),
-            leido:false
-          });
-        }catch(e){}
-      }
-    }
-  }catch(e){console.warn(e);}
-}
-function idsAvisosEstatusVistosSet(){
-  try{return new Set((JSON.parse(localStorage.getItem("thermocontrol_avisos_estatus_vistos")||"[]")||[]).map(String));}catch(e){return new Set();}
-}
-function marcarAvisoEstatusVisto(id){
-  if(id==null||id==="")return;
-  const set=idsAvisosEstatusVistosSet();
-  if(set.has(String(id)))return;
-  set.add(String(id));
-  try{localStorage.setItem("thermocontrol_avisos_estatus_vistos",JSON.stringify(Array.from(set)));}catch(e){}
-}
-function esMensajeAvisoEstatus(m){return !!(m&&/^§AVISO_ESTATUS§/i.test(String(m.texto||"")));}
-function revisarAvisosEstatusArea(){
-  try{
-    if(!sesion||sesion.area==="Cliente")return;
-    const fuente=mensajesTodos||mensajes||[];
-    const nuevas=fuente.filter(function(m){
-      if(!esMensajeAvisoEstatus(m))return false;
-      if(String(m.para_persona||"").trim()!==String(sesion.persona||"").trim())return false;
-      if(m.id!=null&&idsAvisosEstatusVistosSet().has(String(m.id)))return false;
-      return true;
-    }).sort(function(a,b){return new Date(a.created_at||0)-new Date(b.created_at||0);});
-    if(!nuevas.length)return;
-    mostrarAvisoEstatusVerde(nuevas[0],nuevas.slice(1));
-  }catch(e){}
-}
-function mostrarAvisoEstatusVerde(m,resto){
-  if(!m)return;
-  if(m.id!=null)marcarAvisoEstatusVisto(m.id);
-  const d=(typeof parsePayloadTag==="function"?parsePayloadTag(m.texto,"AVISO_ESTATUS"):null)||{};
-  let ov=document.getElementById("modalAvisoEstatusArea");
-  if(!ov){ov=document.createElement("div");ov.id="modalAvisoEstatusArea";document.body.appendChild(ov);}
-  ov.style.cssText="position:fixed;inset:0;z-index:12950;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:16px";
-  ov.innerHTML='<div style="background:linear-gradient(160deg,#f0fdf4,#dcfce7);border:2px solid #16a34a;border-radius:18px;padding:22px;width:min(460px,96vw);color:#14532d">'
-    +'<div style="font-weight:900;color:#16a34a;margin-bottom:8px">'+String(d.titulo||"Aviso").replace(/</g,"&lt;")+'</div>'
-    +'<div style="font-size:20px;font-weight:900">'+(d.no_unidad||"S/N").replace(/</g,"&lt;")+'</div>'
-    +'<div style="font-weight:700">Cliente: '+String(d.cliente||"—").replace(/</g,"&lt;")+'</div>'
-    +'<button type="button" id="btnOkAvisoEstatus" style="width:100%;margin-top:16px;padding:14px;border:none;border-radius:12px;background:#16a34a;color:#fff;font-weight:900;font-size:17px">OK</button></div>';
-  const btn=document.getElementById("btnOkAvisoEstatus");
-  if(btn)btn.onclick=function(){
-    ov.style.display="none";ov.innerHTML="";
-    try{if(m.id!=null&&supabaseClient)supabaseClient.from("mensajes").update({leido:true}).eq("id",m.id);}catch(e){}
-    if(resto&&resto.length)setTimeout(function(){mostrarAvisoEstatusVerde(resto[0],resto.slice(1));},250);
-  };
-}
-
-async function notificarAsesorUnidadFinalizada(prev,next){
-  try{
-    if(!next)return;
-    if((next.estatus||"")!=="Finalizada"||(prev&&prev.estatus)==="Finalizada")return;
-    const asesor=(next.asesor_ventas||"").trim();
-    if(!asesor)return;
-    const payload={unidad_id:next.id,no_unidad:next.no_unidad||"",cliente:next.cliente||"",modelo:next.modelo||"",
-      finalizado_por:(sesion&&sesion.persona)||"",at:(typeof fechaHistorialAhora==="function"?fechaHistorialAhora():new Date().toISOString())};
-    const clave="finavis:"+String(next.id)+"|"+asesor;
-    try{if(sessionStorage.getItem(clave))return;sessionStorage.setItem(clave,"1");}catch(e){}
-    if(typeof insertMensajeFlexible==="function"){
-      await insertMensajeFlexible({
-        de_area:(sesion&&sesion.area)||"Sistema",de_persona:(sesion&&sesion.persona)||"Sistema",
-        para_area:"Ventas",para_persona:asesor,
-        texto:"§AVISO_FINAL§\n"+JSON.stringify(payload)+"\n✅ Unidad finalizada: "+payload.no_unidad,
-        leido:false
-      });
-    }
-    if(sesion&&sesion.persona===asesor)mostrarAvisoFinalAsesorVerde(payload,null,null);
-  }catch(e){console.warn(e);}
-}
-function idsAvisosFinalVistosSet(){
-  try{return new Set((JSON.parse(localStorage.getItem("thermocontrol_avisos_final_vistos")||"[]")||[]).map(String));}catch(e){return new Set();}
-}
-function marcarAvisoFinalVisto(id){
-  if(id==null||id==="")return;
-  const set=idsAvisosFinalVistosSet();set.add(String(id));
-  try{localStorage.setItem("thermocontrol_avisos_final_vistos",JSON.stringify(Array.from(set)));}catch(e){}
-}
-function esMensajeAvisoFinal(m){return !!(m&&/^§AVISO_FINAL§/i.test(String(m.texto||"")));}
-function revisarAvisosFinalAsesor(){
-  try{
-    if(!sesion)return;
-    const fuente=mensajesTodos||mensajes||[];
-    const nuevas=fuente.filter(function(m){
-      return esMensajeAvisoFinal(m)&&String(m.para_persona||"").trim()===String(sesion.persona||"").trim()
-        &&!(m.id!=null&&idsAvisosFinalVistosSet().has(String(m.id)));
-    });
-    if(!nuevas.length)return;
-    const m=nuevas[0];
-    const data=typeof parsePayloadTag==="function"?parsePayloadTag(m.texto,"AVISO_FINAL"):{};
-    mostrarAvisoFinalAsesorVerde(data||{},nuevas.slice(1),m);
-  }catch(e){}
-}
-function mostrarAvisoFinalAsesorVerde(payload,resto,msgOrig){
-  payload=payload||{};
-  if(msgOrig&&msgOrig.id!=null)marcarAvisoFinalVisto(msgOrig.id);
-  let ov=document.getElementById("modalAvisoFinalAsesor");
-  if(!ov){ov=document.createElement("div");ov.id="modalAvisoFinalAsesor";document.body.appendChild(ov);}
-  ov.style.cssText="position:fixed;inset:0;z-index:12900;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px";
-  ov.innerHTML='<div style="background:linear-gradient(160deg,#f0fdf4,#dcfce7);border:2px solid #16a34a;border-radius:18px;padding:22px;width:min(440px,96vw);color:#14532d">'
-    +'<div style="font-weight:900;color:#16a34a">✅ UNIDAD FINALIZADA</div>'
-    +'<div style="font-size:20px;font-weight:900;margin:8px 0">'+String(payload.no_unidad||"S/N").replace(/</g,"&lt;")+'</div>'
-    +'<div>Cliente: <b>'+String(payload.cliente||"—").replace(/</g,"&lt;")+'</b></div>'
-    +'<button type="button" id="btnOkAvisoFinal" style="width:100%;margin-top:16px;padding:14px;border:none;border-radius:12px;background:#16a34a;color:#fff;font-weight:900;font-size:17px">OK</button></div>';
-  const btn=document.getElementById("btnOkAvisoFinal");
-  if(btn)btn.onclick=function(){
-    ov.style.display="none";ov.innerHTML="";
-    try{if(msgOrig&&msgOrig.id!=null&&supabaseClient)supabaseClient.from("mensajes").update({leido:true}).eq("id",msgOrig.id);}catch(e){}
-    if(resto&&resto.length){
-      const m2=resto[0];
-      const d2=typeof parsePayloadTag==="function"?parsePayloadTag(m2.texto,"AVISO_FINAL"):{};
-      setTimeout(function(){mostrarAvisoFinalAsesorVerde(d2||{},resto.slice(1),m2);},200);
-    }
-  };
-}
 
 function nombreSesionNorm(){
   return String((sesion&&sesion.persona)||"").trim().toLowerCase();
