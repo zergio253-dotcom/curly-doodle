@@ -7509,14 +7509,26 @@ document.addEventListener("visibilitychange",function(){
     }else{
       const err=(res&&res.error)||"No se pudo descomprimir el formulario";
       console.error("TK Diag",err);
+      // Fallback: versión hospedada
+      const urlExt="https://tkdiagv1dist.vercel.app/";
       try{
-        iframe.srcdoc="<div style=\"font-family:sans-serif;padding:24px\"><h3>No se pudo cargar TK Diag</h3><p>"+String(err).replace(/</g,"&lt;")+"</p><p>Prueba con Chrome o Edge.</p></div>";
-      }catch(e2){}
-      alert("⚠️ No se pudo cargar TK Diag:\n"+err+"\n\nPuedes usar «📝 Diagnóstico» para capturar texto/PDF.");
+        iframe.removeAttribute("srcdoc");
+        iframe.src=urlExt;
+      }catch(e2){
+        try{
+          iframe.srcdoc="<div style='font-family:sans-serif;padding:24px'><h3>No se pudo cargar TK Diag embebido</h3><p>"+String(err).replace(/</g,"&lt;")+"</p><p><a href='"+urlExt+"' target='_blank' rel='noopener'>Abrir TK Diag en nueva pestaña</a></p></div>";
+        }catch(e3){}
+      }
+      alert("⚠️ El formulario embebido no cargó.\nSe abre la versión en línea de TK Diag.\n\nSi los botones no responden, ábrelo en una pestaña nueva.");
     }
   }).catch(function(e){
     console.error(e);
-    alert("⚠️ Error al abrir TK Diag: "+(e&&e.message||e));
+    const urlExt="https://tkdiagv1dist.vercel.app/";
+    try{
+      const iframe=document.getElementById("iframeTkDiag");
+      if(iframe){iframe.removeAttribute("srcdoc");iframe.src=urlExt;}
+    }catch(e2){}
+    alert("⚠️ Error al abrir TK Diag embebido.\nSe intenta la versión en línea.\n\n"+(e&&e.message||e));
   });
 }
 function cerrarModalTkDiag(){const iframe=document.getElementById("iframeTkDiag");iframe&&(iframe.src="about:blank"),document.getElementById("modalTkDiag").style.display="none"}function dataURLtoBlob(dataurl){const arr=dataurl.split(","),mime=(arr[0].match(/:(.*?);/)||[])[1]||"application/pdf",bstr=atob(arr[1]);let n=bstr.length;const u8arr=new Uint8Array(n);for(;n--;)u8arr[n]=bstr.charCodeAt(n);return new Blob([u8arr],{type:mime})}async function recibirPdfDesdeTkDiag(payload){const id=payload.unidadId||unidadEnEdicion;if(id&&payload.pdfBase64)try{const blob=dataURLtoBlob(payload.pdfBase64),fileName=payload.pdfName||"diagnostico_tk_"+id+".pdf",path=`diagnosticos/${id}_${Date.now()}.pdf`,{error:upErr}=await supabaseClient.storage.from("diagnosticos").upload(path,blob,{contentType:"application/pdf",upsert:!0});if(upErr)throw upErr;const{data:urlData}=supabaseClient.storage.from("diagnosticos").getPublicUrl(path),link=urlData.publicUrl,u=unidades.find(x=>x.id===id),historial=u&&u.historial?[...u.historial]:[];historial.push({fecha:fechaHistorialAhora(),estatus:u?u.estatus:"Diagnosticando",area:sesion?sesion.area:"Mantenimiento",persona:sesion?sesion.persona:"TK Diag",comentario:"PDF de diagnóstico TK Diag subido: "+fileName});const update={diagnostico_pdf_url:link,diagnostico_pdf_nombre:fileName,historial};payload.diagnosticoTexto&&(update.diagnostico_detalle=payload.diagnosticoTexto),(await actualizarUnidad(id,update)).success&&(detenerCronoPorDocumento(id),alert("✅ Diagnóstico PDF subido a la unidad"),cerrarModalTkDiag(),cerrarModal("modalDiagnostico"),abrirModalDetalle(id))}catch(err){console.error(err),alert("❌ Error al subir PDF: "+(err.message||err)+"\n\nRevisa el bucket diagnosticos en Supabase Storage.")}else alert("No se recibió el PDF")}async 
@@ -7602,7 +7614,7 @@ async function guardarDiagnostico(){
   const id=unidadEnEdicion;
   if(!id)return;
   const u=unidades.find(item=>item.id===id);
-  if(!u||"Diagnosticando"!==u.estatus)return void alert("⚠️ Solo se puede guardar o modificar el diagnóstico en estatus Diagnosticando.");
+  if(!u)return;const _estG=u.estatus||"";if(_estG!=="Diagnosticando"&&_estG!=="Reparando"&&!(typeof tienePermisoTotal==="function"&&tienePermisoTotal())&&!(sesion&&sesion.area==="Gerencia"))return void alert("⚠️ El diagnóstico se guarda en Diagnosticando o Reparando.\nEstatus actual: "+_estG);
   const texto=document.getElementById("diagnosticoDetalle").value.trim();
   if(!texto)return void alert("⚠️ Escribe el diagnóstico detallado");
   const material=typeof leerMaterialDiagDesdeUI==="function"?leerMaterialDiagDesdeUI():[];
@@ -7632,7 +7644,70 @@ async function guardarDiagnostico(){
     try{abrirModalDetalle(id);}catch(e){}
   }
 }
-async function subirDiagnosticoPdf(){const id=unidadEnEdicion;if(!id)return;const input=document.getElementById("diagnosticoPdfFile"),file=input.files&&input.files[0];if(file)if("application/pdf"===file.type||file.name.toLowerCase().endsWith(".pdf"))try{const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_"),path=`unidad_${id}/${Date.now()}_${safeName}`,{data,error}=await supabaseClient.storage.from("diagnosticos").upload(path,file,{contentType:"application/pdf",upsert:!1});if(error)throw error;const{data:urlData}=supabaseClient.storage.from("diagnosticos").getPublicUrl(path),link=urlData.publicUrl,u=unidades.find(item=>item.id===id),historial=u&&u.historial?[...u.historial]:[];historial.push({fecha:fechaHistorialAhora(),estatus:u?u.estatus:"Diagnosticando",area:"Mantenimiento",persona:"Diagnóstico PDF",comentario:"PDF de diagnóstico subido: "+file.name}),(await actualizarUnidad(id,{diagnostico_pdf_url:link,diagnostico_pdf_nombre:file.name,historial})).success&&(detenerCronoPorDocumento(id),document.getElementById("diagnosticoPdfActual").innerHTML=`✅ PDF: <a href="${link}" target="_blank" rel="noopener">${file.name}</a>`,input.value="",alert("✅ PDF subido. Todos los usuarios pueden verlo en la app."))}catch(err){console.error(err),alert("❌ Error al subir PDF: "+(err.message||err)+"\n\nRevisa que exista el bucket diagnosticos en Supabase Storage y sea público.")}else alert("⚠️ Solo se permiten archivos PDF");else alert("⚠️ Selecciona un archivo PDF primero")}function abrirModalOrdenTrabajoPdf(id){if(modoCliente)return;const u=unidades.find(item=>item.id===id);if(!u)return;
+async function subirDiagnosticoPdf(){
+  try{
+    const id=unidadEnEdicion;
+    if(!id){alert("⚠️ No hay unidad seleccionada. Abre el diagnóstico desde una unidad.");return;}
+    if(!requerirSesion())return;
+    const u=unidades.find(item=>item.id===id);
+    if(!u){alert("⚠️ Unidad no encontrada.");return;}
+    const est=u.estatus||"";
+    if(est!=="Diagnosticando"&&est!=="Reparando"&&!(typeof tienePermisoTotal==="function"&&tienePermisoTotal())&&sesion.area!=="Gerencia"){
+      alert("⚠️ El PDF de diagnóstico se puede subir en Diagnosticando o Reparando.\nEstatus actual: "+est);
+      return;
+    }
+    const input=document.getElementById("diagnosticoPdfFile");
+    const file=input&&input.files&&input.files[0];
+    if(!file){alert("⚠️ Selecciona un archivo PDF primero");return;}
+    const esPdf=(file.type==="application/pdf")||/\.pdf$/i.test(file.name||"");
+    if(!esPdf){alert("⚠️ Solo se permiten archivos PDF");return;}
+    const cli=(typeof getSupabaseClient==="function"?getSupabaseClient():null)||window.supabaseClient||supabaseClient;
+    if(!cli||!cli.storage){
+      alert("❌ No hay conexión con el servidor (Supabase).\nRevisa internet y toca 🔄 Actualizar, luego vuelve a intentar.");
+      return;
+    }
+    const safeName=String(file.name||"diagnostico.pdf").replace(/[^a-zA-Z0-9._-]/g,"_");
+    const pathUp="unidad_"+id+"/"+Date.now()+"_"+safeName;
+    const bucket=(typeof BUCKET_DIAGNOSTICOS!=="undefined"&&BUCKET_DIAGNOSTICOS)||"diagnosticos";
+    const btn=document.querySelector('button[onclick="subirDiagnosticoPdf()"]');
+    if(btn){btn.disabled=true;btn.textContent="⏳ Subiendo…";}
+    try{
+      const up=await cli.storage.from(bucket).upload(pathUp,file,{contentType:"application/pdf",upsert:true});
+      if(up.error)throw up.error;
+      const{data:urlData}=cli.storage.from(bucket).getPublicUrl(pathUp);
+      const link=(urlData&&urlData.publicUrl)||"";
+      if(!link)throw new Error("No se obtuvo URL pública del PDF");
+      const historial=u.historial?[...u.historial]:[];
+      historial.push({
+        fecha:typeof fechaHistorialAhora==="function"?fechaHistorialAhora():new Date().toISOString(),
+        estatus:est,
+        area:(sesion&&sesion.area)||"Mantenimiento",
+        persona:(sesion&&sesion.persona)||"Diagnóstico PDF",
+        comentario:"PDF de diagnóstico subido: "+file.name
+      });
+      const r=await actualizarUnidad(id,{
+        diagnostico_pdf_url:link,
+        diagnostico_pdf_nombre:file.name,
+        historial:historial
+      });
+      if(r&&r.success){
+        try{if(typeof detenerCronoPorDocumento==="function")detenerCronoPorDocumento(id);}catch(e){}
+        const box=document.getElementById("diagnosticoPdfActual");
+        if(box)box.innerHTML='✅ PDF: <a href="'+link+'" target="_blank" rel="noopener">'+String(file.name).replace(/</g,"&lt;")+'</a>';
+        if(input)input.value="";
+        alert("✅ PDF subido correctamente.\nTodos los usuarios pueden verlo en la unidad.");
+      }else{
+        alert("⚠️ PDF subido al almacenamiento, pero no se guardó el enlace en la unidad. Reintenta.");
+      }
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent="☁️ Subir PDF";}
+    }
+  }catch(err){
+    console.error(err);
+    alert("❌ Error al subir PDF:\n"+(err&&err.message?err.message:err)+"\n\nRevisa internet y que el bucket «diagnosticos» exista en Supabase.");
+  }
+}
+function abrirModalOrdenTrabajoPdf(id){if(modoCliente)return;const u=unidades.find(item=>item.id===id);if(!u)return;
 const full=(typeof tienePermisoTotal==="function"&&tienePermisoTotal())||(sesion&&("Gerencia"===sesion.area||"Ventas"===sesion.area));
 if(!full&&"Cotizando"===u.estatus)return void alert("⚠️ En Cotizando la orden de trabajo la sube Ventas.");
 unidadEnEdicion=id;
