@@ -191,6 +191,15 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
 .card-compact .fechas{font-size:9px !important;margin:2px 0 !important;}
 .card-compact .card-detail{margin-top:4px;}
 .card-compact.card-collapsed .card-head{display:flex;flex-direction:column;gap:1px;}
+
+.modal-faltantes-overlay{display:none;position:fixed;inset:0;z-index:14000;background:rgba(15,23,42,.72);align-items:center;justify-content:center;padding:16px}
+.modal-faltantes-overlay.open{display:flex}
+.modal-faltantes-box{background:#fff7ed;border:3px solid #ea580c;border-radius:18px;padding:22px;width:min(480px,96vw);max-height:90vh;overflow:auto;box-shadow:0 24px 60px rgba(234,88,12,.35);color:#7c2d12}
+.modal-faltantes-box h2{margin:0 0 8px;font-size:20px;color:#c2410c}
+.modal-faltantes-box .mf-quien{background:#ffedd5;border-radius:10px;padding:10px 12px;font-weight:800;margin:10px 0;font-size:14px}
+.modal-faltantes-box ul{margin:8px 0 14px;padding-left:20px;font-size:15px;line-height:1.45}
+.modal-faltantes-box ul li{margin-bottom:6px;font-weight:700}
+.modal-faltantes-box .mf-btn{width:100%;padding:14px;border:none;border-radius:12px;background:#ea580c;color:#fff;font-weight:900;font-size:16px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -286,7 +295,6 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
     </div>
 </div>
 
-
 <!-- Panel mediciones usuario (clic en nombre) -->
 <div id="panelMedicionUsuario" class="panel-medicion-usuario" onclick="event.stopPropagation()">
     <div class="pm-head">
@@ -310,7 +318,6 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
         <button type="button" class="btn-accion" onclick="cerrarPanelMedicionUsuario()">Cerrar</button>
     </div>
 </div>
-
 
 <!-- Preferencias de usuario -->
 <div class="modal" id="modalPreferenciasUsuario">
@@ -433,7 +440,6 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
 
 </div>
 </div>
-
 
 <!-- Directorio empleados / emergencias -->
 <div class="modal" id="modalDirectorioEmpleados">
@@ -730,7 +736,6 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
     </div>
 </div>
 
-
 <div class="modal" id="modalDashboardRT">
     <div class="modal-content wide" style="max-width:920px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
@@ -758,7 +763,6 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
     </div>
 </div>
 
-
 <div class="modal" id="modalAsignarPendiente">
     <div class="modal-content" style="max-width:440px;">
         <h3 style="margin-top:0;">Asignar pendiente</h3>
@@ -778,7 +782,6 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
         <div id="listaPendientesGerencia" style="margin-top:16px;max-height:40vh;overflow-y:auto;"></div>
     </div>
 </div>
-
 
 <div class="modal" id="modalNomina">
     <div class="modal-content wide" style="max-width:720px;">
@@ -1256,7 +1259,6 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
                 <div style="font-size:11px;color:#166534;margin-top:4px;">El texto de trabajo realizado se captura en <b>Editar</b> cuando la unidad está en Reparando.</div>
             </div>
 
-
             <div class="form-group" data-campo-nueva="folio" style="background:#ede9fe;padding:10px;border-radius:10px;border:2px solid #8b5cf6;">
                 <label>🟣 Cotización (Orden de trabajo) · Ventas · Cotizando</label>
                 <input type="text" id="folioNueva" placeholder="Ej. 11055 — se llena en Cotizando">
@@ -1427,7 +1429,6 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
                 <textarea id="trabajoRealizadoEditar" rows="3" placeholder="Ej. Se cambió termostato, se recargó gas, prueba de arranque OK..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;"></textarea>
             </div>
 
-
             <div class="grid-2">
                 <div class="form-group">
                     <label>No. de Serie del Equipo</label>
@@ -1533,8 +1534,6 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
     </div>
 </div>
 
-
-
 <div class="modal" id="modalLlamadaGerencia">
   <div class="modal-content" style="max-width:440px;">
     <h3 style="margin-top:0;">📢 Llamada de gerencia a su oficina</h3>
@@ -1554,7 +1553,6 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
     </div>
   </div>
 </div>
-
 
 <!-- Completar Cotizando y avanzar -->
 
@@ -1611,7 +1609,6 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
 </div>
 
 <!-- ===== PANEL DE CONTROL POR DEPARTAMENTO ===== -->
-
 
 <div class="modal" id="modalGuiaProcesos" style="display:none;z-index:10060;">
   <div class="modal-content" style="max-width:640px;max-height:92vh;overflow:auto;">
@@ -2048,6 +2045,13 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
             <input type="file" id="diagnosticoPdfFile" accept="application/pdf,.pdf">
             <small style="color:#888; font-size:11px;">Se guarda en el almacenamiento central. Todos los usuarios de la app podrán verlo.</small>
             <div id="diagnosticoPdfActual" style="margin-top:6px; font-size:13px;"></div>
+        </div>
+        <div class="form-group" id="boxMaterialDiagnostico" style="background:#fff7ed;border:2px solid #f97316;border-radius:12px;padding:12px;margin:12px 0;">
+            <label style="font-weight:800;color:#c2410c;font-size:14px;">🔩 Material a cotizar (pieza por pieza)</label>
+            <p style="font-size:12px;color:#9a3412;margin:4px 0 10px;">Lista lo que se va a necesitar. Al pasar a <b>Cotizando</b>, Ventas y Compras lo ven para cotizar y pedir.</p>
+            <div id="listaMaterialDiag" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <button type="button" class="btn-modal secondary" onclick="agregarFilaMaterialDiag()" style="margin-top:8px;width:100%;">➕ Agregar pieza</button>
+            <small style="display:block;margin-top:6px;color:#666;font-size:11px;">Cantidad · No. de parte · Descripción</small>
         </div>
         <button class="btn-modal success" id="btnAbrirTkDiag" onclick="abrirTkDiagDesdeModal()" style="display:none;">🧊 Abrir TK Diag (formulario completo)</button>
         <button class="btn-modal primary" onclick="guardarDiagnostico()">💾 Guardar diagnóstico</button>
@@ -2640,9 +2644,8 @@ function puedeReparar(nombre){
   boxDiag&&(boxDiag.style.display="Diagnosticando"===est&&puedeDiag?"block":"none");
   // Técnico: Mantenimiento en estatus de taller, O Ventas cuando es Sigma / Rescate carretera (fuera de taller)
   const esFueraSigmaORescate=ubi==="ServiciosSigma"||ubi==="RescateCarretera";
-  const puedeRepTaller=("Mantenimiento"===area||(typeof tienePermisoTotal==="function"&&tienePermisoTotal()))&&["Diagnosticando","Reparando","Cotizando","Espera de refacciones"].includes(est);
-  const puedeRepVentasFuera=("Ventas"===area||"Gerencia"===area||(typeof tienePermisoTotal==="function"&&tienePermisoTotal()))&&esFueraSigmaORescate;
-  const showRep=puedeRepTaller||puedeRepVentasFuera;
+  // Reparador: SOLO en estatus Reparando y solo Mantenimiento (o permiso total)
+  const showRep=("Reparando"===est)&&(area==="Mantenimiento"||(typeof tienePermisoTotal==="function"&&tienePermisoTotal())||area==="Gerencia");
   if(boxRep) boxRep.style.display=showRep?"block":"none";
   if(boxDiagRep){
     const showDiag=boxDiag&&"none"!==boxDiag.style.display;
@@ -2683,11 +2686,11 @@ function puedeReparar(nombre){
 }
 
 function camposObligatoriosPorRol(area,estatus){
-  // Campos que el rol DEBE completar cuando la unidad está en ese estatus
+  // Campos que el rol DEBE completar cuando la unidad está en ese estatus (no dejar vacíos)
   const mapa={
     Ventas:{
-      Agenda:[["cliente","Cliente"],["no_unidad","No. económico"],["modelo","Modelo"],["asesor_ventas","Asesor de ventas"]],
-      Recibida:[["cliente","Cliente / Compañía"],["no_unidad","No. económico"],["modelo","Modelo"],["placas","Placas"],["asesor_ventas","Asesor de ventas"]],
+      Agenda:[["cliente","Cliente"],["no_unidad","No. económico"],["modelo","Modelo"],["asesor_ventas","Asesor de ventas"],["problema","Problema / descripción"]],
+      Recibida:[["cliente","Cliente / Compañía"],["no_unidad","No. económico"],["modelo","Modelo"],["placas","Placas"],["asesor_ventas","Asesor de ventas"],["problema","Problema / descripción"],["contacto","Contacto"],["direccion","Dirección"],["ciudad","Ciudad"]],
       Cotizando:[["folio","Cotización / folio"],["hoja_servicio","Pedido (hoja de servicio)"],["orden_trabajo_pdf_url","PDF Orden de trabajo (subir archivo)"]]
     },
     Mantenimiento:{
@@ -2715,12 +2718,27 @@ function validarCamposPorRol(u,area,estatus,datos){
     const k=pair[0],label=pair[1];
     let val=src[k];
     if("diagnosticador"===k&&!val)val=src.diagnosticador;
+    if("orden_trabajo_pdf_url"===k){
+      val=src.orden_trabajo_pdf_url||src.orden_trabajo_pdf||src.pdf_orden_trabajo;
+    }
+    if("hoja_servicio"===k&&(val==null||!String(val).trim()))val=src.orden_compra;
     if(val==null||!String(val).trim())falt.push(label);
   });
+  // Teléfono: al menos uno
+  if("Ventas"===area&&("Recibida"===est||"Agenda"===est)){
+    if((!src.telefono||!String(src.telefono).trim())&&(!src.cel||!String(src.cel).trim()))
+      falt.push("Teléfono o celular (Ventas)");
+  }
   // Diagnóstico especial para Mantenimiento en Diagnosticando
   if("Mantenimiento"===area&&"Diagnosticando"===est){
     const okDiag=(typeof tieneDiagnosticoCompleto==="function")?tieneDiagnosticoCompleto(src):!!(src.diagnostico_detalle&&String(src.diagnostico_detalle).trim())||!!(src.diagnostico_pdf_url&&String(src.diagnostico_pdf_url).trim());
     if(!okDiag)falt.push("Diagnóstico (texto o PDF)");
+  }
+  // Compras: si requiere refacciones, material obligatorio
+  if("Compras"===area&&"Espera de refacciones"===est){
+    const reqR=String(src.requiere_refacciones||"").toLowerCase();
+    if((reqR==="si"||reqR==="sí")&&(!src.refacciones_esperadas||!String(src.refacciones_esperadas).trim()))
+      falt.push("Material / refacciones (Compras)");
   }
   if(!falt.length)return{ok:true,faltantes:[]};
   return{ok:false,faltantes:falt};
@@ -3118,7 +3136,7 @@ function expandirGruposMenuConItems(){
     try{ restaurarMenuGrupos(); }catch(e){}
   }catch(e){}
 }
-function aplicarMenuVisUsuario(){if(!sesion)return;const u=(listaUsuarios||[]).find(x=>(x.nombre||"").toLowerCase()===(sesion.persona||"").toLowerCase()&&(!x.taller||x.taller===sesion.taller));if(!u||!u.id)return;const cfg=menuVisPorUsuario[String(u.id)];cfg&&Object.keys(cfg).forEach(btnId=>{if(!1===cfg[btnId]){const el=document.getElementById(btnId);el&&(el.style.display="none")}})}function renderEditorMenuVis(){const box=document.getElementById("editorMenuVisUsuarios");if(!box)return void alert("Panel de menús no encontrado. Recarga la página.");menuVisPorUsuario&&"object"==typeof menuVisPorUsuario||(menuVisPorUsuario={});const lista=(listaUsuarios||[]).slice().sort((a,b)=>String(a.nombre||"").localeCompare(String(b.nombre||"")));lista.length?box.innerHTML=lista.map(u=>{const uid=String(u.id||u.nombre),cfg=menuVisPorUsuario[uid]||{},checks=MENU_VIS_OPTIONS.map(opt=>{const checked=!1!==cfg[opt.id];return`<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin:3px 8px 3px 0;white-space:nowrap;">\n                    <input type="checkbox" data-uid="${uid}" data-mid="${opt.id}" ${checked?"checked":""} onchange="onMenuVisChange(this)"> ${opt.label}\n                </label>`}).join("");return`<div style="border:1px solid #ddd;border-radius:10px;padding:10px;margin-bottom:8px;">\n                <strong>${u.nombre||"—"}</strong>\n                <span style="font-size:11px;color:#888;"> · ${u.area||""} · ${"function"==typeof etiquetaTaller?etiquetaTaller(u.taller):u.taller||""}</span>\n                <div style="margin-top:6px;">${checks}</div>\n            </div>`}).join("")+'\n            <button type="button" class="btn-modal primary" style="width:100%;margin-top:10px;" onclick="guardarMenuVisYNube()">💾 Guardar menús en la nube</button>\n            <p style="font-size:11px;color:#888;margin-top:8px;">Desmarca lo que el usuario <strong>no</strong> debe ver. Guarda para que aplique en todos los dispositivos.</p>':box.innerHTML='<p style="color:#888;">No hay usuarios. Agrégalos en la pestaña Usuarios y guarda en la nube.</p>'}async function guardarMenuVisYNube(){try{const r=await persistirConfigAdmin();r&&r.cloud?alert("✅ Menús guardados en la nube. Cada usuario verá solo lo permitido al entrar."):alert("✅ Guardado en este dispositivo.\n"+(r&&r.msg?r.msg:"Revisa que exista la tabla app_config en Supabase."))}catch(e){alert("Error: "+(e.message||e))}}function onMenuVisChange(el){try{const uid=String(el.getAttribute("data-uid")),mid=el.getAttribute("data-mid");menuVisPorUsuario&&"object"==typeof menuVisPorUsuario||(menuVisPorUsuario={}),menuVisPorUsuario[uid]||(menuVisPorUsuario[uid]={}),menuVisPorUsuario[uid][mid]=!!el.checked}catch(e){console.warn(e)}}function abrirDirectorioEmpleados(){if(!requerirSesion())return;const box=document.getElementById("listaDirectorioEmpleados");if(!box)return;const taller=sesion.taller,esGerencia="Gerencia"===sesion.area||"function"==typeof tienePermisoTotal&&tienePermisoTotal(),lista=(listaUsuarios||[]).filter(u=>!u.taller||u.taller===taller).slice().sort((a,b)=>String(a.area||"").localeCompare(String(b.area||""))||String(a.nombre||"").localeCompare(String(b.nombre||"")));lista.length?box.innerHTML=lista.map(u=>{let pref={};try{const key=PREF_KEY+"_"+(u.taller||taller)+"_"+(u.area||"")+"_"+u.nombre,raw=localStorage.getItem(key);raw&&(pref=JSON.parse(raw))}catch(e){}const tel=pref.telPersonal||u.tel_personal||"",emerg=pref.emergTel?{nombre:pref.emergNombre,parentesco:pref.emergParentesco,tel:pref.emergTel,visible:pref.emergVisible}:u.emergencia||{},mostrarEmerg=esGerencia||emerg.visible||emerg.visible_gerencia,cumple=pref.cumpleanos||u.cumpleanos||"",notas=pref.notasBienestar||"",lema=pref.lema||"";return`<div style="padding:12px;border:1px solid var(--border,#e0e0e0);border-radius:12px;margin-bottom:10px;background:var(--card,#fff);">\n                    <div style="font-weight:800;font-size:15px;">${u.nombre||"—"}</div>\n                    <div style="font-size:12px;color:#888;margin-bottom:6px;">${u.area||""} · ${etiquetaTaller(u.taller||taller)}${u.nivel?" · "+u.nivel:""}</div>\n                    ${tel?`<div style="font-size:13px;">📞 <a href="tel:${tel.replace(/\\s/g,"")}">${tel}</a></div>`:'<div style="font-size:12px;color:#aaa;">Sin teléfono personal</div>'}\n                    ${cumple?`<div style="font-size:13px;">🎂 ${cumple}</div>`:""}\n                    ${lema?`<div style="font-size:12px;font-style:italic;margin-top:4px;">“${lema}”</div>`:""}\n                    ${notas?`<div style="font-size:12px;margin-top:6px;padding:8px;background:#fff3cd;border-radius:8px;color:#856404;"><strong>Cuidados:</strong> ${notas}</div>`:""}\n                    ${mostrarEmerg&&emerg.tel?`<div style="font-size:13px;margin-top:8px;padding:8px;background:#f8d7da;border-radius:8px;color:#721c24;">\n                        🚨 Emergencia: <strong>${emerg.nombre||"—"}</strong> (${emerg.parentesco||"—"}) · <a href="tel:${String(emerg.tel).replace(/\\s/g,"")}" style="color:#721c24;font-weight:700;">${emerg.tel}</a>\n                    </div>`:emerg.tel&&!mostrarEmerg?'<div style="font-size:11px;color:#888;margin-top:4px;">Contacto de emergencia registrado (solo Gerencia)</div>':""}\n                </div>`}).join(""):box.innerHTML='<p style="color:#888;font-size:13px;">No hay empleados registrados en este taller.</p>',document.getElementById("modalDirectorioEmpleados").style.display="flex"}function abrirModalPreferenciasUsuario(){if(!requerirSesion())return;if(modoCliente)return void alert("Modo cliente: sin personalización.");const p=getPreferenciasUsuario(),u=(listaUsuarios||[]).find(x=>(x.nombre||"").toLowerCase()===(sesion.persona||"").toLowerCase()&&(!x.taller||x.taller===sesion.taller)),resumen=document.getElementById("prefUsuarioResumen");resumen&&(resumen.textContent=(sesion.persona||"")+" · "+(sesion.area||"")+" · "+etiquetaTaller(sesion.taller));const set=(id,val)=>{const el=document.getElementById(id);el&&(el.value=val||"")};set("prefApodo",p.apodo),set("prefCumpleanos",(p.cumpleanos||u&&u.cumpleanos||"").toString().substring(0,10)),set("prefLema",p.lema),set("prefTelPersonal",p.telPersonal||u&&u.tel_personal||""),set("prefEmergNombre",p.emergNombre||u&&u.emergencia&&u.emergencia.nombre||""),set("prefEmergParentesco",p.emergParentesco||u&&u.emergencia&&u.emergencia.parentesco||""),set("prefEmergTel",p.emergTel||u&&u.emergencia&&u.emergencia.tel||"");const ev=document.getElementById("prefEmergVisible");ev&&(ev.checked=!!(p.emergVisible||u&&u.emergencia&&u.emergencia.visible_gerencia)),set("prefTema",p.tema),set("prefFondo",p.fondo),set("prefDensidad",p.densidad||"compacta"),set("prefInicio",p.inicio);const sal=document.getElementById("prefSaludo");sal&&(sal.checked=!1!==p.saludo),set("prefNotasBienestar",p.notasBienestar),set("prefMotivacion",p.motivacion);const sw=document.getElementById("prefSwatches");sw&&(sw.innerHTML=PREF_COLORES.map(c=>'<button type="button" class="pref-swatch'+(p.acento===c.hex?" active":"")+'" title="'+c.label+'" data-hex="'+c.hex+'" style="background:'+c.hex+'" onclick="seleccionarAcentoPref(this)"></button>').join(""));const info=document.getElementById("prefInfoExtra");if(info){const nivel=u&&u.nivel?u.nivel:"—",rol=u&&u.rol_tecnico?u.rol_tecnico:"—",perm=u&&u.permiso_total||"function"==typeof tienePermisoTotal&&tienePermisoTotal()?"Sí":"No";info.innerHTML="<strong>Tu lugar en el equipo</strong><br>Taller: <strong>"+etiquetaTaller(sesion.taller)+"</strong><br>Área: <strong>"+(sesion.area||"—")+"</strong><br>"+("Mantenimiento"===sesion.area?"Nivel: "+nivel+" · Rol: "+rol+"<br>":"")+"Permiso ampliado: "+perm+'<br><span style="color:#666;">Eres parte de Thermo King. Esta app es una herramienta; tú haces el trabajo bien hecho.</span>'}document.getElementById("modalPreferenciasUsuario").style.display="flex"}function seleccionarAcentoPref(btn){document.querySelectorAll("#prefSwatches .pref-swatch").forEach(b=>b.classList.remove("active")),btn.classList.add("active")}function guardarPreferenciasUsuario(){if(!sesion)return;const active=document.querySelector("#prefSwatches .pref-swatch.active"),p={apodo:(document.getElementById("prefApodo")?.value||"").trim(),cumpleanos:(document.getElementById("prefCumpleanos")?.value||"").substring(0,10),lema:(document.getElementById("prefLema")?.value||"").trim(),telPersonal:(document.getElementById("prefTelPersonal")?.value||"").trim(),emergNombre:(document.getElementById("prefEmergNombre")?.value||"").trim(),emergParentesco:document.getElementById("prefEmergParentesco")?.value||"",emergTel:(document.getElementById("prefEmergTel")?.value||"").trim(),emergVisible:!!document.getElementById("prefEmergVisible")?.checked,tema:document.getElementById("prefTema")?.value||"",acento:active?active.getAttribute("data-hex"):"",fondo:document.getElementById("prefFondo")?.value||"",densidad:document.getElementById("prefDensidad")?.value||"compacta",inicio:document.getElementById("prefInicio")?.value||"",saludo:!!document.getElementById("prefSaludo")?.checked,notasBienestar:(document.getElementById("prefNotasBienestar")?.value||"").trim(),motivacion:(document.getElementById("prefMotivacion")?.value||"").trim()};if(setPreferenciasUsuario(p),Array.isArray(listaUsuarios)){listaUsuarios=listaUsuarios.map(u=>{if((u.nombre||"").toLowerCase()!==sesion.persona.toLowerCase())return u;if(u.taller&&u.taller!==sesion.taller)return u;const nu=Object.assign({},u);return p.cumpleanos&&(nu.cumpleanos=p.cumpleanos),p.telPersonal&&(nu.tel_personal=p.telPersonal),nu.emergencia={nombre:p.emergNombre,parentesco:p.emergParentesco,tel:p.emergTel,visible_gerencia:p.emergVisible},nu});try{"function"==typeof construirConfigAdmin&&localStorage.setItem(CONFIG_ADMIN_KEY,JSON.stringify(construirConfigAdmin()))}catch(e){}}aplicarPreferenciasUsuario(),cerrarModal("modalPreferenciasUsuario");try{mostrarToastApp("✅ Tu espacio personal quedó guardado","#28a745")}catch(e){alert("✅ Preferencias guardadas")}}function setStatusConexion(estado,texto){const st=document.getElementById("statusConexion");st&&(st.classList.remove("ok","err"),"ok"===estado&&st.classList.add("ok"),"err"===estado&&st.classList.add("err"),texto&&(st.textContent=texto))}function mostrarInfoSesion(){try{setTimeout(function(){try{recalcularPuntosDesdeUnidades();renderContadorPuntosSesion();}catch(e){}},500);}catch(e){}/*pts-recalc-after-load*/try{setTimeout(function(){try{renderContadorPuntosSesion()}catch(e){}},100);}catch(e){}try{var _cr=document.getElementById("headerClockRow");if(_cr){_cr.style.display="flex";_cr.style.visibility="visible";}if(typeof iniciarRelojHeader==="function")iniciarRelojHeader();}catch(eClk){}if(!sesion)return;const el=document.getElementById("sesionInfo"),sessionBar=document.getElementById("headerSessionBar"),tallerTxt=etiquetaTaller(sesion.taller),textoCorto="Cliente"===sesion.area?"Cliente · solo lectura":sesion.persona+" · "+sesion.area,textoFull="Cliente"===sesion.area?"Cliente · "+tallerTxt+" · solo lectura":sesion.persona+" · "+sesion.area+" · "+tallerTxt;if(el&&(el.textContent=textoCorto,el.title=textoFull+" · Toca para mediciones",el.style.cursor="Cliente"===sesion.area?"default":"pointer",el.style.display="",el.dataset.medicionBound||(el.dataset.medicionBound="1",el.addEventListener("click",function(e){e.stopPropagation(),"Cliente"!==sesion.area&&abrirPanelMedicionUsuario()})),!el.dataset.eggBound)){el.dataset.eggBound="1";let clicks=0,timer=null;el.addEventListener("click",function(){clicks++,clearTimeout(timer),timer=setTimeout(function(){clicks=0},900),clicks>=5&&(clicks=0,window.open("https://drive.google.com/drive/folders/16uXdN_NGhYV4iPJRZUIEVt4yt-_VOzYX","_blank"))})}sessionBar&&(sessionBar.style.display="block",sessionBar.classList.add("visible"));const barLegacy=document.getElementById("sesionInfoBar");barLegacy&&(barLegacy.style.display="none",barLegacy.textContent="");const h1=document.getElementById("headerTitle")||document.querySelector(".header-brand h1"),small=document.getElementById("headerSub")||document.querySelector(".header-brand small"),logo=document.getElementById("headerLogo");if(logo){const tryIcon=()=>{0===logo.naturalWidth&&(logo.src=ICONO_THERMOKING)};logo.complete?tryIcon():logo.addEventListener("error",function(){logo.src=ICONO_THERMOKING},{once:!0}),setTimeout(tryIcon,400)}try{const hl=document.getElementById("headerThermoDiagPRO");if(hl)hl.style.display=(sesion&&sesion.area==="Cliente")?"none":"";}catch(e){}if(h1&&(h1.textContent=etiquetaTaller(sesion.taller)||"Thermo King",small&&(small.textContent=""),h1.style.cursor="pointer",h1.title=nombreAppTaller(sesion.taller)+" · 5 toques: administración",!h1.dataset.adminEggBound)){h1.dataset.adminEggBound="1";let clicksAdmin=0,timerAdmin=null;h1.addEventListener("click",function(e){e.stopPropagation(),clicksAdmin++,clearTimeout(timerAdmin),timerAdmin=setTimeout(function(){clicksAdmin=0},1e3),clicksAdmin>=5&&(clicksAdmin=0,abrirModalAdmin())})}document.getElementById("btnCerrarSesion").style.display="inline-block";const showMenu=(id,visible)=>{const el=document.getElementById(id);el&&(el.style.display=visible?"":"none")};showMenu("btnReporteDiario","Gerencia"===sesion.area||(sesion&&"Abel"===sesion.persona)||(typeof tienePermisoTotal==="function"&&tienePermisoTotal())),showMenu("btnProduccion",sesion&&("Gerencia"===sesion.area||(typeof tienePermisoTotal==="function"&&tienePermisoTotal()))),showMenu("btnDashboardRT",sesion&&"Cliente"!==sesion.area),showMenu("btnConfigWip",sesion&&("Gerencia"===sesion.area||"function"==typeof tienePermisoTotal&&tienePermisoTotal())),showMenu("btnAsignarPendiente",sesion&&"Gerencia"===sesion.area),showMenu("btnMetasGerencia",sesion&&("Gerencia"===sesion.area||tienePermisoTotal())),showMenu("btnMiDia","Gerencia"!==sesion.area&&"Cliente"!==sesion.area),showMenu("btnInventario",!0),showMenu("btnDiagnosticosExt","Mantenimiento"===sesion.area),showMenu("btnThermoDiagPRO","Mantenimiento"===sesion.area),showMenu("btnMensaje",!1);try{actualizarUIModoBasicoKanban()}catch(e){}setTimeout(function(){try{aplicarMenuVisUsuario();expandirGruposMenuConItems()}catch(e){}},200);try{cargarPendientesTareas()}catch(e){}showMenu("btnTrabajoHoy",!0),showMenu("btnVistaLista",!0),showMenu("btnVistaHistorial",!0),"Cliente"===sesion.area?aplicarModoClienteUI(!0):aplicarModoClienteUI(!1);try{aplicarPreferenciasUsuario()}catch(e){}try{saludoPersonalSiCorresponde()}catch(e){}try{aplicarMenuVisUsuario()}catch(e){}}function requerirSesion(){return!!sesion||(alert("⚠️ Inicia sesión con tu departamento primero"),document.getElementById("loginOverlay").classList.remove("oculto"),!1)}let permisosCambio={Gerencia:null,Mantenimiento:{Diagnosticando:["Cotizando","Reparando"],Reparando:["Finalizada","Diagnosticando","Espera de refacciones","Cotizando"]},Ventas:{Agenda:["Recibida","Finalizada"],Recibida:["Diagnosticando","Cotizando","Agenda","Finalizada"],Cotizando:["Espera de refacciones","Reparando","Finalizada"],"Espera de refacciones":["Reparando","Cotizando","Finalizada"],Finalizada:[]},Compras:{"Espera de refacciones":["Reparando","Cotizando"]}};const CAMPOS_POR_LUGAR={Taller:{show:["cliente","modelo","no_unidad","placas","bloque_pdf_cliente","problema","hoja_servicio","orden_compra"],req:["cliente","modelo","no_unidad","placas","problema"],hint:"🏭 Taller: la unidad viene al taller. Ventas captura recepción; el técnico se asigna después en Diagnóstico/Reparación.",labelProblema:"Problema / descripción *",phProblema:"Describe el problema o falla..."},Kuzzy:{show:["cliente","modelo","no_unidad","placas","problema"],req:["cliente","modelo","no_unidad","placas","problema"],hint:"🚚 Kuzzy: trabajo de caja / en sitio (no es rescate de emergencia).",labelProblema:"Notas *",phProblema:"Notas del trabajo Kuzzy / lo que se cotiza..."},ServiciosSigma:{show:["cliente","modelo","no_unidad","placas","problema","reparador"],req:["cliente","modelo","no_unidad","placas","problema","reparador"],hint:"🟡 Servicios Sigma: servicio programado o visita fuera de taller (NO es emergencia en carretera). Ventas debe asignar al técnico que irá.",labelProblema:"Problema / descripción *",phProblema:"Describe la falla o el servicio en sitio (Sigma)..."},RescateCarretera:{show:["cliente","modelo","no_unidad","problema","tipo_pago","reparador"],req:["cliente","modelo","no_unidad","problema","tipo_pago","reparador"],hint:"🛣️ Rescate carretera: EMERGENCIA en vía. Ventas llena datos, tipo de pago y técnico, luego notifica por WhatsApp al técnico.",labelProblema:"Trabajo a realizar *",phProblema:"Describe el trabajo a realizar en carretera..."},Rescate:{show:["cliente","modelo","no_unidad","placas","problema","reparador"],req:["cliente","modelo","no_unidad","placas","problema","reparador"],hint:"🚨 Rescate legado → se trata como Servicios Sigma. Asigna técnico.",labelProblema:"Problema / descripción *",phProblema:"Describe la falla en sitio..."},VentasRefacciones:{show:["cliente","problema","asesor_ventas"],req:["cliente","problema"],hint:"🛒 Venta de refacciones: solo Cliente y qué se vende. El número de unidad se genera solo (REF-…). Sin placas, sin diagnóstico, sin técnico.",labelProblema:"¿Qué se vende? (piezas / notas) *",phProblema:"Ej. 2 filtros aceite 67-xxx, 1 correa…"}};function actualizarBoxDatosRecibidaNueva(){try{const box=document.getElementById("boxDatosRecibidaNueva");if(!box)return;const ubi=(document.getElementById("ubicacionTrabajoNueva")||{}).value||"Taller";const est=(document.getElementById("estatusNueva")||{}).value||"Recibida";box.style.display=(ubi==="Taller"||ubi==="taller")&&(est==="Recibida"||est==="Diagnosticando")?"":"none"}catch(e){}}
+function aplicarMenuVisUsuario(){if(!sesion)return;const u=(listaUsuarios||[]).find(x=>(x.nombre||"").toLowerCase()===(sesion.persona||"").toLowerCase()&&(!x.taller||x.taller===sesion.taller));if(!u||!u.id)return;const cfg=menuVisPorUsuario[String(u.id)];cfg&&Object.keys(cfg).forEach(btnId=>{if(!1===cfg[btnId]){const el=document.getElementById(btnId);el&&(el.style.display="none")}})}function renderEditorMenuVis(){const box=document.getElementById("editorMenuVisUsuarios");if(!box)return void alert("Panel de menús no encontrado. Recarga la página.");menuVisPorUsuario&&"object"==typeof menuVisPorUsuario||(menuVisPorUsuario={});const lista=(listaUsuarios||[]).slice().sort((a,b)=>String(a.nombre||"").localeCompare(String(b.nombre||"")));lista.length?box.innerHTML=lista.map(u=>{const uid=String(u.id||u.nombre),cfg=menuVisPorUsuario[uid]||{},checks=MENU_VIS_OPTIONS.map(opt=>{const checked=!1!==cfg[opt.id];return`<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin:3px 8px 3px 0;white-space:nowrap;">\n                    <input type="checkbox" data-uid="${uid}" data-mid="${opt.id}" ${checked?"checked":""} onchange="onMenuVisChange(this)"> ${opt.label}\n                </label>`}).join("");return`<div style="border:1px solid #ddd;border-radius:10px;padding:10px;margin-bottom:8px;">\n                <strong>${u.nombre||"—"}</strong>\n                <span style="font-size:11px;color:#888;"> · ${u.area||""} · ${"function"==typeof etiquetaTaller?etiquetaTaller(u.taller):u.taller||""}</span>\n                <div style="margin-top:6px;">${checks}</div>\n            </div>`}).join("")+'\n            <button type="button" class="btn-modal primary" style="width:100%;margin-top:10px;" onclick="guardarMenuVisYNube()">💾 Guardar menús en la nube</button>\n            <p style="font-size:11px;color:#888;margin-top:8px;">Desmarca lo que el usuario <strong>no</strong> debe ver. Guarda para que aplique en todos los dispositivos.</p>':box.innerHTML='<p style="color:#888;">No hay usuarios. Agrégalos en la pestaña Usuarios y guarda en la nube.</p>'}async function guardarMenuVisYNube(){try{const r=await persistirConfigAdmin();r&&r.cloud?alert("✅ Menús guardados en la nube. Cada usuario verá solo lo permitido al entrar."):alert("✅ Guardado en este dispositivo.\n"+(r&&r.msg?r.msg:"Revisa que exista la tabla app_config en Supabase."))}catch(e){alert("Error: "+(e.message||e))}}function onMenuVisChange(el){try{const uid=String(el.getAttribute("data-uid")),mid=el.getAttribute("data-mid");menuVisPorUsuario&&"object"==typeof menuVisPorUsuario||(menuVisPorUsuario={}),menuVisPorUsuario[uid]||(menuVisPorUsuario[uid]={}),menuVisPorUsuario[uid][mid]=!!el.checked}catch(e){console.warn(e)}}function abrirDirectorioEmpleados(){if(!requerirSesion())return;const box=document.getElementById("listaDirectorioEmpleados");if(!box)return;const taller=sesion.taller,esGerencia="Gerencia"===sesion.area||"function"==typeof tienePermisoTotal&&tienePermisoTotal(),lista=(listaUsuarios||[]).filter(u=>!u.taller||u.taller===taller).slice().sort((a,b)=>String(a.area||"").localeCompare(String(b.area||""))||String(a.nombre||"").localeCompare(String(b.nombre||"")));lista.length?box.innerHTML=lista.map(u=>{let pref={};try{const key=PREF_KEY+"_"+(u.taller||taller)+"_"+(u.area||"")+"_"+u.nombre,raw=localStorage.getItem(key);raw&&(pref=JSON.parse(raw))}catch(e){}const tel=pref.telPersonal||u.tel_personal||"",emerg=pref.emergTel?{nombre:pref.emergNombre,parentesco:pref.emergParentesco,tel:pref.emergTel,visible:pref.emergVisible}:u.emergencia||{},mostrarEmerg=esGerencia||emerg.visible||emerg.visible_gerencia,cumple=pref.cumpleanos||u.cumpleanos||"",notas=pref.notasBienestar||"",lema=pref.lema||"";return`<div style="padding:12px;border:1px solid var(--border,#e0e0e0);border-radius:12px;margin-bottom:10px;background:var(--card,#fff);">\n                    <div style="font-weight:800;font-size:15px;">${u.nombre||"—"}</div>\n                    <div style="font-size:12px;color:#888;margin-bottom:6px;">${u.area||""} · ${etiquetaTaller(u.taller||taller)}${u.nivel?" · "+u.nivel:""}</div>\n                    ${tel?`<div style="font-size:13px;">📞 <a href="tel:${tel.replace(/\\s/g,"")}">${tel}</a></div>`:'<div style="font-size:12px;color:#aaa;">Sin teléfono personal</div>'}\n                    ${cumple?`<div style="font-size:13px;">🎂 ${cumple}</div>`:""}\n                    ${lema?`<div style="font-size:12px;font-style:italic;margin-top:4px;">“${lema}”</div>`:""}\n                    ${notas?`<div style="font-size:12px;margin-top:6px;padding:8px;background:#fff3cd;border-radius:8px;color:#856404;"><strong>Cuidados:</strong> ${notas}</div>`:""}\n                    ${mostrarEmerg&&emerg.tel?`<div style="font-size:13px;margin-top:8px;padding:8px;background:#f8d7da;border-radius:8px;color:#721c24;">\n                        🚨 Emergencia: <strong>${emerg.nombre||"—"}</strong> (${emerg.parentesco||"—"}) · <a href="tel:${String(emerg.tel).replace(/\\s/g,"")}" style="color:#721c24;font-weight:700;">${emerg.tel}</a>\n                    </div>`:emerg.tel&&!mostrarEmerg?'<div style="font-size:11px;color:#888;margin-top:4px;">Contacto de emergencia registrado (solo Gerencia)</div>':""}\n                </div>`}).join(""):box.innerHTML='<p style="color:#888;font-size:13px;">No hay empleados registrados en este taller.</p>',document.getElementById("modalDirectorioEmpleados").style.display="flex"}function abrirModalPreferenciasUsuario(){if(!requerirSesion())return;if(modoCliente)return void alert("Modo cliente: sin personalización.");const p=getPreferenciasUsuario(),u=(listaUsuarios||[]).find(x=>(x.nombre||"").toLowerCase()===(sesion.persona||"").toLowerCase()&&(!x.taller||x.taller===sesion.taller)),resumen=document.getElementById("prefUsuarioResumen");resumen&&(resumen.textContent=(sesion.persona||"")+" · "+(sesion.area||"")+" · "+etiquetaTaller(sesion.taller));const set=(id,val)=>{const el=document.getElementById(id);el&&(el.value=val||"")};set("prefApodo",p.apodo),set("prefCumpleanos",(p.cumpleanos||u&&u.cumpleanos||"").toString().substring(0,10)),set("prefLema",p.lema),set("prefTelPersonal",p.telPersonal||u&&u.tel_personal||""),set("prefEmergNombre",p.emergNombre||u&&u.emergencia&&u.emergencia.nombre||""),set("prefEmergParentesco",p.emergParentesco||u&&u.emergencia&&u.emergencia.parentesco||""),set("prefEmergTel",p.emergTel||u&&u.emergencia&&u.emergencia.tel||"");const ev=document.getElementById("prefEmergVisible");ev&&(ev.checked=!!(p.emergVisible||u&&u.emergencia&&u.emergencia.visible_gerencia)),set("prefTema",p.tema),set("prefFondo",p.fondo),set("prefDensidad",p.densidad||"compacta"),set("prefInicio",p.inicio);const sal=document.getElementById("prefSaludo");sal&&(sal.checked=!1!==p.saludo),set("prefNotasBienestar",p.notasBienestar),set("prefMotivacion",p.motivacion);const sw=document.getElementById("prefSwatches");sw&&(sw.innerHTML=PREF_COLORES.map(c=>'<button type="button" class="pref-swatch'+(p.acento===c.hex?" active":"")+'" title="'+c.label+'" data-hex="'+c.hex+'" style="background:'+c.hex+'" onclick="seleccionarAcentoPref(this)"></button>').join(""));const info=document.getElementById("prefInfoExtra");if(info){const nivel=u&&u.nivel?u.nivel:"—",rol=u&&u.rol_tecnico?u.rol_tecnico:"—",perm=u&&u.permiso_total||"function"==typeof tienePermisoTotal&&tienePermisoTotal()?"Sí":"No";info.innerHTML="<strong>Tu lugar en el equipo</strong><br>Taller: <strong>"+etiquetaTaller(sesion.taller)+"</strong><br>Área: <strong>"+(sesion.area||"—")+"</strong><br>"+("Mantenimiento"===sesion.area?"Nivel: "+nivel+" · Rol: "+rol+"<br>":"")+"Permiso ampliado: "+perm+'<br><span style="color:#666;">Eres parte de Thermo King. Esta app es una herramienta; tú haces el trabajo bien hecho.</span>'}document.getElementById("modalPreferenciasUsuario").style.display="flex"}function seleccionarAcentoPref(btn){document.querySelectorAll("#prefSwatches .pref-swatch").forEach(b=>b.classList.remove("active")),btn.classList.add("active")}function guardarPreferenciasUsuario(){if(!sesion)return;const active=document.querySelector("#prefSwatches .pref-swatch.active"),p={apodo:(document.getElementById("prefApodo")?.value||"").trim(),cumpleanos:(document.getElementById("prefCumpleanos")?.value||"").substring(0,10),lema:(document.getElementById("prefLema")?.value||"").trim(),telPersonal:(document.getElementById("prefTelPersonal")?.value||"").trim(),emergNombre:(document.getElementById("prefEmergNombre")?.value||"").trim(),emergParentesco:document.getElementById("prefEmergParentesco")?.value||"",emergTel:(document.getElementById("prefEmergTel")?.value||"").trim(),emergVisible:!!document.getElementById("prefEmergVisible")?.checked,tema:document.getElementById("prefTema")?.value||"",acento:active?active.getAttribute("data-hex"):"",fondo:document.getElementById("prefFondo")?.value||"",densidad:document.getElementById("prefDensidad")?.value||"compacta",inicio:document.getElementById("prefInicio")?.value||"",saludo:!!document.getElementById("prefSaludo")?.checked,notasBienestar:(document.getElementById("prefNotasBienestar")?.value||"").trim(),motivacion:(document.getElementById("prefMotivacion")?.value||"").trim()};if(setPreferenciasUsuario(p),Array.isArray(listaUsuarios)){listaUsuarios=listaUsuarios.map(u=>{if((u.nombre||"").toLowerCase()!==sesion.persona.toLowerCase())return u;if(u.taller&&u.taller!==sesion.taller)return u;const nu=Object.assign({},u);return p.cumpleanos&&(nu.cumpleanos=p.cumpleanos),p.telPersonal&&(nu.tel_personal=p.telPersonal),nu.emergencia={nombre:p.emergNombre,parentesco:p.emergParentesco,tel:p.emergTel,visible_gerencia:p.emergVisible},nu});try{"function"==typeof construirConfigAdmin&&localStorage.setItem(CONFIG_ADMIN_KEY,JSON.stringify(construirConfigAdmin()))}catch(e){}}aplicarPreferenciasUsuario(),cerrarModal("modalPreferenciasUsuario");try{mostrarToastApp("✅ Tu espacio personal quedó guardado","#28a745")}catch(e){alert("✅ Preferencias guardadas")}}function setStatusConexion(estado,texto){const st=document.getElementById("statusConexion");st&&(st.classList.remove("ok","err"),"ok"===estado&&st.classList.add("ok"),"err"===estado&&st.classList.add("err"),texto&&(st.textContent=texto))}function mostrarInfoSesion(){try{setTimeout(function(){try{recalcularPuntosDesdeUnidades();renderContadorPuntosSesion();}catch(e){}},500);}catch(e){}/*pts-recalc-after-load*/try{setTimeout(function(){try{renderContadorPuntosSesion()}catch(e){}},100);}catch(e){}try{var _cr=document.getElementById("headerClockRow");if(_cr){_cr.style.display="flex";_cr.style.visibility="visible";}if(typeof iniciarRelojHeader==="function")iniciarRelojHeader();}catch(eClk){}if(!sesion)return;const el=document.getElementById("sesionInfo"),sessionBar=document.getElementById("headerSessionBar"),tallerTxt=etiquetaTaller(sesion.taller),textoCorto="Cliente"===sesion.area?"Cliente · solo lectura":sesion.persona+" · "+sesion.area,textoFull="Cliente"===sesion.area?"Cliente · "+tallerTxt+" · solo lectura":sesion.persona+" · "+sesion.area+" · "+tallerTxt;if(el&&(el.textContent=textoCorto,el.title=textoFull+" · Toca para mediciones",el.style.cursor="Cliente"===sesion.area?"default":"pointer",el.style.display="",el.dataset.medicionBound||(el.dataset.medicionBound="1",el.addEventListener("click",function(e){e.stopPropagation(),"Cliente"!==sesion.area&&abrirPanelMedicionUsuario()})),!el.dataset.eggBound)){el.dataset.eggBound="1";let clicks=0,timer=null;el.addEventListener("click",function(){clicks++,clearTimeout(timer),timer=setTimeout(function(){clicks=0},900),clicks>=5&&(clicks=0,window.open("https://drive.google.com/drive/folders/16uXdN_NGhYV4iPJRZUIEVt4yt-_VOzYX","_blank"))})}sessionBar&&(sessionBar.style.display="block",sessionBar.classList.add("visible"));const barLegacy=document.getElementById("sesionInfoBar");barLegacy&&(barLegacy.style.display="none",barLegacy.textContent="");const h1=document.getElementById("headerTitle")||document.querySelector(".header-brand h1"),small=document.getElementById("headerSub")||document.querySelector(".header-brand small"),logo=document.getElementById("headerLogo");if(logo){const tryIcon=()=>{0===logo.naturalWidth&&(logo.src=ICONO_THERMOKING)};logo.complete?tryIcon():logo.addEventListener("error",function(){logo.src=ICONO_THERMOKING},{once:!0}),setTimeout(tryIcon,400)}try{const hl=document.getElementById("headerThermoDiagPRO");if(hl)hl.style.display=(sesion&&sesion.area==="Cliente")?"none":"";}catch(e){}if(h1&&(h1.textContent=etiquetaTaller(sesion.taller)||"Thermo King",small&&(small.textContent=""),h1.style.cursor="pointer",h1.title=nombreAppTaller(sesion.taller)+" · 5 toques: administración",!h1.dataset.adminEggBound)){h1.dataset.adminEggBound="1";let clicksAdmin=0,timerAdmin=null;h1.addEventListener("click",function(e){e.stopPropagation(),clicksAdmin++,clearTimeout(timerAdmin),timerAdmin=setTimeout(function(){clicksAdmin=0},1e3),clicksAdmin>=5&&(clicksAdmin=0,abrirModalAdmin())})}document.getElementById("btnCerrarSesion").style.display="inline-block";const showMenu=(id,visible)=>{const el=document.getElementById(id);el&&(el.style.display=visible?"":"none")};showMenu("btnReporteDiario","Gerencia"===sesion.area||(sesion&&"Abel"===sesion.persona)||(typeof tienePermisoTotal==="function"&&tienePermisoTotal())),showMenu("btnProduccion",sesion&&("Gerencia"===sesion.area||(typeof tienePermisoTotal==="function"&&tienePermisoTotal()))),showMenu("btnDashboardRT",sesion&&"Cliente"!==sesion.area),showMenu("btnConfigWip",sesion&&("Gerencia"===sesion.area||"function"==typeof tienePermisoTotal&&tienePermisoTotal())),showMenu("btnAsignarPendiente",sesion&&"Gerencia"===sesion.area),showMenu("btnMetasGerencia",sesion&&("Gerencia"===sesion.area||tienePermisoTotal())),showMenu("btnMiDia","Gerencia"!==sesion.area&&"Cliente"!==sesion.area),showMenu("btnInventario",!0),showMenu("btnDiagnosticosExt","Mantenimiento"===sesion.area),showMenu("btnThermoDiagPRO","Mantenimiento"===sesion.area),showMenu("btnMensaje",!1);try{actualizarUIModoBasicoKanban()}catch(e){}setTimeout(function(){try{aplicarMenuVisUsuario();expandirGruposMenuConItems()}catch(e){}},200);try{cargarPendientesTareas()}catch(e){}showMenu("btnTrabajoHoy",!0),showMenu("btnVistaLista",!0),showMenu("btnVistaHistorial",!0),"Cliente"===sesion.area?aplicarModoClienteUI(!0):aplicarModoClienteUI(!1);try{aplicarPreferenciasUsuario()}catch(e){}try{saludoPersonalSiCorresponde()}catch(e){}try{aplicarMenuVisUsuario()}catch(e){}}function requerirSesion(){return!!sesion||(alert("⚠️ Inicia sesión con tu departamento primero"),document.getElementById("loginOverlay").classList.remove("oculto"),!1)}let permisosCambio={Gerencia:null,Mantenimiento:{Diagnosticando:["Cotizando","Reparando"],Reparando:["Finalizada","Diagnosticando","Espera de refacciones","Cotizando"]},Ventas:{Agenda:["Recibida","Finalizada"],Recibida:["Diagnosticando","Cotizando","Agenda","Finalizada"],Cotizando:["Espera de refacciones","Reparando","Finalizada"],"Espera de refacciones":["Reparando","Cotizando","Finalizada"],Finalizada:[]},Compras:{"Espera de refacciones":["Reparando","Cotizando"]}};const CAMPOS_POR_LUGAR={Taller:{show:["cliente","modelo","no_unidad","placas","bloque_pdf_cliente","problema","hoja_servicio","orden_compra"],req:["cliente","modelo","no_unidad","placas","problema"],hint:"🏭 Taller: la unidad viene al taller. Ventas captura recepción; el técnico se asigna después en Diagnóstico/Reparación.",labelProblema:"Problema / descripción *",phProblema:"Describe el problema o falla..."},Kuzzy:{show:["cliente","modelo","no_unidad","placas","problema"],req:["cliente","modelo","no_unidad","placas","problema"],hint:"🚚 Kuzzy: trabajo de caja / en sitio (no es rescate de emergencia).",labelProblema:"Notas *",phProblema:"Notas del trabajo Kuzzy / lo que se cotiza..."},ServiciosSigma:{show:["cliente","modelo","no_unidad","placas","problema"],req:["cliente","modelo","no_unidad","placas","problema"],hint:"🟡 Servicios Sigma: servicio programado o visita fuera de taller (NO es emergencia en carretera). Ventas debe asignar al técnico que irá.",labelProblema:"Problema / descripción *",phProblema:"Describe la falla o el servicio en sitio (Sigma)..."},RescateCarretera:{show:["cliente","modelo","no_unidad","problema","tipo_pago"],req:["cliente","modelo","no_unidad","problema","tipo_pago"],hint:"🛣️ Rescate carretera: EMERGENCIA en vía. Ventas llena datos, tipo de pago y técnico, luego notifica por WhatsApp al técnico.",labelProblema:"Trabajo a realizar *",phProblema:"Describe el trabajo a realizar en carretera..."},Rescate:{show:["cliente","modelo","no_unidad","placas","problema","reparador"],req:["cliente","modelo","no_unidad","placas","problema","reparador"],hint:"🚨 Rescate legado → se trata como Servicios Sigma. Asigna técnico.",labelProblema:"Problema / descripción *",phProblema:"Describe la falla en sitio..."},VentasRefacciones:{show:["cliente","problema","asesor_ventas"],req:["cliente","problema"],hint:"🛒 Venta de refacciones: solo Cliente y qué se vende. El número de unidad se genera solo (REF-…). Sin placas, sin diagnóstico, sin técnico.",labelProblema:"¿Qué se vende? (piezas / notas) *",phProblema:"Ej. 2 filtros aceite 67-xxx, 1 correa…"}};function actualizarBoxDatosRecibidaNueva(){try{const box=document.getElementById("boxDatosRecibidaNueva");if(!box)return;const ubi=(document.getElementById("ubicacionTrabajoNueva")||{}).value||"Taller";const est=(document.getElementById("estatusNueva")||{}).value||"Recibida";box.style.display=(ubi==="Taller"||ubi==="taller")&&(est==="Recibida"||est==="Diagnosticando")?"":"none"}catch(e){}}
     function onUbicacionTrabajoNuevaChange(){
   const v=normalizarUbicacionTrabajo(document.getElementById("ubicacionTrabajoNueva")?.value);
   const cfg=CAMPOS_POR_LUGAR[v]||CAMPOS_POR_LUGAR.Taller;
@@ -3252,7 +3270,6 @@ function textoWhatsAppRescateCarretera(u,tecnico){
   L.push("Confirma recepción y tiempo estimado de llegada, por favor.");
   return L.join("\n");
 }
-
 
 function abrirCierreRescateCarretera(id){
   if(!requerirSesion())return;
@@ -3993,7 +4010,6 @@ function _pcMetricasGerencia(activas){
   return html;
 }
 
-
 const LLAMADAS_GERENCIA_KEY="thermocontrol_llamadas_gerencia";
 let llamadasGerencia=[];
 function uidLlamadaGerencia(){return "lg_"+Date.now()+"_"+Math.random().toString(36).slice(2,8);}
@@ -4122,8 +4138,6 @@ if(typeof window!=="undefined"){
     cargarLlamadasGerencia().then(function(){actualizarBannerLlamadaGerencia();}).catch(function(){});
   }, 12000);
 }
-
-
 
 function mostrarTabGuia(tab){
   const p=document.getElementById("guiaTabProcesos");
@@ -4286,7 +4300,6 @@ function intentarDesbloquearMantenimiento(){
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bootMant);
   else bootMant();
 })();
-
 
 const PRECIOS_GAS_KEY="thermocontrol_precios_gas_v1";
 function getPreciosGasLocales(){
@@ -4497,7 +4510,6 @@ function abrirGuiaProcesos(tab){
   m.style.zIndex="10060";
   try{mostrarTabGuia(tab==="roles"?"roles":"procesos");}catch(e){}
 }
-
 
 function abrirPanelControl(){
   try{
@@ -4817,7 +4829,6 @@ if("reparador"===listaFiltroCampo||"diagnosticador"===listaFiltroCampo){
     });
     window.addEventListener('focus', function(){try{aplicarCronosLocalAUnidades();tickCronosUI();}catch(e){}});
 
-
 function abrirModalDetalle(id){const u=unidades.find(item=>item.id===id);if(!u)return;unidadEnEdicion=id;try{iniciarCronoAlAbrirTarjeta(u);actualizarUICronoDetalle(u)}catch(eC){}document.getElementById("detalleTitulo").textContent=u.no_unidad||"Sin número",document.getElementById("detalleSubtitulo").textContent=`${u.cliente||"—"} ${u.modelo?"· "+u.modelo:""}`;const badge=document.getElementById("detalleEstatus");badge.textContent=nombresEstatus[u.estatus]||u.estatus,badge.style.background=getColor(u.estatus);
 try{
     const btnWa=document.getElementById("btnWhatsAppRescateCarretera");
@@ -4848,7 +4859,7 @@ document.getElementById("detalleGrid").innerHTML=`\n            ${u.es_garantia|
             </div>`:((u.horas_equipo!=null&&String(u.horas_equipo).trim()!=="")||(u.tipo_servicio||"").trim()?`<div class="detalle-item full" style="background:#fff8e6;border-radius:8px;padding:8px;">
                 <div class="label">⏱️ Horas / 🔧 Servicio</div>
                 <div class="valor" style="font-weight:700;color:#856404;">${u.horas_equipo!=null&&String(u.horas_equipo).trim()!==""?("Horas: "+u.horas_equipo):"Horas: —"}${(u.tipo_servicio||"").trim()?" · "+u.tipo_servicio:""}</div>
-            </div>`:"")}\n            </div>\n            ${u.tipo_servicio?`<div class="detalle-item full" style="background:#fff8e6;border-radius:8px;padding:8px;">\n                <div class="label">🔧 Tipo de servicio (para cotizar)</div>\n                <div class="valor" style="font-weight:700;color:#856404;">${u.tipo_servicio}</div>\n                <div style="font-size:12px;color:#666;margin-top:4px;">Ventas debe cotizar este servicio + reparación + piezas.</div>\n            </div>`:""}\n            <div class="detalle-item full">\n                <div class="label">🔍 Diagnóstico detallado</div>\n                <div class="valor" style="white-space:pre-wrap;">${u.diagnostico_detalle||"Sin diagnóstico registrado"}</div>\n            </div>\n            <div class="detalle-item full">\n                <div class="label">📎 PDF de diagnóstico</div>\n                <div class="valor">\n                    ${u.diagnostico_pdf_url?`<a href="${u.diagnostico_pdf_url}" target="_blank" rel="noopener">📄 ${u.diagnostico_pdf_nombre||"Abrir PDF"}</a>`:"Sin PDF subido"}\n                </div>\n            </div>\n            <div class="detalle-item full">\n                <div class="label">📋 PDF de orden de trabajo</div>\n                <div class="valor">\n                    ${u.orden_trabajo_pdf_url?`<a href="${u.orden_trabajo_pdf_url}" target="_blank" rel="noopener">📄 ${u.orden_trabajo_pdf_nombre||"Abrir PDF"}</a>`:(u.estatus==="Cotizando"?`<span style="color:#b45309;font-weight:700;">⚠️ Falta subir (Ventas)</span>`:"Sin PDF subido")}\n                    ${modoCliente||u.eliminado?"":` · <a href="#" onclick="event.preventDefault(); abrirModalOrdenTrabajoPdf(${id})" style="font-size:12px;">☁️ Subir / cambiar</a>`}\n                </div>\n            </div>\n            <div class="detalle-item full" id="detalleFotosContainer">\n                <div class="label">📷 Fotos (solo en este dispositivo)</div>\n                <div class="fotos-grid" id="detalleFotosGrid"><span style="color:#888; font-size:12px;">Cargando fotos locales...</span></div>\n            </div>\n        `,obtenerFotosLocal(id).then(fotos=>{const gridEl=document.getElementById("detalleFotosGrid");gridEl&&(0===fotos.length?gridEl.innerHTML='<span style="color:#888; font-size:12px;">No hay fotos en este dispositivo</span>':gridEl.innerHTML=fotos.map((f,i)=>`<img src="${f}" alt="Foto ${i+1}" onclick="window.open('${f}', '_blank')" title="Clic para ampliar">`).join(""))});const histBox=document.getElementById("detalleHistorial");if(u.historial&&u.historial.length>0){const esFin="Finalizada"===u.estatus,conTiempos=calcularTiemposHistorial(u.historial),totalMs=conTiempos.reduce((acc,h)=>acc+(h.duracionMs||0),0),resumenHtml=resumenTiempoPorEstatus(u.historial).map(r=>`<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 8px; background:#fff; border-radius:8px; border-left:4px solid ${getColor(r.estatus)||"#6c757d"}; margin-bottom:4px; font-size:12px;">\n                    <span><strong>${nombresEstatus[r.estatus]||r.estatus}</strong>${r.enCurso?' <em style="color:#1a3a5c;">(actual)</em>':""}</span>\n                    <span style="font-weight:700; color:#1a3a5c;">⏱️ ${r.texto}</span>\n                </div>`).join(""),filas=conTiempos.slice().reverse().map((h,idx)=>{const alerta=!esFin&&h.duracionMs>=2592e5,color=getColor(h.estatus)||"#6c757d",esNota="nota"===h.tipo||h.comentario&&(!h.estatus||"Nota"===h.estatus);return`\n                <div class="timeline-item" style="display:flex; gap:10px; margin-bottom:0; position:relative;">\n                    <div style="width:18px; flex-shrink:0; display:flex; flex-direction:column; align-items:center;">\n                        <div style="width:12px; height:12px; border-radius:50%; background:${esNota?"#6c757d":color}; border:2px solid #fff; box-shadow:0 0 0 2px ${esNota?"#6c757d":color}; z-index:1;"></div>\n                        ${idx<conTiempos.length-1?'<div style="flex:1; width:2px; background:#dee2e6; margin:2px 0;"></div>':""}\n                    </div>\n                    <div style="flex:1; padding-bottom:14px;">\n                        <div style="font-size:13px;">\n                            ${esNota?"<strong>💬 Nota</strong>":`<strong>${h.estatus||"—"}</strong>`}\n                            ${h.area?`<span class="depto">${h.area}</span>`:""}\n                            ${h.persona?`<span style="color:#555;"> · ${h.persona}</span>`:""}\n                            ${esNota?"":`<span class="depto" style="background:${alerta?"#f8d7da":"#d4edda"}; color:${alerta?"#721c24":"#155724"};">⏱️ ${h.duracionTexto}${h.enCurso?" (en curso)":""}</span>`}\n                        </div>\n                        <div class="fecha">${h.fecha||""}</div>\n                        ${h.comentario?`<div class="nota" style="margin-top:4px;">${esNota?"":"📝 "}${h.comentario}</div>`:""}\n                    </div>\n                </div>`}).join(""),notasChat=(u.historial||[]).map((h,idx)=>({...h,_idx:idx})).filter(h=>"nota"===h.tipo||h.es_nota).slice().reverse(),chatHtml=notasChat.length?notasChat.map(n=>{const texto=(n.comentario||"").replace(/@([A-Za-zÁÉÍÓÚáéíóúÑñüÜ][A-Za-zÁÉÍÓÚáéíóúÑñüÜ0-9]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñüÜ][A-Za-zÁÉÍÓÚáéíóúÑñüÜ0-9]*){0,2})/g,'<span style="color:#0d6efd;font-weight:600;">@$1</span>');return`\n                    <div style="padding:8px 10px; background:var(--detalle-item,#f8f9fa); border-radius:10px; margin-bottom:6px; border-left:3px solid #6c757d; font-size:13px;">\n                        <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">\n                            <strong>${n.persona||"—"} <span style="font-weight:500;color:#666;">(${n.area||"—"})</span></strong>\n                            <span style="color:#888; font-size:11px;">${n.fecha||""}</span>\n                        </div>\n                        <div style="margin-top:4px;">${texto}</div>\n                        ${htmlLikesNota(u,n._idx)}\n                    </div>`}).join(""):'<div style="color:#888; font-size:12px;">Sin mensajes aún. Usa el botón «Nota / Chat». Menciona con @Nombre.</div>';histBox.innerHTML=`\n                <div style="margin-bottom:12px; padding:10px; background:#e7f1ff; border-radius:10px; font-size:13px;">\n                    ${esFin?"":`<div style="margin-bottom:8px;"><strong>⏳ Tiempo laboral en taller:</strong> ${formatearDuracion(totalMs)}\n                    <br><small style="color:#666;">Lun–vie 8:30–18:00 · comida 14:00–15:00 no cuenta · tampoco noches, fines de semana ni festivos</small></div>`}\n                    <strong style="display:block; margin-bottom:6px;">📊 Tiempo laboral por estatus</strong>\n                    ${resumenHtml||'<span style="color:#888;">Sin datos</span>'}\n                </div>\n                <div style="margin-bottom:14px; padding:10px; background:#f8f9fa; border-radius:10px; border:1px solid #e9ecef;">\n                    <strong style="display:block; margin-bottom:8px;">💬 Chat / notas del equipo</strong>\n                    ${chatHtml}\n                </div>\n                <strong style="display:block; margin-bottom:8px;">🕒 Timeline de movimientos</strong>\n                <div class="timeline-box" style="padding-left:4px;">\n                    ${filas}\n                </div>\n            `}else histBox.innerHTML='<div style="color:#888; font-size:13px;">Sin historial registrado</div>';const botones=document.getElementById("detalleBotones");if(modoCliente)botones.innerHTML='<button class="btn-modal danger" style="flex:1;" onclick="cerrarModal(\'modalDetalle\')">Cerrar</button>';else if(u.eliminado)botones.innerHTML=`\n                <button class="btn-modal danger" style="flex:1;" onclick="eliminarPermanente(${id})">🗑️ Borrar permanentemente (solo Gerencia)</button>\n                <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>\n            `;else{const puede=puedeModificarUnidad(u);let extraBtns="";if(puede&&"Agenda"===u.estatus&&sesion&&("Ventas"===sesion.area||"Gerencia"===sesion.area||tienePermisoTotal())&&(extraBtns+=`<button class="btn-modal success" style="flex:1;" onclick="confirmarLlegadaAgenda(${id})">📥 ¿Llegó? → Recibida</button>`),"Espera de refacciones"===u.estatus&&sesion&&("Compras"===sesion.area||"Gerencia"===sesion.area||tienePermisoTotal())&&(extraBtns+=`<button type="button" class="btn-rapido liberar" style="flex:1 1 100%; order:-1;" onclick="piezasListasAReparando(${id})">✅ Liberar → Reparando</button>`,extraBtns+=`<button class="btn-modal success" style="flex:1;" onclick="abrirModalRefacciones(${id})">🛒 Gestionar refacciones</button>`),"Diagnosticando"===u.estatus?(puede&&(extraBtns+=`<button class="btn-modal success" style="flex:1;" onclick="abrirTkDiag(${id})">🔍 Diagnóstico TK</button>`),puede&&(extraBtns+=`<button class="btn-modal secondary" style="flex:1;" onclick="abrirModalDiagnostico(${id})">📝 Diagnóstico</button>`)):(u.diagnostico_detalle||u.diagnostico_pdf_url)&&(extraBtns+=`<button class="btn-modal secondary" style="flex:1;" onclick="abrirModalDiagnostico(${id})">🔍 Ver diagnóstico</button>`),"Finalizada"===u.estatus||"Espera de refacciones"===u.estatus){const labelPdf="Finalizada"===u.estatus?"📄 PDF / factura de entrega":"📄 PDF cotización / espera";extraBtns+=`<button class="btn-modal success" style="flex:1;" onclick="abrirModalPDF(${id})">${labelPdf}</button>`}!sesion||"Ventas"!==sesion.area&&"Gerencia"!==sesion.area&&!tienePermisoTotal()||"Cotizando"!==u.estatus&&"Recibida"!==u.estatus&&!u.espera_cliente||(extraBtns+=u.espera_cliente?`<button class="btn-modal success" style="flex:1;" onclick="toggleEsperaCliente(${id})">▶️ Reactivar (salió espera cliente)</button>`:`<button class="btn-modal secondary" style="flex:1; border-color:#6ab0f3; color:#004085;" onclick="toggleEsperaCliente(${id})">⏸️ Espera del cliente</button>`),!sesion||"Compras"!==sesion.area&&"Gerencia"!==sesion.area&&!tienePermisoTotal()||"Espera de refacciones"!==u.estatus&&!u.pausa_compras||(extraBtns+=u.pausa_compras?`<button class="btn-modal success" style="flex:1;" onclick="togglePausaCompras(${id})">▶️ Quitar pausa Compras</button>`:`<button class="btn-modal secondary" style="flex:1; border-color:#a78bfa; color:#5b21b6;" onclick="togglePausaCompras(${id})">⏸️ Pausa Compras</button>`),botones.innerHTML=puede?`\n                    <button class="btn-modal primary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalEditar(${id})">✏️ Editar</button>\n                    <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalCambio(${id})">🔄 Cambiar estatus</button>\n                    <button class="btn-modal secondary" style="flex:1;" onclick="abrirModalNota(${id})">💬 Chat / Nota</button>\n                    ${extraBtns}\n                    <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>\n                `:`\n                    <div style="width:100%; padding:8px; background:#e9ecef; border-radius:8px; font-size:12px; margin-bottom:8px;">\n                        👁️ Solo lectura — esta unidad está en <strong>${u.estatus}</strong>.\n                        Responsable: <strong>${areaResponsableEstatus[u.estatus]||"—"}</strong>.\n                        Tu área (${sesion?sesion.area:"—"}) no puede modificar aquí.\n                    </div>\n                    ${extraBtns}\n                    <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>\n                `}document.getElementById("modalDetalle").style.display="flex"}function abrirModalEditar(id){
+            </div>`:"")}\n            </div>\n            ${u.tipo_servicio?`<div class="detalle-item full" style="background:#fff8e6;border-radius:8px;padding:8px;">\n                <div class="label">🔧 Tipo de servicio (para cotizar)</div>\n                <div class="valor" style="font-weight:700;color:#856404;">${u.tipo_servicio}</div>\n                <div style="font-size:12px;color:#666;margin-top:4px;">Ventas debe cotizar este servicio + reparación + piezas.</div>\n            </div>`:""}\n            <div class="detalle-item full">\n                <div class="label">🔍 Diagnóstico detallado</div>\n                <div class="valor" style="white-space:pre-wrap;">${u.diagnostico_detalle||"Sin diagnóstico registrado"}</div>\n            </div>\n            <div class="detalle-item full" style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:10px;">\n                <div class="label" style="color:#c2410c;font-weight:800;">🔩 Material a cotizar (Diagnóstico)</div>\n                <div class="valor">${typeof htmlMaterialDiagnosticoLectura==="function"?htmlMaterialDiagnosticoLectura(u):(u.refacciones_esperadas||"Sin material listado")}</div>\n                <div style="font-size:11px;color:#9a3412;margin-top:4px;">Ventas y Compras lo usan en Cotizando / Espera de refacciones</div>\n            </div>\n            <div class="detalle-item full">\n                <div class="label">📎 PDF de diagnóstico</div>\n                <div class="valor">\n                    ${u.diagnostico_pdf_url?`<a href="${u.diagnostico_pdf_url}" target="_blank" rel="noopener">📄 ${u.diagnostico_pdf_nombre||"Abrir PDF"}</a>`:"Sin PDF subido"}\n                </div>\n            </div>\n            <div class="detalle-item full">\n                <div class="label">📋 PDF de orden de trabajo</div>\n                <div class="valor">\n                    ${u.orden_trabajo_pdf_url?`<a href="${u.orden_trabajo_pdf_url}" target="_blank" rel="noopener">📄 ${u.orden_trabajo_pdf_nombre||"Abrir PDF"}</a>`:(u.estatus==="Cotizando"?`<span style="color:#b45309;font-weight:700;">⚠️ Falta subir (Ventas)</span>`:"Sin PDF subido")}\n                    ${modoCliente||u.eliminado?"":` · <a href="#" onclick="event.preventDefault(); abrirModalOrdenTrabajoPdf(${id})" style="font-size:12px;">☁️ Subir / cambiar</a>`}\n                </div>\n            </div>\n            <div class="detalle-item full" id="detalleFotosContainer">\n                <div class="label">📷 Fotos (solo en este dispositivo)</div>\n                <div class="fotos-grid" id="detalleFotosGrid"><span style="color:#888; font-size:12px;">Cargando fotos locales...</span></div>\n            </div>\n        `,obtenerFotosLocal(id).then(fotos=>{const gridEl=document.getElementById("detalleFotosGrid");gridEl&&(0===fotos.length?gridEl.innerHTML='<span style="color:#888; font-size:12px;">No hay fotos en este dispositivo</span>':gridEl.innerHTML=fotos.map((f,i)=>`<img src="${f}" alt="Foto ${i+1}" onclick="window.open('${f}', '_blank')" title="Clic para ampliar">`).join(""))});const histBox=document.getElementById("detalleHistorial");if(u.historial&&u.historial.length>0){const esFin="Finalizada"===u.estatus,conTiempos=calcularTiemposHistorial(u.historial),totalMs=conTiempos.reduce((acc,h)=>acc+(h.duracionMs||0),0),resumenHtml=resumenTiempoPorEstatus(u.historial).map(r=>`<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 8px; background:#fff; border-radius:8px; border-left:4px solid ${getColor(r.estatus)||"#6c757d"}; margin-bottom:4px; font-size:12px;">\n                    <span><strong>${nombresEstatus[r.estatus]||r.estatus}</strong>${r.enCurso?' <em style="color:#1a3a5c;">(actual)</em>':""}</span>\n                    <span style="font-weight:700; color:#1a3a5c;">⏱️ ${r.texto}</span>\n                </div>`).join(""),filas=conTiempos.slice().reverse().map((h,idx)=>{const alerta=!esFin&&h.duracionMs>=2592e5,color=getColor(h.estatus)||"#6c757d",esNota="nota"===h.tipo||h.comentario&&(!h.estatus||"Nota"===h.estatus);return`\n                <div class="timeline-item" style="display:flex; gap:10px; margin-bottom:0; position:relative;">\n                    <div style="width:18px; flex-shrink:0; display:flex; flex-direction:column; align-items:center;">\n                        <div style="width:12px; height:12px; border-radius:50%; background:${esNota?"#6c757d":color}; border:2px solid #fff; box-shadow:0 0 0 2px ${esNota?"#6c757d":color}; z-index:1;"></div>\n                        ${idx<conTiempos.length-1?'<div style="flex:1; width:2px; background:#dee2e6; margin:2px 0;"></div>':""}\n                    </div>\n                    <div style="flex:1; padding-bottom:14px;">\n                        <div style="font-size:13px;">\n                            ${esNota?"<strong>💬 Nota</strong>":`<strong>${h.estatus||"—"}</strong>`}\n                            ${h.area?`<span class="depto">${h.area}</span>`:""}\n                            ${h.persona?`<span style="color:#555;"> · ${h.persona}</span>`:""}\n                            ${esNota?"":`<span class="depto" style="background:${alerta?"#f8d7da":"#d4edda"}; color:${alerta?"#721c24":"#155724"};">⏱️ ${h.duracionTexto}${h.enCurso?" (en curso)":""}</span>`}\n                        </div>\n                        <div class="fecha">${h.fecha||""}</div>\n                        ${h.comentario?`<div class="nota" style="margin-top:4px;">${esNota?"":"📝 "}${h.comentario}</div>`:""}\n                    </div>\n                </div>`}).join(""),notasChat=(u.historial||[]).map((h,idx)=>({...h,_idx:idx})).filter(h=>"nota"===h.tipo||h.es_nota).slice().reverse(),chatHtml=notasChat.length?notasChat.map(n=>{const texto=(n.comentario||"").replace(/@([A-Za-zÁÉÍÓÚáéíóúÑñüÜ][A-Za-zÁÉÍÓÚáéíóúÑñüÜ0-9]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñüÜ][A-Za-zÁÉÍÓÚáéíóúÑñüÜ0-9]*){0,2})/g,'<span style="color:#0d6efd;font-weight:600;">@$1</span>');return`\n                    <div style="padding:8px 10px; background:var(--detalle-item,#f8f9fa); border-radius:10px; margin-bottom:6px; border-left:3px solid #6c757d; font-size:13px;">\n                        <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">\n                            <strong>${n.persona||"—"} <span style="font-weight:500;color:#666;">(${n.area||"—"})</span></strong>\n                            <span style="color:#888; font-size:11px;">${n.fecha||""}</span>\n                        </div>\n                        <div style="margin-top:4px;">${texto}</div>\n                        ${htmlLikesNota(u,n._idx)}\n                    </div>`}).join(""):'<div style="color:#888; font-size:12px;">Sin mensajes aún. Usa el botón «Nota / Chat». Menciona con @Nombre.</div>';histBox.innerHTML=`\n                <div style="margin-bottom:12px; padding:10px; background:#e7f1ff; border-radius:10px; font-size:13px;">\n                    ${esFin?"":`<div style="margin-bottom:8px;"><strong>⏳ Tiempo laboral en taller:</strong> ${formatearDuracion(totalMs)}\n                    <br><small style="color:#666;">Lun–vie 8:30–18:00 · comida 14:00–15:00 no cuenta · tampoco noches, fines de semana ni festivos</small></div>`}\n                    <strong style="display:block; margin-bottom:6px;">📊 Tiempo laboral por estatus</strong>\n                    ${resumenHtml||'<span style="color:#888;">Sin datos</span>'}\n                </div>\n                <div style="margin-bottom:14px; padding:10px; background:#f8f9fa; border-radius:10px; border:1px solid #e9ecef;">\n                    <strong style="display:block; margin-bottom:8px;">💬 Chat / notas del equipo</strong>\n                    ${chatHtml}\n                </div>\n                <strong style="display:block; margin-bottom:8px;">🕒 Timeline de movimientos</strong>\n                <div class="timeline-box" style="padding-left:4px;">\n                    ${filas}\n                </div>\n            `}else histBox.innerHTML='<div style="color:#888; font-size:13px;">Sin historial registrado</div>';const botones=document.getElementById("detalleBotones");if(modoCliente)botones.innerHTML='<button class="btn-modal danger" style="flex:1;" onclick="cerrarModal(\'modalDetalle\')">Cerrar</button>';else if(u.eliminado)botones.innerHTML=`\n                <button class="btn-modal danger" style="flex:1;" onclick="eliminarPermanente(${id})">🗑️ Borrar permanentemente (solo Gerencia)</button>\n                <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>\n            `;else{const puede=puedeModificarUnidad(u);let extraBtns="";if(puede&&"Agenda"===u.estatus&&sesion&&("Ventas"===sesion.area||"Gerencia"===sesion.area||tienePermisoTotal())&&(extraBtns+=`<button class="btn-modal success" style="flex:1;" onclick="confirmarLlegadaAgenda(${id})">📥 ¿Llegó? → Recibida</button>`),"Espera de refacciones"===u.estatus&&sesion&&("Compras"===sesion.area||"Gerencia"===sesion.area||tienePermisoTotal())&&(extraBtns+=`<button type="button" class="btn-rapido liberar" style="flex:1 1 100%; order:-1;" onclick="piezasListasAReparando(${id})">✅ Liberar → Reparando</button>`,extraBtns+=`<button class="btn-modal success" style="flex:1;" onclick="abrirModalRefacciones(${id})">🛒 Gestionar refacciones</button>`),"Diagnosticando"===u.estatus?(puede&&(extraBtns+=`<button class="btn-modal success" style="flex:1;" onclick="abrirTkDiag(${id})">🔍 Diagnóstico TK</button>`),puede&&(extraBtns+=`<button class="btn-modal secondary" style="flex:1;" onclick="abrirModalDiagnostico(${id})">📝 Diagnóstico</button>`)):(u.diagnostico_detalle||u.diagnostico_pdf_url)&&(extraBtns+=`<button class="btn-modal secondary" style="flex:1;" onclick="abrirModalDiagnostico(${id})">🔍 Ver diagnóstico</button>`),"Finalizada"===u.estatus||"Espera de refacciones"===u.estatus){const labelPdf="Finalizada"===u.estatus?"📄 PDF / factura de entrega":"📄 PDF cotización / espera";extraBtns+=`<button class="btn-modal success" style="flex:1;" onclick="abrirModalPDF(${id})">${labelPdf}</button>`}!sesion||"Ventas"!==sesion.area&&"Gerencia"!==sesion.area&&!tienePermisoTotal()||"Cotizando"!==u.estatus&&"Recibida"!==u.estatus&&!u.espera_cliente||(extraBtns+=u.espera_cliente?`<button class="btn-modal success" style="flex:1;" onclick="toggleEsperaCliente(${id})">▶️ Reactivar (salió espera cliente)</button>`:`<button class="btn-modal secondary" style="flex:1; border-color:#6ab0f3; color:#004085;" onclick="toggleEsperaCliente(${id})">⏸️ Espera del cliente</button>`),!sesion||"Compras"!==sesion.area&&"Gerencia"!==sesion.area&&!tienePermisoTotal()||"Espera de refacciones"!==u.estatus&&!u.pausa_compras||(extraBtns+=u.pausa_compras?`<button class="btn-modal success" style="flex:1;" onclick="togglePausaCompras(${id})">▶️ Quitar pausa Compras</button>`:`<button class="btn-modal secondary" style="flex:1; border-color:#a78bfa; color:#5b21b6;" onclick="togglePausaCompras(${id})">⏸️ Pausa Compras</button>`),botones.innerHTML=puede?`\n                    <button class="btn-modal primary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalEditar(${id})">✏️ Editar</button>\n                    <button class="btn-modal secondary" style="flex:1;" onclick="cerrarModal('modalDetalle'); abrirModalCambio(${id})">🔄 Cambiar estatus</button>\n                    <button class="btn-modal secondary" style="flex:1;" onclick="abrirModalNota(${id})">💬 Chat / Nota</button>\n                    ${extraBtns}\n                    <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>\n                `:`\n                    <div style="width:100%; padding:8px; background:#e9ecef; border-radius:8px; font-size:12px; margin-bottom:8px;">\n                        👁️ Solo lectura — esta unidad está en <strong>${u.estatus}</strong>.\n                        Responsable: <strong>${areaResponsableEstatus[u.estatus]||"—"}</strong>.\n                        Tu área (${sesion?sesion.area:"—"}) no puede modificar aquí.\n                    </div>\n                    ${extraBtns}\n                    <button class="btn-modal danger" style="flex:1;" onclick="cerrarModal('modalDetalle')">Cerrar</button>\n                `}document.getElementById("modalDetalle").style.display="flex"}function abrirModalEditar(id){
   try{
     if(modoCliente)return;
     if(!requerirSesion())return;
@@ -5471,6 +5482,66 @@ function claveCampoDesdeEtiquetaFaltante(label){
   if(t.indexOf("ubicacion")>=0||t.indexOf("lugar")>=0)return"ubicacion_trabajo";
   return"";
 }
+
+function responsableFaltante(label){
+  const t=String(label||"").toLowerCase();
+  if(t.indexOf("ventas")>=0||t.indexOf("cotiz")>=0||t.indexOf("orden de trabajo")>=0||t.indexOf("folio")>=0||t.indexOf("hoja")>=0||t.indexOf("pedido")>=0||t.indexOf("asesor")>=0||t.indexOf("cliente")>=0||t.indexOf("placas")>=0||t.indexOf("contacto")>=0||t.indexOf("teléfono")>=0||t.indexOf("telefono")>=0||t.indexOf("dirección")>=0||t.indexOf("direccion")>=0||t.indexOf("ciudad")>=0||t.indexOf("pdf")>=0)
+    return{area:"Ventas",texto:"👤 Debe ingresarlo: área de VENTAS (asesor de la unidad)"};
+  if(t.indexOf("diagnós")>=0||t.indexOf("diagnos")>=0||t.indexOf("reparador")>=0||t.indexOf("trabajo realizado")>=0||t.indexOf("n/serie")>=0||t.indexOf("mantenimiento")>=0)
+    return{area:"Mantenimiento",texto:"🔧 Debe ingresarlo: área de MANTENIMIENTO"};
+  if(t.indexOf("compras")>=0||t.indexOf("refaccion")>=0||t.indexOf("material")>=0)
+    return{area:"Compras",texto:"📦 Debe ingresarlo: área de COMPRAS"};
+  return{area:"",texto:"Debe completarlo el área responsable del estatus actual"};
+}
+function mostrarAlertaGrandeFaltantes(items,u,estatusAnterior,nuevoEstatus){
+  const labels=(items||[]).map(function(x){return typeof x==="string"?x:(x.label||String(x));}).filter(Boolean);
+  if(!labels.length)return;
+  // agrupar por responsable
+  const por={};
+  labels.forEach(function(lab){
+    const r=responsableFaltante(lab);
+    const k=r.texto;
+    if(!por[k])por[k]=[];
+    por[k].push(lab);
+  });
+  let quienHtml="";
+  Object.keys(por).forEach(function(k){
+    quienHtml+="<div style='margin-bottom:6px'>"+k+"</div>";
+  });
+  const ov=document.getElementById("modalFaltantesGrande");
+  const lista=document.getElementById("mfLista");
+  const quien=document.getElementById("mfQuien");
+  const meta=document.getElementById("mfMeta");
+  if(!ov||!lista){
+    alert("⛔ No se puede cambiar de estatus.\n\nFalta:\n• "+labels.join("\n• ")+"\n\n"+Object.keys(por).join("\n"));
+    return;
+  }
+  if(meta)meta.innerHTML="Unidad <b>"+String((u&&u.no_unidad)||"—")+"</b> · "+String((u&&u.cliente)||"")+"<br>De <b>"+String(estatusAnterior||"")+"</b> → <b>"+String(nuevoEstatus||"")+"</b>";
+  if(quien)quien.innerHTML=quienHtml;
+  lista.innerHTML=labels.map(function(lab){
+    const r=responsableFaltante(lab);
+    return "<li>"+String(lab).replace(/</g,"&lt;")+" <span style='font-size:11px;font-weight:600;opacity:.85'>("+r.area+")</span></li>";
+  }).join("");
+  ov.classList.add("open");
+  try{document.body.style.overflow="hidden";}catch(e){}
+  const btn=document.getElementById("mfBtnOk");
+  if(btn)btn.onclick=function(){
+    ov.classList.remove("open");
+    try{document.body.style.overflow="";}catch(e){}
+    // también mostrar panel inline si existe
+    try{
+      if(typeof mostrarPanelFaltantesCambio==="function"){
+        const itemsObj=labels.map(function(lab){return{label:lab,key:typeof claveCampoDesdeEtiquetaFaltante==="function"?claveCampoDesdeEtiquetaFaltante(lab):""};});
+        mostrarPanelFaltantesCambio(itemsObj,u,estatusAnterior,nuevoEstatus);
+      }
+    }catch(e){}
+    try{
+      const box=document.getElementById("boxCompletarFaltantes");
+      if(box){box.style.display="block";box.scrollIntoView({behavior:"smooth",block:"center"});}
+    }catch(e){}
+  };
+}
+
 function mostrarPanelFaltantesCambio(items,u,estatusAnterior,nuevoEstatus){
   const box=document.getElementById("boxCompletarFaltantes");
   const lista=document.getElementById("listaFaltantesCambio");
@@ -5539,123 +5610,177 @@ function validarObligatoriosPorEstatus(u,estatusAnterior,nuevoEstatus,area,extra
     if(typeof tieneDiagnosticoCompleto==="function")return tieneDiagnosticoCompleto(x);
     return !!(x.diagnostico_detalle&&String(x.diagnostico_detalle).trim())||!!(x.diagnostico_pdf_url&&String(x.diagnostico_pdf_url).trim());
   }
+  function tienePdfOrden(x){
+    return !vacio(x.orden_trabajo_pdf_url)||!vacio(x.orden_trabajo_pdf)||!vacio(x.pdf_orden_trabajo);
+  }
   const falt=[];
-  const asesor=extras.asesor||u.asesor_ventas;
+  let asesor=extras.asesor||u.asesor_ventas;
   const diag=extras.diagnosticador||u.diagnosticador;
   const rep=extras.reparador||u.reparador;
+  const esVR=typeof esTrabajoVentasRefacciones==="function"&&esTrabajoVentasRefacciones(u);
+  const esRescate=typeof esTrabajoRescate==="function"&&esTrabajoRescate(u);
+  const esKuzzy=typeof esTrabajoKuzzy==="function"&&esTrabajoKuzzy(u);
+  const esFuera=typeof esTrabajoFueraTaller==="function"&&esTrabajoFueraTaller(u);
+  // Orden de proceso (taller normal)
+  const ORDEN=["Agenda","Recibida","Diagnosticando","Cotizando","Espera de refacciones","Reparando","Finalizada"];
+  function idxEst(e){const i=ORDEN.indexOf(e);return i<0?0:i;}
+  const iPrev=idxEst(estatusAnterior||"");
+  const iNext=idxEst(nuevoEstatus||"");
+  const avanza=estatusAnterior&&nuevoEstatus&&estatusAnterior!==nuevoEstatus&&iNext>iPrev;
+  const cambia=estatusAnterior&&nuevoEstatus&&estatusAnterior!==nuevoEstatus;
 
-  // ═══════════════════════════════════════════════════════════
-  // REGLAS DE SALIDA (fijas del proceso)
-  // 1) Ventas recibe → datos azules completos
-  // 2) Diagnosticando → no sale sin diagnóstico
-  // 3) Cotizando → no sale sin orden de trabajo (PDF)
-  // 4) Reparando → no sale sin trabajo realizado
-  // ═══════════════════════════════════════════════════════════
-  if(estatusAnterior&&estatusAnterior!==nuevoEstatus){
-
-    // 1) VENTAS · Recibida / Agenda
-    if("Recibida"===estatusAnterior||"Agenda"===estatusAnterior){
-      const esVR=typeof esTrabajoVentasRefacciones==="function"&&esTrabajoVentasRefacciones(u);
-      if(vacio(u.cliente))falt.push("Cliente (Ventas)");
-      if(!esVR&&vacio(u.modelo))falt.push("Modelo (Ventas)");
-      if(vacio(u.problema))falt.push(esVR?"Qué se vende / notas (Ventas)":"Problema / descripción (Ventas)");
-      if(!esVR&&vacio(asesor))falt.push("Asesor de ventas (Ventas)");
-      // En venta de refacciones el asesor se toma de la sesión si falta
-      if(esVR&&vacio(asesor)&&sesion&&sesion.persona){asesor=sesion.persona;}
-      if(!esVR){
-        if(vacio(u.no_unidad))falt.push("No. económico (Ventas · datos azules)");
-        if(vacio(u.placas)&&!(typeof esTrabajoFueraTaller==="function"&&esTrabajoFueraTaller(u)))falt.push("Placas (Ventas · datos azules)");
-        if(vacio(u.contacto))falt.push("Contacto (Ventas · datos azules)");
-        if(vacio(u.telefono)&&vacio(u.cel))falt.push("Teléfono o celular (Ventas · datos azules)");
-        if(vacio(u.direccion))falt.push("Dirección (Ventas · datos azules)");
-        if(vacio(u.ciudad))falt.push("Ciudad (Ventas · datos azules)");
-      }
+  // ─── Helpers por departamento ───
+  function exigirDatosVentasRecepcion(){
+    if(vacio(u.cliente))falt.push("Cliente (Ventas · recepción)");
+    if(!esVR&&vacio(u.modelo))falt.push("Modelo (Ventas · recepción)");
+    if(vacio(u.problema))falt.push(esVR?"Qué se vende / notas (Ventas)":"Problema / descripción (Ventas · recepción)");
+    if(vacio(asesor)){
+      if(esVR&&sesion&&sesion.persona)asesor=sesion.persona;
+      else falt.push("Asesor de ventas (Ventas · recepción)");
     }
-
-    // 2) MANTENIMIENTO · Diagnosticando → no sale sin diagnóstico
-    if("Diagnosticando"===estatusAnterior){
-      if(!(typeof esTrabajoFueraTaller==="function"&&esTrabajoFueraTaller(u))){
-        if(!tieneDiag(u))falt.push("Diagnóstico (texto o PDF) — obligatorio para salir de Diagnosticando");
-        if(vacio(diag))falt.push("Nombre del diagnosticador");
-      }
-    }
-
-    // 3) VENTAS · Cotizando → no sale sin orden de trabajo (al avanzar)
-    if("Cotizando"===estatusAnterior){
-      if(["Espera de refacciones","Reparando","Finalizada"].indexOf(nuevoEstatus)>=0){
-        if(vacio(u.orden_trabajo_pdf_url))falt.push("Orden de trabajo (PDF) — Ventas debe subirla en Cotizando antes de avanzar");
-        if(vacio(u.folio))falt.push("Cotización / folio (Ventas · Cotizando)");
-        if(vacio(u.hoja_servicio))falt.push("Pedido / hoja de servicio (Ventas · Cotizando)");
-      }
-    }
-
-    // Compras · Espera de refacciones
-    if("Espera de refacciones"===estatusAnterior){
-      if(["Reparando","Finalizada"].indexOf(nuevoEstatus)>=0){
-        if(vacio(u.refacciones_esperadas)&&"si"===String(u.requiere_refacciones||"").toLowerCase())
-          falt.push("Material / refacciones (Compras · Espera de refacciones)");
-      }
-    }
-
-    // 4) MANTENIMIENTO · Reparando → no sale sin trabajo realizado
-    if("Reparando"===estatusAnterior){
-      if(!(typeof esTrabajoFueraTaller==="function"&&esTrabajoFueraTaller(u)&&"RescateCarretera"===String(u.ubicacion_trabajo||""))){
-        if(vacio(u.trabajo_realizado))falt.push("Trabajo realizado — obligatorio para salir de Reparando");
-      }
-      if("Finalizada"===nuevoEstatus&&vacio(rep)&&!(typeof esTrabajoFueraTaller==="function"&&esTrabajoFueraTaller(u)))
-        falt.push("Reparador (Mantenimiento · Reparando)");
-    }
-  }
-
-  // Al ENTRAR a ciertos estatus
-  if("Recibida"===nuevoEstatus){
-    const esVR=typeof esTrabajoVentasRefacciones==="function"&&esTrabajoVentasRefacciones(u);
-    if(vacio(u.cliente))falt.push("Cliente (Ventas)");
-    if(vacio(u.modelo))falt.push("Modelo (Ventas)");
-    if(vacio(u.problema))falt.push(esVR?"Notas de la venta (Ventas)":"Problema / descripción (Ventas)");
-    if(vacio(asesor))falt.push("Asesor de ventas (Ventas)");
     if(!esVR){
-      if(vacio(u.no_unidad))falt.push("No. económico / unidad (Ventas)");
-      if(vacio(u.placas)&&!(typeof esTrabajoFueraTaller==="function"&&esTrabajoFueraTaller(u)))falt.push("Placas (Ventas)");
+      if(vacio(u.no_unidad))falt.push("No. económico (Ventas · datos azules)");
+      if(vacio(u.placas)&&!esFuera)falt.push("Placas (Ventas · datos azules)");
       if(vacio(u.contacto))falt.push("Contacto (Ventas · datos azules)");
       if(vacio(u.telefono)&&vacio(u.cel))falt.push("Teléfono o celular (Ventas · datos azules)");
       if(vacio(u.direccion))falt.push("Dirección (Ventas · datos azules)");
       if(vacio(u.ciudad))falt.push("Ciudad (Ventas · datos azules)");
     }
   }
-  if("Diagnosticando"===nuevoEstatus&&"Recibida"!==estatusAnterior&&"Agenda"!==estatusAnterior){
-    // si viene de otro lado, ya se validó salida de origen
+  function exigirDiagnosticoMant(){
+    if(esRescate||esKuzzy||esVR)return;
+    if(!tieneDiag(u))falt.push("Diagnóstico texto o PDF (Mantenimiento · Diagnosticando)");
+    if(vacio(diag))falt.push("Diagnosticador (Mantenimiento · Diagnosticando)");
+    if(vacio(u.no_serie))falt.push("N/Serie TK (Mantenimiento · Diagnosticando)");
   }
-  if("Finalizada"===nuevoEstatus&&typeof validarCamposParaFinalizar==="function"){
+  function exigirCotizacionVentas(){
+    if(esRescate)return; // rescate/sigma no cotizan igual
+    if(!tienePdfOrden(u))falt.push("Orden de trabajo en PDF (Ventas · Cotizando)");
+    if(vacio(u.folio))falt.push("Cotización / folio (Ventas · Cotizando)");
+    if(vacio(u.hoja_servicio)&&vacio(u.orden_compra))falt.push("Pedido / hoja de servicio u orden de compra (Ventas · Cotizando)");
+  }
+  function exigirComprasEspera(){
+    if(esRescate||esKuzzy)return;
+    const req=String(u.requiere_refacciones||"").toLowerCase();
+    if(req==="si"||req==="sí"){
+      if(vacio(u.refacciones_esperadas))falt.push("Material / refacciones detalladas (Compras · Espera de refacciones)");
+    }
+  }
+  function exigirReparacionMant(){
+    if(!(esRescate&&String(u.ubicacion_trabajo||"").indexOf("Carretera")>=0)){
+      if(vacio(u.trabajo_realizado))falt.push("Trabajo realizado (Mantenimiento · Reparando)");
+    }
+    if(vacio(rep))falt.push("Reparador (Mantenimiento · Reparando)");
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 1) Al SALIR del estatus actual → exigir lo de ese paso
+  // ═══════════════════════════════════════════════════════════
+  if(cambia){
+    if(estatusAnterior==="Agenda"||estatusAnterior==="Recibida"){
+      exigirDatosVentasRecepcion();
+    }
+    if(estatusAnterior==="Diagnosticando"){
+      exigirDiagnosticoMant();
+    }
+    if(estatusAnterior==="Cotizando"){
+      if(nuevoEstatus!=="Agenda"&&nuevoEstatus!=="Recibida"){
+        exigirCotizacionVentas();
+      }
+    }
+    if(estatusAnterior==="Espera de refacciones"){
+      if(["Reparando","Finalizada"].indexOf(nuevoEstatus)>=0)exigirComprasEspera();
+    }
+    if(estatusAnterior==="Reparando"){
+      exigirReparacionMant();
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 2) Al AVANZAR → no dejar huecos de pasos anteriores
+  //    (evita llegar al final con campos vacíos del proceso)
+  // ═══════════════════════════════════════════════════════════
+  if(avanza||nuevoEstatus==="Finalizada"){
+    // Si ya pasó por recepción (o está en recepción hacia adelante)
+    if(iNext>idxEst("Agenda")){
+      exigirDatosVentasRecepcion();
+    }
+    // Si avanza más allá de Diagnosticando (taller) y no es flujo corto
+    if(!esRescate&&!esKuzzy&&!esVR&&iNext>idxEst("Diagnosticando")){
+      exigirDiagnosticoMant();
+    }
+    // Si avanza más allá de Cotizando
+    if(!esRescate&&!esVR&&iNext>idxEst("Cotizando")){
+      // Kuzzy: cotiza sí; rescate no
+      if(!esKuzzy||iNext>idxEst("Cotizando")){
+        if(!esRescate)exigirCotizacionVentas();
+      }
+    }
+    if(esKuzzy&&iNext>=idxEst("Finalizada")){
+      // Kuzzy: Recibida → Cotizando → Finalizada
+      exigirDatosVentasRecepcion();
+      if(vacio(u.folio)&&vacio(u.problema))falt.push("Datos de cotización Kuzzy (Ventas)");
+    }
+    // Si avanza más allá de Espera o va a Finalizada pasando por refacciones
+    if(!esRescate&&!esKuzzy&&!esVR&&iNext>idxEst("Espera de refacciones")){
+      if(String(u.requiere_refacciones||"").toLowerCase()==="si"||String(u.requiere_refacciones||"").toLowerCase()==="sí"){
+        exigirComprasEspera();
+      }
+    }
+    // Si finaliza o sale de reparación
+    if(nuevoEstatus==="Finalizada"||(estatusAnterior==="Reparando"&&iNext>idxEst("Reparando"))){
+      if(!esVR)exigirReparacionMant();
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 3) Al ENTRAR a estatus clave
+  // ═══════════════════════════════════════════════════════════
+  if(nuevoEstatus==="Recibida"){
+    exigirDatosVentasRecepcion();
+  }
+  if(nuevoEstatus==="Reparando"&&!esVR){
+    // reparador se autoasigna, pero si no hay nadie de mant, avisar
+    if(vacio(rep)&&area!=="Mantenimiento"){
+      falt.push("Reparador (Mantenimiento debe asignarlo al pasar a Reparando)");
+    }
+  }
+  if(nuevoEstatus==="Finalizada"&&typeof validarCamposParaFinalizar==="function"){
     const f2=validarCamposParaFinalizar(Object.assign({},u,{asesor_ventas:asesor,diagnosticador:diag,reparador:rep}));
     (f2||[]).forEach(function(x){if(falt.indexOf(x)<0)falt.push(x);});
   }
 
-  
-  if(!falt.length){
+  // Dedupe
+  const seen={};
+  const falt2=[];
+  falt.forEach(function(x){if(!seen[x]){seen[x]=1;falt2.push(x);}});
+
+  if(!falt2.length){
     try{const box=document.getElementById("boxCompletarFaltantes");if(box)box.style.display="none";}catch(e){}
     return{ok:true,faltantes:[],items:[]};
   }
-  const items=falt.map(function(label){
+  const items=falt2.map(function(label){
     return{label:label,key:(typeof claveCampoDesdeEtiquetaFaltante==="function"?claveCampoDesdeEtiquetaFaltante(label):"")};
   });
   if(full){
-    const seguir=confirm("⚠️ Faltan datos obligatorios (Gerencia puede continuar):\n\n• "+falt.join("\n• ")+"\n\n¿Continuar de todos modos?");
-    if(seguir)return{ok:true,faltantes:falt,items:items,forzado:true};
+    const seguir=confirm("⚠️ Faltan datos de procesos anteriores (Gerencia puede forzar):\n\n• "+falt2.join("\n• ")+"\n\n¿Continuar de todos modos?");
+    if(seguir)return{ok:true,faltantes:falt2,items:items,forzado:true};
   }
-  try{if(typeof mostrarPanelFaltantesCambio==="function")mostrarPanelFaltantesCambio(items,u,estatusAnterior,nuevoEstatus);}catch(e){}
-  return{ok:false,faltantes:falt,items:items};
+  return{ok:false,faltantes:falt2,items:items};
 }
 async function confirmarCambio(){const id=unidadEnEdicion;if(!id)return;if(!requerirSesion())return;const area=sesion.area,persona=sesion.persona,nuevoEstatus=document.getElementById("estatusCambio").value;if(!nuevoEstatus)return void alert("⚠️ Selecciona el nuevo estatus");if("function"==typeof advertirWipSiAplica&&!advertirWipSiAplica(nuevoEstatus))return;const u=unidades.find(item=>item.id===id);if(!u)return;if(!exigirDatosRecibidaAntesDeDiagnostico(u,nuevoEstatus,"cambio",{}))return;if(!(tienePermisoTotal()||"Gerencia"===area||sesion&&"Abel"===sesion.persona)){const permisosArea=permisosCambio[area];if(!(permisosArea&&permisosArea[u.estatus]?permisosArea[u.estatus]:[]).includes(nuevoEstatus))return void alert(`❌ El área ${area} no tiene permiso para cambiar de "${u.estatus}" a "${nuevoEstatus}".`)}let comentario=document.getElementById("comentarioCambio").value.trim();const estatusAnterior=u.estatus;
 const _valObl=validarObligatoriosPorEstatus(u,estatusAnterior,nuevoEstatus,area,{});
 if(!_valObl.ok){
   try{
-    if(_valObl.items&&_valObl.items.length&&typeof mostrarPanelFaltantesCambio==="function"){
-      mostrarPanelFaltantesCambio(_valObl.items,u,estatusAnterior,nuevoEstatus);
-    }else if(_valObl.faltantes&&_valObl.faltantes.length){
-      alert("⚠️ Faltan:\n• "+_valObl.faltantes.join("\n• "));
+    const items=_valObl.items&&_valObl.items.length?_valObl.items:(_valObl.faltantes||[]).map(function(l){return{label:l};});
+    if(typeof mostrarAlertaGrandeFaltantes==="function"){
+      mostrarAlertaGrandeFaltantes(items,u,estatusAnterior,nuevoEstatus);
+    }else if(items.length&&typeof mostrarPanelFaltantesCambio==="function"){
+      mostrarPanelFaltantesCambio(items,u,estatusAnterior,nuevoEstatus);
+    }else{
+      alert("⛔ Faltan datos:\n• "+(_valObl.faltantes||[]).join("\n• "));
     }
-  }catch(e){}
+  }catch(e){alert("Faltan datos obligatorios");}
   return;
 }
 try{const box=document.getElementById("boxCompletarFaltantes");if(box)box.style.display="none";}catch(e){}
@@ -5711,7 +5836,7 @@ if(!reparador){
   const elegido=prompt("🛠️ Elige el reparador:\n\n"+(nombres.join("\n")||"(escribe el nombre)"),nombres[0]||"");
   if(!elegido||!String(elegido).trim())return void alert("Debes indicar un reparador.");
   reparador=String(elegido).trim();
-}const historial=(u.historial||[]).slice();if(historial.push({fecha:fechaHistorialAhora(),estatus:"Reparando",area:sesion.area,persona:sesion.persona,comentario:"Piezas listas → Reparando · "+(u.refacciones_esperadas||"")}),(await actualizarUnidad(id,{estatus:"Reparando",reparador,refacciones_estado:"completa",historial})).success){cerrarModal("modalDetalle");try{await notificarDuenoMovimiento(Object.assign({},u,{estatus:"Reparando",reparador}),"Reparando","Piezas listas")}catch(e){}try{mostrarToastApp("✅ "+(u.no_unidad||"")+" liberada → Reparando","#28a745")}catch(e){alert("✅ Unidad pasada a Reparando.")}actualizarNotificaciones()}}function duenoConfigEstatus(estatus){return{Recibida:{campo:"asesor_ventas",label:"Asesor de ventas",area:"Ventas"},Cotizando:{campo:"asesor_ventas",label:"Asesor de ventas",area:"Ventas"},Diagnosticando:{campo:"diagnosticador",label:"Diagnosticador",area:"Mantenimiento"},"Espera de refacciones":{campo:"responsable_compras",label:"Responsable de Compras",area:"Compras"},Reparando:{campo:"reparador",label:"Reparador",area:"Mantenimiento"}}[estatus]||null}function valorDuenoUnidad(u,campo,extras){return extras=extras||{},"asesor_ventas"===campo?(extras.asesor||u.asesor_ventas||"").toString().trim():"diagnosticador"===campo?(extras.diagnosticador||u.diagnosticador||"").toString().trim():"reparador"===campo?(extras.reparador||u.reparador||"").toString().trim():"responsable_compras"===campo?(extras.responsable_compras||u.responsable_compras||"").toString().trim():(u[campo]||"").toString().trim()}function promptAsignarDueno(cfg,u){if(!cfg)return null;if("asesor_ventas"===cfg.campo){const nombres=nombresRegistradosArea("Ventas"),sug=sesion&&"Ventas"===sesion.area?sesion.persona:nombres[0]||"",elegido=prompt("💰 Dueño de columna — "+cfg.label+" (obligatorio):\n\n"+nombres.join("\n")+"\n\nNombre exacto:",sug);return elegido&&elegido.trim()&&esUsuarioRegistrado(elegido.trim(),"Ventas")?elegido.trim():null}if("diagnosticador"===cfg.campo){const nombres=nombresDiagnosticadores(),sug=sesion&&puedeDiagnosticar(sesion.persona)?sesion.persona:nombres[0]||"",elegido=prompt("🔧 Dueño de columna — Diagnosticador (obligatorio):\n\n"+nombres.join("\n")+"\n\nNombre exacto:",sug);return elegido&&elegido.trim()&&nombres.includes(elegido.trim())?elegido.trim():null}if("reparador"===cfg.campo){const nombres=nombresReparadores(),sug=(u.reparador||"").trim()||(sesion&&puedeReparar(sesion.persona)?sesion.persona:nombres[0]||""),elegido=prompt("🛠️ Dueño de columna — Reparador (obligatorio):\n\n"+nombres.map((n,i)=>i+1+". "+n).join("\n")+"\n\nNombre exacto:",sug);return elegido&&elegido.trim()&&nombres.includes(elegido.trim())?elegido.trim():null}if("responsable_compras"===cfg.campo){const nombres=nombresRegistradosArea("Compras"),sug=sesion&&"Compras"===sesion.area?sesion.persona:nombres[0]||sesion.persona||"",elegido=prompt("🛒 Dueño de columna — Responsable de Compras (obligatorio):\n\n"+(nombres.length?nombres.join("\n"):"(tu nombre de sesión)")+"\n\nNombre exacto:",sug);return elegido&&elegido.trim()?!nombres.length||esUsuarioRegistrado(elegido.trim(),"Compras")||"function"==typeof tienePermisoTotal&&tienePermisoTotal()?elegido.trim():(alert("Debe ser un usuario de Compras registrado."),null):null}return null}function validarYAsignarDuenosCambio(u,estatusAnterior,nuevoEstatus,area,extrasPrev){extrasPrev=extrasPrev||{};const patch={},fuera=esTrabajoKuzzy(u)||esTrabajoVentasRefacciones(u)||esTrabajoRescate(u);if(!fuera&&estatusAnterior&&"Agenda"!==estatusAnterior&&"Finalizada"!==estatusAnterior){const cfgAct=duenoConfigEstatus(estatusAnterior);if(cfgAct){let val=valorDuenoUnidad(u,cfgAct.campo,extrasPrev);if(!val)if(area===cfgAct.area||"Gerencia"===area||"function"==typeof tienePermisoTotal&&tienePermisoTotal()||"diagnosticador"===cfgAct.campo&&"Mantenimiento"===area||"reparador"===cfgAct.campo&&"Mantenimiento"===area){const asigned=promptAsignarDueno(cfgAct,u);if(!asigned)return{ok:!1,error:"⚠️ Sin dueño no se mueve la columna.\nFalta: "+cfgAct.label+' en estatus "'+estatusAnterior+'".'};val=asigned,patch[cfgAct.campo]=asigned,extrasPrev["asesor_ventas"===cfgAct.campo?"asesor":cfgAct.campo]=asigned}else{if("function"!=typeof tienePermisoTotal||!tienePermisoTotal())return{ok:!1,error:"⚠️ Sin dueño no se mueve la columna.\nFalta: "+cfgAct.label+".\nDebe asignarlo "+cfgAct.area+" en Editar o al tomar la unidad."};if(!confirm("Superusuario: la unidad no tiene "+cfgAct.label+".\n¿Mover de todos modos?"))return{ok:!1,error:"Cancelado"}}}}if(!fuera&&nuevoEstatus&&"Agenda"!==nuevoEstatus&&"Finalizada"!==nuevoEstatus){const cfgN=duenoConfigEstatus(nuevoEstatus);if(cfgN){let val=valorDuenoUnidad(u,cfgN.campo,Object.assign({},extrasPrev,{asesor:patch.asesor_ventas||extrasPrev.asesor,diagnosticador:patch.diagnosticador||extrasPrev.diagnosticador,reparador:patch.reparador||extrasPrev.reparador,responsable_compras:patch.responsable_compras||extrasPrev.responsable_compras}));if(!val&&("responsable_compras"===cfgN.campo&&"Compras"===area&&sesion&&sesion.persona?(val=sesion.persona,patch.responsable_compras=val):"diagnosticador"===cfgN.campo&&"Mantenimiento"===area&&sesion&&puedeDiagnosticar(sesion.persona),!val)){const asigned=promptAsignarDueno(cfgN,u);if(asigned)patch[cfgN.campo]=asigned,val=asigned;else{if("function"!=typeof tienePermisoTotal||!tienePermisoTotal())return{ok:!1,error:'⚠️ No se puede pasar a "'+nuevoEstatus+'" sin '+cfgN.label+".\nAsígnalo para tener dueño de columna."};if(!confirm('Superusuario: entrará a "'+nuevoEstatus+'" sin '+cfgN.label+".\n¿Continuar?"))return{ok:!1,error:"Cancelado"}}}}}if(!(fuera||"Diagnosticando"!==estatusAnterior||"Cotizando"!==nuevoEstatus&&"Espera de refacciones"!==nuevoEstatus&&"Reparando"!==nuevoEstatus||(patch.reparador||u.reparador||extrasPrev.reparador||"").toString().trim())){if(!("Mantenimiento"===area||"Gerencia"===area||"function"==typeof tienePermisoTotal&&tienePermisoTotal()))return{ok:!1,error:"⚠️ Falta reparador. Mantenimiento debe asignarlo en Diagnosticando antes de cotizar o reparar."};{const nombres=nombresReparadores(),sug=sesion&&puedeReparar(sesion.persona)?sesion.persona:nombres[0]||"",elegido=prompt("🛠️ Asigna el REPARADOR ahora (en Diagnosticando).\n\nAsí, cuando liberen piezas o pasen a Reparando, el piso ya sabe quién toma la unidad.\n\n"+nombres.map((n,i)=>i+1+". "+n).join("\n")+"\n\nNombre exacto:",sug);if(!elegido||!elegido.trim()||!nombres.includes(elegido.trim()))return{ok:!1,error:"⚠️ Debes asignar el reparador al salir de Diagnosticando."};patch.reparador=elegido.trim()}}if(!fuera&&!esTrabajoRescate(u)&&"Reparando"===nuevoEstatus&&!(patch.reparador||u.reparador||"").toString().trim()){if(!("Mantenimiento"===area||"Gerencia"===area||"function"==typeof tienePermisoTotal&&tienePermisoTotal()))return{ok:!1,error:"⚠️ Sin reparador no se puede pasar a Reparando.\nMantenimiento debe asignarlo desde Diagnosticando."};{const asigned=promptAsignarDueno(duenoConfigEstatus("Reparando"),u);if(!asigned)return{ok:!1,error:"⚠️ Reparando requiere reparador asignado."};patch.reparador=asigned}}return{ok:!0,patch}}function validarCamposParaEstatus(u,estatus){
+}const historial=(u.historial||[]).slice();if(historial.push({fecha:fechaHistorialAhora(),estatus:"Reparando",area:sesion.area,persona:sesion.persona,comentario:"Piezas listas → Reparando · "+(u.refacciones_esperadas||"")}),(await actualizarUnidad(id,{estatus:"Reparando",reparador,refacciones_estado:"completa",historial})).success){cerrarModal("modalDetalle");try{await notificarDuenoMovimiento(Object.assign({},u,{estatus:"Reparando",reparador}),"Reparando","Piezas listas")}catch(e){}try{mostrarToastApp("✅ "+(u.no_unidad||"")+" liberada → Reparando","#28a745")}catch(e){alert("✅ Unidad pasada a Reparando.")}actualizarNotificaciones()}}function duenoConfigEstatus(estatus){return{Recibida:{campo:"asesor_ventas",label:"Asesor de ventas",area:"Ventas"},Cotizando:{campo:"asesor_ventas",label:"Asesor de ventas",area:"Ventas"},Diagnosticando:{campo:"diagnosticador",label:"Diagnosticador",area:"Mantenimiento"},"Espera de refacciones":{campo:"responsable_compras",label:"Responsable de Compras",area:"Compras"},Reparando:{campo:"reparador",label:"Reparador",area:"Mantenimiento"}}[estatus]||null}function valorDuenoUnidad(u,campo,extras){return extras=extras||{},"asesor_ventas"===campo?(extras.asesor||u.asesor_ventas||"").toString().trim():"diagnosticador"===campo?(extras.diagnosticador||u.diagnosticador||"").toString().trim():"reparador"===campo?(extras.reparador||u.reparador||"").toString().trim():"responsable_compras"===campo?(extras.responsable_compras||u.responsable_compras||"").toString().trim():(u[campo]||"").toString().trim()}function promptAsignarDueno(cfg,u){if(!cfg)return null;if("asesor_ventas"===cfg.campo){const nombres=nombresRegistradosArea("Ventas"),sug=sesion&&"Ventas"===sesion.area?sesion.persona:nombres[0]||"",elegido=prompt("💰 Dueño de columna — "+cfg.label+" (obligatorio):\n\n"+nombres.join("\n")+"\n\nNombre exacto:",sug);return elegido&&elegido.trim()&&esUsuarioRegistrado(elegido.trim(),"Ventas")?elegido.trim():null}if("diagnosticador"===cfg.campo){const nombres=nombresDiagnosticadores(),sug=sesion&&puedeDiagnosticar(sesion.persona)?sesion.persona:nombres[0]||"",elegido=prompt("🔧 Dueño de columna — Diagnosticador (obligatorio):\n\n"+nombres.join("\n")+"\n\nNombre exacto:",sug);return elegido&&elegido.trim()&&nombres.includes(elegido.trim())?elegido.trim():null}if("reparador"===cfg.campo){const nombres=nombresReparadores(),sug=(u.reparador||"").trim()||(sesion&&puedeReparar(sesion.persona)?sesion.persona:nombres[0]||""),elegido=prompt("🛠️ Dueño de columna — Reparador (obligatorio):\n\n"+nombres.map((n,i)=>i+1+". "+n).join("\n")+"\n\nNombre exacto:",sug);return elegido&&elegido.trim()&&nombres.includes(elegido.trim())?elegido.trim():null}if("responsable_compras"===cfg.campo){const nombres=nombresRegistradosArea("Compras"),sug=sesion&&"Compras"===sesion.area?sesion.persona:nombres[0]||sesion.persona||"",elegido=prompt("🛒 Dueño de columna — Responsable de Compras (obligatorio):\n\n"+(nombres.length?nombres.join("\n"):"(tu nombre de sesión)")+"\n\nNombre exacto:",sug);return elegido&&elegido.trim()?!nombres.length||esUsuarioRegistrado(elegido.trim(),"Compras")||"function"==typeof tienePermisoTotal&&tienePermisoTotal()?elegido.trim():(alert("Debe ser un usuario de Compras registrado."),null):null}return null}function validarYAsignarDuenosCambio(u,estatusAnterior,nuevoEstatus,area,extrasPrev){extrasPrev=extrasPrev||{};const patch={};if(nuevoEstatus==="Reparando"&&area==="Mantenimiento"&&sesion&&sesion.persona&&!(extrasPrev.reparador||(u&&u.reparador))){patch.reparador=sesion.persona;extrasPrev.reparador=sesion.persona;}const fuera=esTrabajoKuzzy(u)||esTrabajoVentasRefacciones(u)||esTrabajoRescate(u);if(!fuera&&estatusAnterior&&"Agenda"!==estatusAnterior&&"Finalizada"!==estatusAnterior){const cfgAct=duenoConfigEstatus(estatusAnterior);if(cfgAct){let val=valorDuenoUnidad(u,cfgAct.campo,extrasPrev);if(!val)if(area===cfgAct.area||"Gerencia"===area||"function"==typeof tienePermisoTotal&&tienePermisoTotal()||"diagnosticador"===cfgAct.campo&&"Mantenimiento"===area||"reparador"===cfgAct.campo&&"Mantenimiento"===area){const asigned=promptAsignarDueno(cfgAct,u);if(!asigned)return{ok:!1,error:"⚠️ Sin dueño no se mueve la columna.\nFalta: "+cfgAct.label+' en estatus "'+estatusAnterior+'".'};val=asigned,patch[cfgAct.campo]=asigned,extrasPrev["asesor_ventas"===cfgAct.campo?"asesor":cfgAct.campo]=asigned}else{if("function"!=typeof tienePermisoTotal||!tienePermisoTotal())return{ok:!1,error:"⚠️ Sin dueño no se mueve la columna.\nFalta: "+cfgAct.label+".\nDebe asignarlo "+cfgAct.area+" en Editar o al tomar la unidad."};if(!confirm("Superusuario: la unidad no tiene "+cfgAct.label+".\n¿Mover de todos modos?"))return{ok:!1,error:"Cancelado"}}}}if(!fuera&&nuevoEstatus&&"Agenda"!==nuevoEstatus&&"Finalizada"!==nuevoEstatus){const cfgN=duenoConfigEstatus(nuevoEstatus);if(cfgN){let val=valorDuenoUnidad(u,cfgN.campo,Object.assign({},extrasPrev,{asesor:patch.asesor_ventas||extrasPrev.asesor,diagnosticador:patch.diagnosticador||extrasPrev.diagnosticador,reparador:patch.reparador||extrasPrev.reparador,responsable_compras:patch.responsable_compras||extrasPrev.responsable_compras}));if(!val&&("responsable_compras"===cfgN.campo&&"Compras"===area&&sesion&&sesion.persona?(val=sesion.persona,patch.responsable_compras=val):"diagnosticador"===cfgN.campo&&"Mantenimiento"===area&&sesion&&puedeDiagnosticar(sesion.persona),!val)){const asigned=promptAsignarDueno(cfgN,u);if(asigned)patch[cfgN.campo]=asigned,val=asigned;else{if("function"!=typeof tienePermisoTotal||!tienePermisoTotal())return{ok:!1,error:'⚠️ No se puede pasar a "'+nuevoEstatus+'" sin '+cfgN.label+".\nAsígnalo para tener dueño de columna."};if(!confirm('Superusuario: entrará a "'+nuevoEstatus+'" sin '+cfgN.label+".\n¿Continuar?"))return{ok:!1,error:"Cancelado"}}}}}if(!(fuera||"Diagnosticando"!==estatusAnterior||"Cotizando"!==nuevoEstatus&&"Espera de refacciones"!==nuevoEstatus&&"Reparando"!==nuevoEstatus||(patch.reparador||u.reparador||extrasPrev.reparador||"").toString().trim())){if(!("Mantenimiento"===area||"Gerencia"===area||"function"==typeof tienePermisoTotal&&tienePermisoTotal()))return{ok:!1,error:"⚠️ Falta reparador. Mantenimiento debe asignarlo en Diagnosticando antes de cotizar o reparar."};{const nombres=nombresReparadores(),sug=sesion&&puedeReparar(sesion.persona)?sesion.persona:nombres[0]||"",elegido=prompt("🛠️ Asigna el REPARADOR ahora (en Diagnosticando).\n\nAsí, cuando liberen piezas o pasen a Reparando, el piso ya sabe quién toma la unidad.\n\n"+nombres.map((n,i)=>i+1+". "+n).join("\n")+"\n\nNombre exacto:",sug);if(!elegido||!elegido.trim()||!nombres.includes(elegido.trim()))return{ok:!1,error:"⚠️ Debes asignar el reparador al salir de Diagnosticando."};patch.reparador=elegido.trim()}}if(!fuera&&!esTrabajoRescate(u)&&"Reparando"===nuevoEstatus&&!(patch.reparador||u.reparador||"").toString().trim()){if(!("Mantenimiento"===area||"Gerencia"===area||"function"==typeof tienePermisoTotal&&tienePermisoTotal()))return{ok:!1,error:"⚠️ Sin reparador no se puede pasar a Reparando.\nMantenimiento debe asignarlo desde Diagnosticando."};{const asigned=promptAsignarDueno(duenoConfigEstatus("Reparando"),u);if(!asigned)return{ok:!1,error:"⚠️ Reparando requiere reparador asignado."};patch.reparador=asigned}}return{ok:!0,patch}}function validarCamposParaEstatus(u,estatus){
   if(esTrabajoVentasRefacciones(u)){
     // Sin horómetro, servicio, modelo obligatorio ni datos de taller
     const falt=[];
@@ -5756,8 +5881,6 @@ if(!reparador){
   }catch(e){}
   try{actualizarNotificaciones()}catch(e){}
 }function obtenerEventosNotif(){try{return JSON.parse(localStorage.getItem("thermocontrol_notif_eventos")||"[]")}catch{return[]}}function registrarNotificacionEvento(ev){const cfg=getConfigNotif(),esMovimiento=!!ev.forzarNavegador;if(!1===cfg.cambios&&!esMovimiento)return;const lista=obtenerEventosNotif();lista.unshift({...ev,areaSesion:null,fecha:fechaHistorialAhora(),id:Date.now()}),localStorage.setItem("thermocontrol_notif_eventos",JSON.stringify(lista.slice(0,40))),ev.titulo&&(esMovimiento||sesion)&&mostrarNotifNavegador(nombreAppTaller(getTallerActual()),ev.titulo+(ev.detalle?" — "+ev.detalle:""))}function obtenerNotifsDescartadas(){try{return JSON.parse(localStorage.getItem("thermocontrol_notif_descartadas")||"[]")}catch{return[]}}
-
-
 
 /* ===== PUNTOS v3: log local + recálculo desde historial ===== */
 function lunesDeEstaSemana(d){
@@ -6167,7 +6290,6 @@ function anunciarCambioPuntos(prev,next){
   }catch(e){console.warn("anunciarCambioPuntos",e);}
 }
 
-
 function nombreSesionNorm(){
   return String((sesion&&sesion.persona)||"").trim().toLowerCase();
 }
@@ -6563,7 +6685,6 @@ function abrirHistorialConfirmacionesMsg(){
   ov.innerHTML="<div style='background:#fff;width:100%;max-width:520px;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0' onclick='event.stopPropagation()'>"+html+"</div>";
   document.body.appendChild(ov);
 }
-
 
 /* ===== Preguntas entre usuarios (Sí/No o texto) ===== */
 let _colaPreguntas=[];
@@ -7046,7 +7167,7 @@ document.addEventListener("visibilitychange",function(){
   },8000);
   // primer chequeo pronto al iniciar sesión
   setTimeout(tickMsg,2500);
-})();const PLANTILLAS_DIAGNOSTICO=["Sin falla en prueba de carretera / prueba en frío","Baja de gas — posible fuga; realizar prueba de hermeticidad","Compresor con ruido / bloqueado — evaluar cambio","Sensor de temperatura defectuoso / lectura errática","Problema eléctrico: fusible / relé / cableado","Unidad no arranca — revisar batería, pretrip y códigos","Requiere servicio mayor / overhaul","Cliente autorizó solo diagnóstico, pendiente cotización"];function renderPlantillasDiagnostico(){const box=document.getElementById("plantillasDiagnostico");box&&(box.innerHTML=PLANTILLAS_DIAGNOSTICO.map(t=>`<button type="button" class="btn-accion" style="background:#e8f7fa;border:1px solid #9fd3db;border-radius:16px;padding:6px 10px;font-size:12px;"\n                onclick="aplicarPlantillaDiagnostico(${JSON.stringify(t)})">${t}</button>`).join(""))}function aplicarPlantillaDiagnostico(texto){const ta=document.getElementById("diagnosticoDetalle");ta&&!ta.readOnly&&(ta.value=ta.value.trim()?ta.value.trim()+"\n"+texto:texto,ta.focus())}const PLANTILLAS_NOTA={Mantenimiento:["Diagnóstico en proceso","Esperando autorización del cliente","Falta refacción para continuar","Prueba en frío OK","Unidad lista para entrega","Requiere servicio mayor"],Ventas:["Cotización enviada al cliente","Esperando autorización","Cliente autorizó reparación","Cliente no autorizó","Listo para facturar / entregar"],Compras:["Refacción solicitada a proveedor","Refacción en tránsito","Refacción recibida en taller","Sin existencia — buscar alternativa"],Gerencia:["Revisar prioridad de esta unidad","Autorizado por gerencia","Seguimiento especial con cliente"]};function renderPlantillasNota(){const box=document.getElementById("plantillasNota");if(!box)return;const area=sesion&&sesion.area?sesion.area:"Mantenimiento",lista=PLANTILLAS_NOTA[area]||PLANTILLAS_NOTA.Mantenimiento,todas=lista.concat(["Llamar al cliente","Pendiente de información","En seguimiento"].filter(g=>!lista.includes(g)));box.innerHTML=todas.map(t=>`<button type="button" class="btn-accion" style="background:#e7f1ff; border:1px solid #b6d0f0; border-radius:16px; padding:6px 10px; font-size:12px;"\n                onclick="aplicarPlantillaNota(${JSON.stringify(t)})">${t}</button>`).join("")}function aplicarPlantillaNota(texto){const ta=document.getElementById("textoNota");ta&&(ta.value.trim()?ta.value=ta.value.trim()+"\n"+texto:ta.value=texto,ta.focus())}function abrirModalNota(id){if(modoCliente)return;if(!requerirSesion())return;const u=unidades.find(item=>item.id===id);if(!u)return;unidadEnEdicion=id,document.getElementById("infoNota").textContent=`${u.no_unidad} - ${u.cliente} · Estatus: ${u.estatus} · ${sesion.area} (${sesion.persona})`,document.getElementById("areaNota").value=sesion.area,document.getElementById("areaNota").disabled=!0,actualizarPersonasNota(),document.querySelectorAll('input[name="personaNota"]').forEach(r=>{r.checked=r.value===sesion.persona,r.disabled=!0}),document.getElementById("claveNota").value="";const claveG=document.getElementById("claveNota").closest(".form-group");claveG&&(claveG.style.display="none"),document.getElementById("textoNota").value="",renderPlantillasNota(),document.getElementById("modalNota").style.display="flex",setTimeout(()=>document.getElementById("textoNota").focus(),100)}function actualizarPersonasNota(){const area=document.getElementById("areaNota").value,container=document.getElementById("personasListNota"),personas=getPersonasPorArea()[area]||[];area?0!==personas.length?container.innerHTML=personas.map(p=>`\n            <div class="persona-item">\n                <input type="radio" name="personaNota" value="${p}" id="nota_${p.replace(/\s/g,"_")}">\n                <label for="nota_${p.replace(/\s/g,"_")}">${p}</label>\n            </div>\n        `).join(""):container.innerHTML='<p style="color:#888; font-size:13px;">No hay personas en esta área</p>':container.innerHTML=""}async function guardarNotaLibre(){const id=unidadEnEdicion;if(!id)return;if(!requerirSesion())return;const u=unidades.find(item=>item.id===id);if(!u)return;const area=sesion.area,persona=sesion.persona,texto=document.getElementById("textoNota").value.trim();if(!texto)return void alert("⚠️ Escribe la nota");const historial=(u.historial||[]).slice(),menciones=extraerMenciones(texto);if(historial.push({fecha:fechaHistorialAhora(),estatus:u.estatus,area,persona,comentario:texto,tipo:"nota",es_nota:!0,likes:[],menciones:menciones.map(m=>m.persona)}),(await actualizarUnidad(id,{historial})).success){registrarNotificacionEvento({tipo:"info",titulo:`💬 Chat · ${u.no_unidad||"unidad"}`,detalle:`${area} (${persona}): ${texto.substring(0,60)}${texto.length>60?"…":""}`,unidadId:id}),await notificarMenciones(menciones,texto,"nota de "+(u.no_unidad||"unidad")+" · "+(u.cliente||""),id),cerrarModal("modalNota"),actualizarNotificaciones();const extra=menciones.length?"\n🔔 Aviso enviado a: "+menciones.map(m=>m.persona).join(", "):"";alert("✅ Nota guardada (el estatus no cambió)"+extra),abrirModalDetalle(id)}}function abrirModalDiagnostico(id){if(modoCliente)return;const u=unidades.find(item=>item.id===id);if(!u)return void alert("No se encontró la unidad.");const modal=document.getElementById("modalDiagnostico");if(!modal)return void alert("No se encontró el modal de diagnóstico.");unidadEnEdicion=id;const info=document.getElementById("infoDiagnostico");info&&(info.textContent=`${u.no_unidad} - ${u.cliente}`);const ta0=document.getElementById("diagnosticoDetalle");ta0&&(ta0.value=u.diagnostico_detalle||"");const file0=document.getElementById("diagnosticoPdfFile");file0&&(file0.value="");const pdfActual=document.getElementById("diagnosticoPdfActual");u.diagnostico_pdf_url?pdfActual.innerHTML=`✅ PDF: <a href="${u.diagnostico_pdf_url}" target="_blank" rel="noopener">${u.diagnostico_pdf_nombre||"Ver PDF"}</a>`:pdfActual.innerHTML='<span style="color:#888;">Ningún PDF subido todavía</span>';const btnTk=document.getElementById("btnAbrirTkDiag"),puedeEditarDiag="Diagnosticando"===u.estatus&&(puedeModificarUnidad(u)||tienePermisoTotal());btnTk&&(btnTk.style.display=puedeEditarDiag?"block":"none");const ta=document.getElementById("diagnosticoDetalle"),filePdf=document.getElementById("diagnosticoPdfFile");ta&&(ta.readOnly=!puedeEditarDiag),filePdf&&(filePdf.disabled=!puedeEditarDiag),document.querySelectorAll("#modalDiagnostico .btn-modal.primary, #modalDiagnostico .btn-modal.secondary").forEach(btn=>{btn.textContent&&(btn.textContent.includes("Guardar")||btn.textContent.includes("Subir"))&&(btn.style.display=puedeEditarDiag?"":"none")});try{renderPlantillasDiagnostico()}catch(e){}document.getElementById("modalDiagnostico").style.display="flex"}function abrirTkDiagDesdeModal(){unidadEnEdicion&&abrirTkDiag(unidadEnEdicion)}function abrirTkDiag(id){
+})();const PLANTILLAS_DIAGNOSTICO=["Sin falla en prueba de carretera / prueba en frío","Baja de gas — posible fuga; realizar prueba de hermeticidad","Compresor con ruido / bloqueado — evaluar cambio","Sensor de temperatura defectuoso / lectura errática","Problema eléctrico: fusible / relé / cableado","Unidad no arranca — revisar batería, pretrip y códigos","Requiere servicio mayor / overhaul","Cliente autorizó solo diagnóstico, pendiente cotización"];function renderPlantillasDiagnostico(){const box=document.getElementById("plantillasDiagnostico");box&&(box.innerHTML=PLANTILLAS_DIAGNOSTICO.map(t=>`<button type="button" class="btn-accion" style="background:#e8f7fa;border:1px solid #9fd3db;border-radius:16px;padding:6px 10px;font-size:12px;"\n                onclick="aplicarPlantillaDiagnostico(${JSON.stringify(t)})">${t}</button>`).join(""))}function aplicarPlantillaDiagnostico(texto){const ta=document.getElementById("diagnosticoDetalle");ta&&!ta.readOnly&&(ta.value=ta.value.trim()?ta.value.trim()+"\n"+texto:texto,ta.focus())}const PLANTILLAS_NOTA={Mantenimiento:["Diagnóstico en proceso","Esperando autorización del cliente","Falta refacción para continuar","Prueba en frío OK","Unidad lista para entrega","Requiere servicio mayor"],Ventas:["Cotización enviada al cliente","Esperando autorización","Cliente autorizó reparación","Cliente no autorizó","Listo para facturar / entregar"],Compras:["Refacción solicitada a proveedor","Refacción en tránsito","Refacción recibida en taller","Sin existencia — buscar alternativa"],Gerencia:["Revisar prioridad de esta unidad","Autorizado por gerencia","Seguimiento especial con cliente"]};function renderPlantillasNota(){const box=document.getElementById("plantillasNota");if(!box)return;const area=sesion&&sesion.area?sesion.area:"Mantenimiento",lista=PLANTILLAS_NOTA[area]||PLANTILLAS_NOTA.Mantenimiento,todas=lista.concat(["Llamar al cliente","Pendiente de información","En seguimiento"].filter(g=>!lista.includes(g)));box.innerHTML=todas.map(t=>`<button type="button" class="btn-accion" style="background:#e7f1ff; border:1px solid #b6d0f0; border-radius:16px; padding:6px 10px; font-size:12px;"\n                onclick="aplicarPlantillaNota(${JSON.stringify(t)})">${t}</button>`).join("")}function aplicarPlantillaNota(texto){const ta=document.getElementById("textoNota");ta&&(ta.value.trim()?ta.value=ta.value.trim()+"\n"+texto:ta.value=texto,ta.focus())}function abrirModalNota(id){if(modoCliente)return;if(!requerirSesion())return;const u=unidades.find(item=>item.id===id);if(!u)return;unidadEnEdicion=id,document.getElementById("infoNota").textContent=`${u.no_unidad} - ${u.cliente} · Estatus: ${u.estatus} · ${sesion.area} (${sesion.persona})`,document.getElementById("areaNota").value=sesion.area,document.getElementById("areaNota").disabled=!0,actualizarPersonasNota(),document.querySelectorAll('input[name="personaNota"]').forEach(r=>{r.checked=r.value===sesion.persona,r.disabled=!0}),document.getElementById("claveNota").value="";const claveG=document.getElementById("claveNota").closest(".form-group");claveG&&(claveG.style.display="none"),document.getElementById("textoNota").value="",renderPlantillasNota(),document.getElementById("modalNota").style.display="flex",setTimeout(()=>document.getElementById("textoNota").focus(),100)}function actualizarPersonasNota(){const area=document.getElementById("areaNota").value,container=document.getElementById("personasListNota"),personas=getPersonasPorArea()[area]||[];area?0!==personas.length?container.innerHTML=personas.map(p=>`\n            <div class="persona-item">\n                <input type="radio" name="personaNota" value="${p}" id="nota_${p.replace(/\s/g,"_")}">\n                <label for="nota_${p.replace(/\s/g,"_")}">${p}</label>\n            </div>\n        `).join(""):container.innerHTML='<p style="color:#888; font-size:13px;">No hay personas en esta área</p>':container.innerHTML=""}async function guardarNotaLibre(){const id=unidadEnEdicion;if(!id)return;if(!requerirSesion())return;const u=unidades.find(item=>item.id===id);if(!u)return;const area=sesion.area,persona=sesion.persona,texto=document.getElementById("textoNota").value.trim();if(!texto)return void alert("⚠️ Escribe la nota");const historial=(u.historial||[]).slice(),menciones=extraerMenciones(texto);if(historial.push({fecha:fechaHistorialAhora(),estatus:u.estatus,area,persona,comentario:texto,tipo:"nota",es_nota:!0,likes:[],menciones:menciones.map(m=>m.persona)}),(await actualizarUnidad(id,{historial})).success){registrarNotificacionEvento({tipo:"info",titulo:`💬 Chat · ${u.no_unidad||"unidad"}`,detalle:`${area} (${persona}): ${texto.substring(0,60)}${texto.length>60?"…":""}`,unidadId:id}),await notificarMenciones(menciones,texto,"nota de "+(u.no_unidad||"unidad")+" · "+(u.cliente||""),id),cerrarModal("modalNota"),actualizarNotificaciones();const extra=menciones.length?"\n🔔 Aviso enviado a: "+menciones.map(m=>m.persona).join(", "):"";alert("✅ Nota guardada (el estatus no cambió)"+extra),abrirModalDetalle(id)}}function abrirModalDiagnostico(id){if(modoCliente)return;const u=unidades.find(item=>item.id===id);if(!u)return void alert("No se encontró la unidad.");const modal=document.getElementById("modalDiagnostico");if(!modal)return void alert("No se encontró el modal de diagnóstico.");unidadEnEdicion=id;const info=document.getElementById("infoDiagnostico");info&&(info.textContent=`${u.no_unidad} - ${u.cliente}`);const ta0=document.getElementById("diagnosticoDetalle");ta0&&(ta0.value=u.diagnostico_detalle||"");try{if(typeof renderMaterialDiagUI==="function")renderMaterialDiagUI(parseMaterialDiagnostico(u));}catch(eM){}const file0=document.getElementById("diagnosticoPdfFile");file0&&(file0.value="");const pdfActual=document.getElementById("diagnosticoPdfActual");u.diagnostico_pdf_url?pdfActual.innerHTML=`✅ PDF: <a href="${u.diagnostico_pdf_url}" target="_blank" rel="noopener">${u.diagnostico_pdf_nombre||"Ver PDF"}</a>`:pdfActual.innerHTML='<span style="color:#888;">Ningún PDF subido todavía</span>';const btnTk=document.getElementById("btnAbrirTkDiag"),puedeEditarDiag="Diagnosticando"===u.estatus&&(puedeModificarUnidad(u)||tienePermisoTotal());btnTk&&(btnTk.style.display=puedeEditarDiag?"block":"none");const ta=document.getElementById("diagnosticoDetalle"),filePdf=document.getElementById("diagnosticoPdfFile");ta&&(ta.readOnly=!puedeEditarDiag),filePdf&&(filePdf.disabled=!puedeEditarDiag),document.querySelectorAll("#modalDiagnostico .btn-modal.primary, #modalDiagnostico .btn-modal.secondary").forEach(btn=>{btn.textContent&&(btn.textContent.includes("Guardar")||btn.textContent.includes("Subir"))&&(btn.style.display=puedeEditarDiag?"":"none")});try{renderPlantillasDiagnostico()}catch(e){}document.getElementById("modalDiagnostico").style.display="flex"}function abrirTkDiagDesdeModal(){unidadEnEdicion&&abrirTkDiag(unidadEnEdicion)}function abrirTkDiag(id){
   if(modoCliente)return;
   if(!requerirSesion())return;
   const u=unidades.find(item=>item.id===id);
@@ -7108,7 +7229,120 @@ document.addEventListener("visibilitychange",function(){
     alert("⚠️ Error al abrir TK Diag: "+(e&&e.message||e));
   });
 }
-function cerrarModalTkDiag(){const iframe=document.getElementById("iframeTkDiag");iframe&&(iframe.src="about:blank"),document.getElementById("modalTkDiag").style.display="none"}function dataURLtoBlob(dataurl){const arr=dataurl.split(","),mime=(arr[0].match(/:(.*?);/)||[])[1]||"application/pdf",bstr=atob(arr[1]);let n=bstr.length;const u8arr=new Uint8Array(n);for(;n--;)u8arr[n]=bstr.charCodeAt(n);return new Blob([u8arr],{type:mime})}async function recibirPdfDesdeTkDiag(payload){const id=payload.unidadId||unidadEnEdicion;if(id&&payload.pdfBase64)try{const blob=dataURLtoBlob(payload.pdfBase64),fileName=payload.pdfName||"diagnostico_tk_"+id+".pdf",path=`diagnosticos/${id}_${Date.now()}.pdf`,{error:upErr}=await supabaseClient.storage.from("diagnosticos").upload(path,blob,{contentType:"application/pdf",upsert:!0});if(upErr)throw upErr;const{data:urlData}=supabaseClient.storage.from("diagnosticos").getPublicUrl(path),link=urlData.publicUrl,u=unidades.find(x=>x.id===id),historial=u&&u.historial?[...u.historial]:[];historial.push({fecha:fechaHistorialAhora(),estatus:u?u.estatus:"Diagnosticando",area:sesion?sesion.area:"Mantenimiento",persona:sesion?sesion.persona:"TK Diag",comentario:"PDF de diagnóstico TK Diag subido: "+fileName});const update={diagnostico_pdf_url:link,diagnostico_pdf_nombre:fileName,historial};payload.diagnosticoTexto&&(update.diagnostico_detalle=payload.diagnosticoTexto),(await actualizarUnidad(id,update)).success&&(detenerCronoPorDocumento(id),alert("✅ Diagnóstico PDF subido a la unidad"),cerrarModalTkDiag(),cerrarModal("modalDiagnostico"),abrirModalDetalle(id))}catch(err){console.error(err),alert("❌ Error al subir PDF: "+(err.message||err)+"\n\nRevisa el bucket diagnosticos en Supabase Storage.")}else alert("No se recibió el PDF")}async function guardarDiagnostico(){const id=unidadEnEdicion;if(!id)return;const u=unidades.find(item=>item.id===id);if(!u||"Diagnosticando"!==u.estatus)return void alert("⚠️ Solo se puede guardar o modificar el diagnóstico en estatus Diagnosticando.");const texto=document.getElementById("diagnosticoDetalle").value.trim();if(!texto)return void alert("⚠️ Escribe el diagnóstico detallado");const historial=u&&u.historial?[...u.historial]:[];historial.push({fecha:fechaHistorialAhora(),estatus:u?u.estatus:"Diagnosticando",area:"Mantenimiento",persona:"Diagnóstico",comentario:"Diagnóstico detallado actualizado"}),(await actualizarUnidad(id,{diagnostico_detalle:texto,historial})).success&&(cerrarModal("modalDiagnostico"),alert("✅ Diagnóstico guardado"),abrirModalDetalle(id))}async function subirDiagnosticoPdf(){const id=unidadEnEdicion;if(!id)return;const input=document.getElementById("diagnosticoPdfFile"),file=input.files&&input.files[0];if(file)if("application/pdf"===file.type||file.name.toLowerCase().endsWith(".pdf"))try{const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_"),path=`unidad_${id}/${Date.now()}_${safeName}`,{data,error}=await supabaseClient.storage.from("diagnosticos").upload(path,file,{contentType:"application/pdf",upsert:!1});if(error)throw error;const{data:urlData}=supabaseClient.storage.from("diagnosticos").getPublicUrl(path),link=urlData.publicUrl,u=unidades.find(item=>item.id===id),historial=u&&u.historial?[...u.historial]:[];historial.push({fecha:fechaHistorialAhora(),estatus:u?u.estatus:"Diagnosticando",area:"Mantenimiento",persona:"Diagnóstico PDF",comentario:"PDF de diagnóstico subido: "+file.name}),(await actualizarUnidad(id,{diagnostico_pdf_url:link,diagnostico_pdf_nombre:file.name,historial})).success&&(detenerCronoPorDocumento(id),document.getElementById("diagnosticoPdfActual").innerHTML=`✅ PDF: <a href="${link}" target="_blank" rel="noopener">${file.name}</a>`,input.value="",alert("✅ PDF subido. Todos los usuarios pueden verlo en la app."))}catch(err){console.error(err),alert("❌ Error al subir PDF: "+(err.message||err)+"\n\nRevisa que exista el bucket diagnosticos en Supabase Storage y sea público.")}else alert("⚠️ Solo se permiten archivos PDF");else alert("⚠️ Selecciona un archivo PDF primero")}function abrirModalOrdenTrabajoPdf(id){if(modoCliente)return;const u=unidades.find(item=>item.id===id);if(!u)return;
+function cerrarModalTkDiag(){const iframe=document.getElementById("iframeTkDiag");iframe&&(iframe.src="about:blank"),document.getElementById("modalTkDiag").style.display="none"}function dataURLtoBlob(dataurl){const arr=dataurl.split(","),mime=(arr[0].match(/:(.*?);/)||[])[1]||"application/pdf",bstr=atob(arr[1]);let n=bstr.length;const u8arr=new Uint8Array(n);for(;n--;)u8arr[n]=bstr.charCodeAt(n);return new Blob([u8arr],{type:mime})}async function recibirPdfDesdeTkDiag(payload){const id=payload.unidadId||unidadEnEdicion;if(id&&payload.pdfBase64)try{const blob=dataURLtoBlob(payload.pdfBase64),fileName=payload.pdfName||"diagnostico_tk_"+id+".pdf",path=`diagnosticos/${id}_${Date.now()}.pdf`,{error:upErr}=await supabaseClient.storage.from("diagnosticos").upload(path,blob,{contentType:"application/pdf",upsert:!0});if(upErr)throw upErr;const{data:urlData}=supabaseClient.storage.from("diagnosticos").getPublicUrl(path),link=urlData.publicUrl,u=unidades.find(x=>x.id===id),historial=u&&u.historial?[...u.historial]:[];historial.push({fecha:fechaHistorialAhora(),estatus:u?u.estatus:"Diagnosticando",area:sesion?sesion.area:"Mantenimiento",persona:sesion?sesion.persona:"TK Diag",comentario:"PDF de diagnóstico TK Diag subido: "+fileName});const update={diagnostico_pdf_url:link,diagnostico_pdf_nombre:fileName,historial};payload.diagnosticoTexto&&(update.diagnostico_detalle=payload.diagnosticoTexto),(await actualizarUnidad(id,update)).success&&(detenerCronoPorDocumento(id),alert("✅ Diagnóstico PDF subido a la unidad"),cerrarModalTkDiag(),cerrarModal("modalDiagnostico"),abrirModalDetalle(id))}catch(err){console.error(err),alert("❌ Error al subir PDF: "+(err.message||err)+"\n\nRevisa el bucket diagnosticos en Supabase Storage.")}else alert("No se recibió el PDF")}async 
+function parseMaterialDiagnostico(u){
+  try{
+    if(!u)return[];
+    if(Array.isArray(u.material_diagnostico))return u.material_diagnostico.filter(Boolean);
+    if(typeof u.material_diagnostico==="string"&&u.material_diagnostico.trim()){
+      const j=JSON.parse(u.material_diagnostico);
+      if(Array.isArray(j))return j;
+    }
+  }catch(e){}
+  return[];
+}
+function materialDiagnosticoATexto(lista){
+  return(lista||[]).filter(function(r){return r&&(r.descripcion||r.no_parte||r.cant);}).map(function(r){
+    const c=r.cant||"1";
+    const p=r.no_parte||"—";
+    const d=r.descripcion||"";
+    return c+" | "+p+" | "+d;
+  }).join("\n");
+}
+function leerMaterialDiagDesdeUI(){
+  const box=document.getElementById("listaMaterialDiag");
+  if(!box)return[];
+  const rows=[];
+  box.querySelectorAll(".mat-diag-row").forEach(function(row){
+    const cant=(row.querySelector(".mat-cant")||{}).value||"";
+    const parte=(row.querySelector(".mat-parte")||{}).value||"";
+    const desc=(row.querySelector(".mat-desc")||{}).value||"";
+    if(String(cant).trim()||String(parte).trim()||String(desc).trim()){
+      rows.push({cant:String(cant).trim()||"1",no_parte:String(parte).trim(),descripcion:String(desc).trim()});
+    }
+  });
+  return rows;
+}
+function renderMaterialDiagUI(lista){
+  const box=document.getElementById("listaMaterialDiag");
+  if(!box)return;
+  const items=(lista&&lista.length)?lista:[{cant:"1",no_parte:"",descripcion:""}];
+  box.innerHTML=items.map(function(r,i){
+    return '<div class="mat-diag-row" style="display:grid;grid-template-columns:70px 1fr 1.4fr 36px;gap:6px;align-items:center">'
+      +'<input class="mat-cant" type="text" placeholder="Cant" value="'+String(r.cant||"1").replace(/"/g,"&quot;")+'" style="padding:8px;border-radius:8px;border:1px solid #fdba74">'
+      +'<input class="mat-parte" type="text" placeholder="No. parte" value="'+String(r.no_parte||"").replace(/"/g,"&quot;")+'" style="padding:8px;border-radius:8px;border:1px solid #fdba74">'
+      +'<input class="mat-desc" type="text" placeholder="Descripción de la pieza" value="'+String(r.descripcion||"").replace(/"/g,"&quot;")+'" style="padding:8px;border-radius:8px;border:1px solid #fdba74">'
+      +'<button type="button" onclick="this.closest(\'.mat-diag-row\').remove()" style="border:none;background:#fee2e2;color:#b91c1c;border-radius:8px;padding:8px;cursor:pointer;font-weight:800">✕</button>'
+      +'</div>';
+  }).join("");
+}
+function agregarFilaMaterialDiag(){
+  const box=document.getElementById("listaMaterialDiag");
+  if(!box)return;
+  const div=document.createElement("div");
+  div.className="mat-diag-row";
+  div.style.cssText="display:grid;grid-template-columns:70px 1fr 1.4fr 36px;gap:6px;align-items:center";
+  div.innerHTML='<input class="mat-cant" type="text" placeholder="Cant" value="1" style="padding:8px;border-radius:8px;border:1px solid #fdba74">'
+    +'<input class="mat-parte" type="text" placeholder="No. parte" style="padding:8px;border-radius:8px;border:1px solid #fdba74">'
+    +'<input class="mat-desc" type="text" placeholder="Descripción de la pieza" style="padding:8px;border-radius:8px;border:1px solid #fdba74">'
+    +'<button type="button" onclick="this.closest(\'.mat-diag-row\').remove()" style="border:none;background:#fee2e2;color:#b91c1c;border-radius:8px;padding:8px;cursor:pointer;font-weight:800">✕</button>';
+  box.appendChild(div);
+}
+function htmlMaterialDiagnosticoLectura(u){
+  const lista=parseMaterialDiagnostico(u);
+  if(!lista.length){
+    const t=(u&&u.refacciones_esperadas)||"";
+    if(!t)return'<p style="color:#888;font-size:13px">Sin material listado en diagnóstico.</p>';
+    return'<pre style="white-space:pre-wrap;font-size:13px;margin:0">'+String(t).replace(/</g,"&lt;")+'</pre>';
+  }
+  let h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#ffedd5;text-align:left">'
+    +'<th style="padding:6px;border-bottom:1px solid #fdba74">Cant</th>'
+    +'<th style="padding:6px;border-bottom:1px solid #fdba74">No. parte</th>'
+    +'<th style="padding:6px;border-bottom:1px solid #fdba74">Descripción</th></tr></thead><tbody>';
+  lista.forEach(function(r){
+    h+='<tr><td style="padding:6px;border-bottom:1px solid #fed7aa">'+String(r.cant||"1").replace(/</g,"&lt;")+'</td>'
+      +'<td style="padding:6px;border-bottom:1px solid #fed7aa">'+String(r.no_parte||"—").replace(/</g,"&lt;")+'</td>'
+      +'<td style="padding:6px;border-bottom:1px solid #fed7aa">'+String(r.descripcion||"").replace(/</g,"&lt;")+'</td></tr>';
+  });
+  h+='</tbody></table>';
+  return h;
+}
+
+async function guardarDiagnostico(){
+  const id=unidadEnEdicion;
+  if(!id)return;
+  const u=unidades.find(item=>item.id===id);
+  if(!u||"Diagnosticando"!==u.estatus)return void alert("⚠️ Solo se puede guardar o modificar el diagnóstico en estatus Diagnosticando.");
+  const texto=document.getElementById("diagnosticoDetalle").value.trim();
+  if(!texto)return void alert("⚠️ Escribe el diagnóstico detallado");
+  const material=typeof leerMaterialDiagDesdeUI==="function"?leerMaterialDiagDesdeUI():[];
+  const materialTxt=typeof materialDiagnosticoATexto==="function"?materialDiagnosticoATexto(material):"";
+  const historial=u&&u.historial?[...u.historial]:[];
+  historial.push({
+    fecha:fechaHistorialAhora(),
+    estatus:u?u.estatus:"Diagnosticando",
+    area:"Mantenimiento",
+    persona:(sesion&&sesion.persona)||"Diagnóstico",
+    comentario:material.length?"Diagnóstico + material ("+material.length+" pieza(s))":"Diagnóstico detallado actualizado"
+  });
+  const patch={
+    diagnostico_detalle:texto,
+    material_diagnostico:material,
+    historial:historial
+  };
+  // Compras/Ventas también ven refacciones_esperadas en cotizando / espera
+  if(materialTxt){
+    patch.refacciones_esperadas=materialTxt;
+    if(!u.requiere_refacciones)patch.requiere_refacciones="si";
+  }
+  const r=await actualizarUnidad(id,patch);
+  if(r&&r.success){
+    cerrarModal("modalDiagnostico");
+    alert("✅ Diagnóstico guardado"+(material.length?"\n🔩 "+material.length+" pieza(s) para cotizar":"")+"\nAl pasar a Cotizando, Compras y Ventas verán el material.");
+    try{abrirModalDetalle(id);}catch(e){}
+  }
+}
+async function subirDiagnosticoPdf(){const id=unidadEnEdicion;if(!id)return;const input=document.getElementById("diagnosticoPdfFile"),file=input.files&&input.files[0];if(file)if("application/pdf"===file.type||file.name.toLowerCase().endsWith(".pdf"))try{const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_"),path=`unidad_${id}/${Date.now()}_${safeName}`,{data,error}=await supabaseClient.storage.from("diagnosticos").upload(path,file,{contentType:"application/pdf",upsert:!1});if(error)throw error;const{data:urlData}=supabaseClient.storage.from("diagnosticos").getPublicUrl(path),link=urlData.publicUrl,u=unidades.find(item=>item.id===id),historial=u&&u.historial?[...u.historial]:[];historial.push({fecha:fechaHistorialAhora(),estatus:u?u.estatus:"Diagnosticando",area:"Mantenimiento",persona:"Diagnóstico PDF",comentario:"PDF de diagnóstico subido: "+file.name}),(await actualizarUnidad(id,{diagnostico_pdf_url:link,diagnostico_pdf_nombre:file.name,historial})).success&&(detenerCronoPorDocumento(id),document.getElementById("diagnosticoPdfActual").innerHTML=`✅ PDF: <a href="${link}" target="_blank" rel="noopener">${file.name}</a>`,input.value="",alert("✅ PDF subido. Todos los usuarios pueden verlo en la app."))}catch(err){console.error(err),alert("❌ Error al subir PDF: "+(err.message||err)+"\n\nRevisa que exista el bucket diagnosticos en Supabase Storage y sea público.")}else alert("⚠️ Solo se permiten archivos PDF");else alert("⚠️ Selecciona un archivo PDF primero")}function abrirModalOrdenTrabajoPdf(id){if(modoCliente)return;const u=unidades.find(item=>item.id===id);if(!u)return;
 const full=(typeof tienePermisoTotal==="function"&&tienePermisoTotal())||(sesion&&("Gerencia"===sesion.area||"Ventas"===sesion.area));
 if(!full&&"Cotizando"===u.estatus)return void alert("⚠️ En Cotizando la orden de trabajo la sube Ventas.");
 unidadEnEdicion=id;
@@ -7605,7 +7839,6 @@ return{blob:blob,nombreArchivo:nombreArchivo,unidad:u};
 }
 }
 
-
 async function enviarPDFEntregaWhatsApp(){
   try{
     if(!unidadEnEdicion){
@@ -7723,7 +7956,6 @@ function generarFacturaElectronica(){
   }
 }
 
-
 function isCanvasBlank(canvas){if(!canvas)return!0;const data=canvas.getContext("2d").getImageData(0,0,canvas.width,canvas.height).data;for(let i=3;i<data.length;i+=4)if(0!==data[i])return!1;return!0}window.onclick=function(event){event.target.classList.contains("modal")&&(event.target.style.display="none")};try{const bvk=document.getElementById("btnVistaKanban");if(bvk&&bvk.classList.add("active"),document.body.classList.contains("dark")){const bd=document.getElementById("btnDarkMode");bd&&(bd.textContent="Modo claro")}const cc=document.getElementById("claveCambio");cc&&cc.addEventListener("keydown",function(e){"Enter"===e.key&&(e.preventDefault(),confirmarCambio())});const lc=document.getElementById("loginClave");lc&&lc.addEventListener("keydown",function(e){"Enter"===e.key&&(e.preventDefault(),iniciarSesion())})}catch(e){console.warn("init UI",e)}function usuarioExisteEnLista(persona,area,taller){
   if(!persona||!area)return!1;
   if("Cliente"===area)return!0;
@@ -7753,7 +7985,6 @@ function actualizarLabelVersion(){
 function arrancarApp(){try{actualizarLabelVersion()}catch(e){}try{limpiarUsuariosEliminados();}catch(e){}try{asegurarUsuariosBase();rebuildPersonasDesdeUsuarios()}catch(e){console.warn(e)}try{actualizarSelectsTallerUI()}catch(e){console.warn(e)}sesion=null;try{sesion=getSesionGuardada()}catch(e){}sesion&&!sesion.taller&&(sesion.taller="Chihuahua");let sesionValida=!!(sesion&&sesion.area&&sesion.persona);if(sesionValida&&"Cliente"!==sesion.area&&!usuarioExisteEnLista(sesion.persona,sesion.area,sesion.taller)){try{localStorage.removeItem("thermocontrol_sesion"),sessionStorage.removeItem("thermocontrol_sesion")}catch(e){}sesion=null,sesionValida=!1}if(sesionValida){try{document.getElementById("loginOverlay").classList.add("oculto")}catch(e){}try{mostrarInfoSesion()}catch(e){console.warn(e)}try{cargarDatos()}catch(e){console.error(e)}try{iniciarMonitoreoSegundoPlano()}catch(e){}}else{sesion=null;try{const ov=document.getElementById("loginOverlay");ov&&ov.classList.remove("oculto")}catch(e){}try{aplicarLoginPrefill()}catch(e){}}}try{rebuildPersonasDesdeUsuarios()}catch(e){}try{asegurarUsuariosBase();rebuildPersonasDesdeUsuarios()}catch(e){}
 try{iniciarRelojHeader()}catch(e){}
 try{actualizarPersonasLogin()}catch(e){}try{actualizarSelectsTallerUI()}catch(e){}Promise.race([cargarConfigAdmin().catch(function(e){console.warn(e)}),new Promise(function(res){setTimeout(res,1e4)})]).then(function(){try{actualizarSelectsTallerUI()}catch(e){}arrancarApp()}).catch(function(e){console.error("Init error",e),arrancarApp()}),"serviceWorker"in navigator&&window.addEventListener("load",function(){registrarServiceWorkerNotif().then(function(){actualizarEstadoPushUI()})});</script>
-
 
 <!-- ===== GUÍA REFRIGERANTE / ACEITE (Ventas + Mantenimiento) ===== -->
 <div class="modal" id="modalGuiaRefrigerante" style="display:none;z-index:10070;">
@@ -7992,7 +8223,6 @@ try{actualizarPersonasLogin()}catch(e){}try{actualizarSelectsTallerUI()}catch(e)
   </div>
 </div>
 
-
 <div class="modal-msg-confirm-overlay" id="modalConfirmacionMensaje" aria-modal="true" role="dialog">
   <div class="modal-msg-confirm-box" id="modalConfirmacionMensajeBox">
     <div class="msg-badge">📩 Mensaje personal</div>
@@ -8004,7 +8234,6 @@ try{actualizarPersonasLogin()}catch(e){}try{actualizarSelectsTallerUI()}catch(e)
     <div class="msg-queue" id="msgConfirmQueue"></div>
   </div>
 </div>
-
 
 <div class="modal-pregunta-overlay" id="modalNuevaPregunta">
   <div class="modal-pregunta-box">
@@ -8040,5 +8269,16 @@ try{actualizarPersonasLogin()}catch(e){}try{actualizarSelectsTallerUI()}catch(e)
   </div>
 </div>
 
+<div class="modal-faltantes-overlay" id="modalFaltantesGrande">
+  <div class="modal-faltantes-box">
+    <h2>⛔ No se puede cambiar de estatus</h2>
+    <div class="mf-meta" id="mfMeta" style="font-size:13px;opacity:.9;margin-bottom:6px"></div>
+    <div class="mf-quien" id="mfQuien"></div>
+    <p style="font-size:13px;margin:0 0 6px;font-weight:700">Falta completar:</p>
+    <ul id="mfLista"></ul>
+    <p style="font-size:12px;margin:0 0 12px;opacity:.85">Hasta que se complete, la unidad <b>no avanza</b>. Guarda los datos en Editar y vuelve a intentar.</p>
+    <button type="button" class="mf-btn" id="mfBtnOk">Entendido — ir a completar</button>
+  </div>
+</div>
 </body>
 </html>
