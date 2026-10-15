@@ -200,6 +200,44 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
 .modal-faltantes-box ul{margin:8px 0 14px;padding-left:20px;font-size:15px;line-height:1.45}
 .modal-faltantes-box ul li{margin-bottom:6px;font-weight:700}
 .modal-faltantes-box .mf-btn{width:100%;padding:14px;border:none;border-radius:12px;background:#ea580c;color:#fff;font-weight:900;font-size:16px;cursor:pointer}
+
+.card-falta-mini {
+  font-size: 10px;
+  font-weight: 800;
+  color: #9a3412;
+  background: #ffedd5;
+  border: 1px solid #fb923c;
+  border-radius: 6px;
+  padding: 3px 6px;
+  margin: 3px 0 2px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-compact.card-collapsed .card-falta-mini { display: block; }
+.card-falta-box {
+  font-size: 11px;
+  margin: 6px 0;
+  padding: 8px 10px;
+  background: #fff7ed;
+  color: #9a3412;
+  border: 2px solid #f97316;
+  border-radius: 10px;
+  line-height: 1.35;
+}
+.card-falta-title { font-weight: 900; margin-bottom: 4px; color: #c2410c; }
+.card-falta-list { margin: 0; padding-left: 16px; }
+.card-falta-list li { margin: 2px 0; }
+.card-falta-quien {
+  font-size: 10px;
+  font-weight: 700;
+  background: #ffedd5;
+  color: #9a3412;
+  padding: 1px 6px;
+  border-radius: 999px;
+  margin-left: 4px;
+}
 </style>
 </head>
 <body>
@@ -4572,7 +4610,7 @@ const puedeMod=!modoCliente&&puedeModificarUnidad(u);card.draggable=puedeMod,car
     return;
   }
   abrirModalDetalle(u.id);
-};const ultimo=u.historial&&u.historial.length>0?u.historial[u.historial.length-1]:null,sla=colorSla(esFinalizada||"Agenda"===u.estatus?"ok":nivelSlaEstatus(u)),dueno=duenoVisibleUnidad(u);card.style.borderLeft=esFinalizada||"Agenda"===u.estatus?"":"5px solid "+sla.border;const resumenCard=[u.modelo,u.problema].filter(Boolean).map(s=>String(s)).join(" · "),resumenCorto=resumenCard?resumenCard.length>70?resumenCard.slice(0,70)+"…":resumenCard:"";card.innerHTML=`\n                    <div class="card-head"><span class="card-toggle-hint">▶ tocar</span><div class="card-cliente">${u.cliente||"Sin cliente"}\n                        ${u.es_garantia||u.es_reingreso?' <span style="font-size:10px;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;">🛡️</span>':""}\n                        ${u.espera_cliente?' <span style="font-size:10px;background:#e7f1ff;color:#004085;padding:1px 6px;border-radius:8px;">⏸️</span>':""}\n                        ${u.pausa_compras?' <span style="font-size:10px;background:#f3e8ff;color:#5b21b6;padding:1px 6px;border-radius:8px;">⏸️</span>':""}\n                    </div>\n                    <div class="card-unidad"># ${u.no_unidad||"—"} ${badgeUbicacionHtml(u)} ${textoBadgeGarantia(u)}</div></div><div class="card-detail">\n                    ${(function(){try{return htmlCronoCard(u)}catch(e){return ""}})()}${(function(){try{return htmlQueFalta(u)}catch(e){return ""}})()}${(function(){try{return htmlChecklistUnidad(u)}catch(e){return ""}})()}${resumenCorto?`<div class="card-resumen">${resumenCorto}</div>`:""}\n                    <div class="fechas">\n                        📅 Llegada: ${formatearFecha(u.fecha_llegada)}\n                        ${u.fecha_salida?" | 🚚 Salida: "+formatearFecha(u.fecha_salida):""}\n                    </div>\n                    ${dueno?`<div style="font-size:11px; margin:4px 0; color:#333;"><strong>Responsable:</strong> ${dueno}</div>`:""}
+};const ultimo=u.historial&&u.historial.length>0?u.historial[u.historial.length-1]:null,sla=colorSla(esFinalizada||"Agenda"===u.estatus?"ok":nivelSlaEstatus(u)),dueno=duenoVisibleUnidad(u);card.style.borderLeft=esFinalizada||"Agenda"===u.estatus?"":"5px solid "+sla.border;const resumenCard=[u.modelo,u.problema].filter(Boolean).map(s=>String(s)).join(" · "),resumenCorto=resumenCard?resumenCard.length>70?resumenCard.slice(0,70)+"…":resumenCard:"";card.innerHTML=`\n                    <div class="card-head"><span class="card-toggle-hint">▶ tocar</span><div class="card-cliente">${u.cliente||"Sin cliente"}\n                        ${u.es_garantia||u.es_reingreso?' <span style="font-size:10px;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;">🛡️</span>':""}\n                        ${u.espera_cliente?' <span style="font-size:10px;background:#e7f1ff;color:#004085;padding:1px 6px;border-radius:8px;">⏸️</span>':""}\n                        ${u.pausa_compras?' <span style="font-size:10px;background:#f3e8ff;color:#5b21b6;padding:1px 6px;border-radius:8px;">⏸️</span>':""}\n                    </div>\n                    <div class="card-unidad"># ${u.no_unidad||"—"} ${badgeUbicacionHtml(u)} ${textoBadgeGarantia(u)}</div>${(function(){try{return htmlQueFalta(u,{compact:true})}catch(e){return ""}})()}</div><div class="card-detail">\n                    ${(function(){try{return htmlCronoCard(u)}catch(e){return ""}})()}${(function(){try{return htmlQueFalta(u)}catch(e){return ""}})()}${(function(){try{return htmlChecklistUnidad(u)}catch(e){return ""}})()}${resumenCorto?`<div class="card-resumen">${resumenCorto}</div>`:""}\n                    <div class="fechas">\n                        📅 Llegada: ${formatearFecha(u.fecha_llegada)}\n                        ${u.fecha_salida?" | 🚚 Salida: "+formatearFecha(u.fecha_salida):""}\n                    </div>\n                    ${dueno?`<div style="font-size:11px; margin:4px 0; color:#333;"><strong>Responsable:</strong> ${dueno}</div>`:""}
                     ${(u.hoja_servicio||u.orden_compra)?`<div style="font-size:11px;margin:3px 0;display:flex;flex-wrap:wrap;gap:4px;">
                       ${u.hoja_servicio?`<span style="background:#d1fae5;color:#065f46;padding:2px 7px;border-radius:8px;font-weight:700;">📋 ${String(u.hoja_servicio).slice(0,16)}</span>`:""}
                       ${u.orden_compra?`<span style="background:#dbeafe;color:#1e40af;padding:2px 7px;border-radius:8px;font-weight:700;">🧾 OC ${String(u.orden_compra).slice(0,14)}</span>`:""}
@@ -5241,38 +5279,107 @@ if(!_vo.ok){
   return;
 }}if(!(tienePermisoTotal()||"Gerencia"===sesion.area)&&!rolPuedeOperarEstatus(sesion.area,u.estatus))return void alert("🔒 Tu rol ("+sesion.area+") no opera el estatus «"+u.estatus+"».");const msg=opts.confirmMsg||"¿Pasar «"+(u.no_unidad||"")+"» a "+nuevoEstatus+"?";if(!confirm(msg))return;let comentario=opts.comentario||"Acción rápida: "+u.estatus+" → "+nuevoEstatus;const historial=(u.historial||[]).slice();historial.push({fecha:fechaHistorialAhora(),estatus:nuevoEstatus,area:sesion.area,persona:sesion.persona,comentario,tipo:opts.tipo||"accion_rapida"});const datos=Object.assign({estatus:nuevoEstatus,historial},opts.extra||{});if(u.espera_cliente&&"Cotizando"!==nuevoEstatus&&"Recibida"!==nuevoEstatus&&(datos.espera_cliente=!1,datos.espera_cliente_nota="",datos.espera_cliente_desde=null),(await actualizarUnidad(id,datos)).success){try{cerrarModal("modalDetalle")}catch(e){}try{await notificarDuenoMovimiento(Object.assign({},u,datos),nuevoEstatus,comentario)}catch(e){}try{actualizarNotificaciones()}catch(e){}try{mostrarToastApp("✅ "+(u.no_unidad||"Unidad")+" → "+nuevoEstatus,"#28a745")}catch(e){alert("✅ Movido a "+nuevoEstatus)}}}function fechaInicioEstacion(u){if(!u)return null;const hist=Array.isArray(u.historial)?u.historial:[];for(let i=hist.length-1;i>=0;i--){const h=hist[i];if(h&&h.estatus===u.estatus&&h.fecha)return h.fecha}return u.fecha_llegada||u.created_at||u.updated_at||null}function formatoTimerEstacion(ms){(null==ms||isNaN(ms)||ms<0)&&(ms=0);const totalMin=Math.floor(ms/6e4),d=Math.floor(totalMin/1440),h=Math.floor(totalMin%1440/60),m=totalMin%60;return d>0?d+"d "+h+"h":h>0?h+"h "+String(m).padStart(2,"0")+"m":m+" min"}function actualizarTimersEstacionDOM(){const now=Date.now();document.querySelectorAll(".timer-estacion[data-timer-desde]").forEach(el=>{const desde=el.getAttribute("data-timer-desde");if(!desde)return;const t0=new Date(desde).getTime();if(isNaN(t0))return;const ms=now-t0,val=el.querySelector(".timer-val");val&&(val.textContent=formatoTimerEstacion(ms)),el.classList.remove("warn","danger");const horas=ms/36e5;horas>=24?el.classList.add("danger"):horas>=8&&el.classList.add("warn")})}void 0===window._timerEstacionInterval&&(window._timerEstacionInterval=setInterval(actualizarTimersEstacionDOM,3e4),setTimeout(actualizarTimersEstacionDOM,400));const ESTACION_POR_AREA={Mantenimiento:["Diagnosticando","Reparando"],Ventas:["Recibida","Cotizando","Agenda"],Compras:["Espera de refacciones"],Gerencia:[]};let _mapaEstatusPrev={};function alertarLlegadasAEstacion(listaUnidades){if(!sesion||modoCliente||!Array.isArray(listaUnidades))return;const misCols=ESTACION_POR_AREA[sesion.area]||[];if(!misCols.length&&"Gerencia"!==sesion.area)return;const nuevoMapa={};listaUnidades.forEach(u=>{if(!u||!u.id)return;nuevoMapa[u.id]=u.estatus;const prev=_mapaEstatusPrev[u.id];if(prev&&prev!==u.estatus&&("Gerencia"===sesion.area||misCols.includes(u.estatus))&&"Finalizada"!==u.estatus&&"Agenda"!==u.estatus){const msg="📥 Nueva en "+u.estatus+": "+(u.cliente||"")+" #"+(u.no_unidad||"");try{mostrarToastApp(msg,"#0d6efd",{duracion:3500})}catch(e){}try{"function"==typeof agregarNotificacionLocal&&agregarNotificacionLocal({titulo:"Unidad en tu estación",detalle:msg,tipo:"aviso"})}catch(e){}}}),Object.keys(_mapaEstatusPrev).length,_mapaEstatusPrev=nuevoMapa}function confirmarAccionRapida(etiqueta,fn){const texto=(etiqueta||"esta acción").replace(/<[^>]+>/g,"").trim();if(confirm("¿Confirmas: "+texto+"?"))try{fn()}catch(e){console.error(e)}}
 
-function htmlQueFalta(u){
-  if(!u||u.eliminado||u.estatus==="Finalizada"||u.estatus==="Agenda")return"";
-  const falt=[];
+function faltantesParaAvanzarKanban(u){
+  if(!u||u.eliminado)return[];
   const est=u.estatus||"";
-  if(est==="Recibida"||est==="Diagnosticando"){
-    if(!(u.cliente||"").toString().trim())falt.push("cliente");
-    if(!(u.no_unidad||"").toString().trim())falt.push("no. unidad");
-    if(!(u.modelo||"").toString().trim())falt.push("modelo");
-    if(!(u.problema||u.falla_llegada||"").toString().trim())falt.push("problema");
+  if(est==="Finalizada"||est==="Agenda")return[];
+  function vacio(v){return v==null||!String(v).trim();}
+  function tieneDiag(x){
+    return !vacio(x.diagnostico_detalle)||!vacio(x.diagnostico_pdf_url);
   }
-  if(est==="Diagnosticando"){
-    if(!(u.diagnostico_detalle||"").toString().trim()&&!(u.diagnostico_pdf_url||"").toString().trim())falt.push("diagnóstico");
-    if(!(u.diagnosticador||"").toString().trim())falt.push("diagnosticador");
+  function tienePdf(x){
+    return !vacio(x.orden_trabajo_pdf_url)||!vacio(x.orden_trabajo_pdf)||!vacio(x.pdf_orden_trabajo);
   }
+  function tieneMaterial(x){
+    try{
+      if(typeof parseMaterialDiagnostico==="function"){
+        const m=parseMaterialDiagnostico(x);
+        if(m&&m.length)return true;
+      }
+    }catch(e){}
+    return !vacio(x.refacciones_esperadas)||!vacio(x.material_diagnostico);
+  }
+  const esRescate=typeof esTrabajoRescate==="function"&&esTrabajoRescate(u);
+  const esVR=typeof esTrabajoVentasRefacciones==="function"&&esTrabajoVentasRefacciones(u);
+  const esKuzzy=typeof esTrabajoKuzzy==="function"&&esTrabajoKuzzy(u);
+  const esFuera=typeof esTrabajoFueraTaller==="function"&&esTrabajoFueraTaller(u);
+  const falt=[]; // {txt, quien}
+
+  // Datos base recepción (siempre que no sea solo agenda)
+  if(est==="Recibida"||est==="Diagnosticando"||est==="Cotizando"||est==="Espera de refacciones"||est==="Reparando"){
+    if(vacio(u.cliente))falt.push({txt:"Cliente",quien:"Ventas"});
+    if(!esVR&&vacio(u.modelo))falt.push({txt:"Modelo",quien:"Ventas"});
+    if(vacio(u.problema)&&vacio(u.falla_llegada))falt.push({txt:"Problema",quien:"Ventas"});
+    if(vacio(u.asesor_ventas))falt.push({txt:"Asesor",quien:"Ventas"});
+    if(!esVR){
+      if(vacio(u.no_unidad))falt.push({txt:"No. económico",quien:"Ventas"});
+      if(vacio(u.placas)&&!esFuera)falt.push({txt:"Placas",quien:"Ventas"});
+    }
+  }
+
+  if(est==="Recibida"){
+    if(!esVR&&!esRescate){
+      if(vacio(u.contacto))falt.push({txt:"Contacto",quien:"Ventas"});
+      if(vacio(u.telefono)&&vacio(u.cel))falt.push({txt:"Teléfono",quien:"Ventas"});
+    }
+  }
+
+  if(est==="Diagnosticando"&&!esRescate&&!esVR){
+    if(!tieneDiag(u))falt.push({txt:"Diagnóstico",quien:"Mantenimiento"});
+    if(vacio(u.diagnosticador))falt.push({txt:"Diagnosticador",quien:"Mantenimiento"});
+    if(vacio(u.no_serie))falt.push({txt:"N/Serie TK",quien:"Mantenimiento"});
+  }
+
   if(est==="Cotizando"){
-    if(!(u.folio||"").toString().trim())falt.push("folio/OT");
-    if(!(u.hoja_servicio||"").toString().trim())falt.push("orden pedido");
+    if(!tienePdf(u)&&!esRescate)falt.push({txt:"PDF orden trabajo",quien:"Ventas"});
+    if(vacio(u.folio))falt.push({txt:"Folio cotización",quien:"Ventas"});
+    if(vacio(u.hoja_servicio)&&vacio(u.orden_compra))falt.push({txt:"Pedido / OT",quien:"Ventas"});
+    // comparar material del técnico
+    if(!esRescate&&!tieneMaterial(u))falt.push({txt:"Material del técnico",quien:"Ver diagnóstico"});
   }
+
   if(est==="Espera de refacciones"){
-    if(!(u.refacciones_esperadas||"").toString().trim())falt.push("lista piezas");
+    if(vacio(u.refacciones_esperadas)&&!tieneMaterial(u))falt.push({txt:"Lista de piezas",quien:"Compras"});
   }
+
   if(est==="Reparando"){
-    if(!(u.reparador||"").toString().trim())falt.push("reparador");
+    if(vacio(u.reparador))falt.push({txt:"Reparador",quien:"Mantenimiento"});
+    if(!esRescate&&vacio(u.trabajo_realizado))falt.push({txt:"Trabajo realizado",quien:"Mantenimiento"});
   }
-  // Rescate/Sigma need técnico
-  try{
-    const ubi=typeof ubicacionTrabajoUnidad==="function"?ubicacionTrabajoUnidad(u):"";
-    if((ubi==="RescateCarretera"||ubi==="ServiciosSigma")&&!(u.reparador||"").toString().trim())falt.push("técnico");
-  }catch(e){}
-  if(!falt.length)return"";
-  return `<div style="font-size:11px;margin:4px 0;padding:4px 8px;background:#fef2f2;color:#991b1b;border-radius:8px;border:1px solid #fecaca;"><strong>Falta:</strong> ${falt.slice(0,4).join(" · ")}</div>`;
+
+  // Rescate/Sigma: reparador al reparar
+  if(esRescate&&(est==="Reparando"||est==="Recibida")&&vacio(u.reparador)&&est==="Reparando"){
+    if(!falt.some(function(x){return x.txt==="Reparador";}))falt.push({txt:"Reparador",quien:"Mantenimiento"});
+  }
+
+  // dedupe
+  const seen={};
+  return falt.filter(function(x){
+    const k=x.txt;
+    if(seen[k])return false;
+    seen[k]=1;return true;
+  });
 }
+function htmlQueFalta(u,opts){
+  opts=opts||{};
+  const falt=typeof faltantesParaAvanzarKanban==="function"?faltantesParaAvanzarKanban(u):[];
+  if(!falt.length)return"";
+  const compact=!!opts.compact;
+  if(compact){
+    const n=falt.length;
+    const preview=falt.slice(0,3).map(function(x){return x.txt;}).join(", ");
+    const extra=n>3?" +"+(n-3):"";
+    return '<div class="card-falta-mini" title="'+falt.map(function(x){return x.txt+" ("+x.quien+")";}).join(" · ").replace(/"/g,"&quot;")+'">'
+      +'⚠️ Falta: '+preview.replace(/</g,"&lt;")+extra
+      +'</div>';
+  }
+  return '<div class="card-falta-box">'
+    +'<div class="card-falta-title">⚠️ Para cambiar de estatus falta:</div>'
+    +'<ul class="card-falta-list">'+falt.map(function(x){
+      return '<li><b>'+String(x.txt).replace(/</g,"&lt;")+'</b> <span class="card-falta-quien">'+String(x.quien).replace(/</g,"&lt;")+'</span></li>';
+    }).join("")+'</ul></div>';
+}
+
 
 function htmlChecklistUnidad(u){
   if(!u||u.eliminado)return"";
