@@ -624,7 +624,7 @@ body.dark .modal-pregunta-box .pq-body{background:#0f172a;border-color:#334155}
             <button type="button" class="btn-header btn-vista" id="btnVistaLista" onclick="cambiarVista('lista')">📑 Lista</button>
             <button type="button" class="btn-header btn-vista" id="btnVistaHistorialBar" onclick="cambiarVista('historial')">📜 Historial</button>
             <button type="button" class="btn-header" id="btnModoBasicoKanban" onclick="toggleModoBasicoKanban()" title="Solo columnas de tu área" style="display:none;">✨ Simple</button>
-            <span id="statusConexion" class="status-conexion">—</span>
+            <span id="statusConexion" class="status-conexion">—</span><button type="button" id="btnRecargarTablero" onclick="window.__cargandoDatos=false;reanudarSesionSiHay();" style="margin-left:6px;padding:6px 12px;border:none;border-radius:16px;background:#28a745;color:#fff;font-weight:800;font-size:12px;cursor:pointer;">🔄 Actualizar</button>
         </div>
     </div>
 </div>
@@ -2433,12 +2433,34 @@ async function continuarTrasLogin(){
   try{document.documentElement.classList.add("sesion-guardada");}catch(e){}
   try{mostrarInfoSesion();}catch(e){}
   try{aplicarModoClienteUI(sesion&&sesion.area==="Cliente");}catch(e){}
+  window.__cargandoDatos=false;
   try{await cargarDatos();}catch(e){console.error("cargarDatos",e);}
   try{iniciarMonitoreoSegundoPlano();}catch(e){}
   try{cargarPendientesTareas();}catch(e){}
   try{cargarLlamadasGerencia().then(function(){try{actualizarBannerLlamadaGerencia();}catch(e){}});}catch(e){}
   try{cargarNominas();}catch(e){}
 }
+/** Al volver a la app: restaura sesión y recarga el tablero sin pedir clave */
+async function reanudarSesionSiHay(){
+  try{
+    const s=(typeof getSesionGuardada==="function"?getSesionGuardada():null)||window.__sesionBoot||null;
+    if(!s||!s.area||!s.persona)return false;
+    sesion=s;
+    if(!sesion.taller)sesion.taller="Chihuahua";
+    try{document.getElementById("loginOverlay").classList.add("oculto");}catch(e){}
+    try{document.documentElement.classList.add("sesion-guardada");}catch(e){}
+    try{mostrarInfoSesion();}catch(e){}
+    try{aplicarModoClienteUI(sesion.area==="Cliente");}catch(e){}
+    window.__cargandoDatos=false;
+    try{await cargarDatos();}catch(e){console.error("reanudar cargarDatos",e);}
+    try{iniciarMonitoreoSegundoPlano();}catch(e){}
+    return true;
+  }catch(e){
+    console.error("reanudarSesionSiHay",e);
+    return false;
+  }
+}
+
 const BUCKET_DIAGNOSTICOS="diagnosticos",TALLER_DEFAULT="Chihuahua";let listaTalleres=[{id:"Chihuahua",etiqueta:"Chihuahua",nombre:"Thermo King Chihuahua"},{id:"Juarez",etiqueta:"Juárez",nombre:"Thermo King Juárez"}];function getTallerDef(t){const id=t||"Chihuahua";return(listaTalleres||[]).find(x=>x.id===id)||(listaTalleres||[]).find(x=>"Chihuahua"===x.id)||{id,etiqueta:id,nombre:"Thermo King "+id}}function etiquetaTaller(t){return getTallerDef(t).etiqueta||t||"Chihuahua"}function nombreAppTaller(t){return getTallerDef(t).nombre||"Thermo King "+(t||"Chihuahua")}function idsEquivalentesTaller(a,b){const norm=x=>typeof normalizarTallerId==="function"?normalizarTallerId(x):(x||"Chihuahua");return norm(a)===norm(b)}function perteneceAlTallerActual(registroTaller){return idsEquivalentesTaller(registroTaller,getTallerActual())}function llenarSelectTalleres(selectId,valor){const sel=document.getElementById(selectId);if(!sel)return;const v=valor||sel.value||"Chihuahua";sel.innerHTML=(listaTalleres||[]).map(t=>`<option value="${t.id}">${t.nombre||t.etiqueta||t.id}</option>`).join(""),[...sel.options].some(o=>o.value===v)?sel.value=v:sel.options.length&&(sel.selectedIndex=0)}function actualizarSelectsTallerUI(){llenarSelectTalleres("loginTaller"),llenarSelectTalleres("adminUserTaller")}let personasPorTaller={Chihuahua:{Gerencia:["Luis Solís"],Mantenimiento:["Marcos Sifuentes","Sergio Holguín","Alfredo","Alejandro Flores"],Ventas:["Romina"],Compras:["Alfredo Ramírez"]},Juarez:{Gerencia:["Luis Solís"],Mantenimiento:["Abel"],Ventas:["Romina"],Compras:["Abel"]}},listaUsuarios=[{id:"u_luis_n",nombre:"Luis Solís",area:"Gerencia",taller:"Chihuahua",nivel:"",permiso_total:!0,rol_tecnico:""},{id:"u_marcos",nombre:"Marcos Sifuentes",area:"Mantenimiento",taller:"Chihuahua",nivel:"Máster",permiso_total:!1,rol_tecnico:"diagnosticador"},{id:"u_sergio",nombre:"Sergio Holguín",area:"Mantenimiento",taller:"Chihuahua",nivel:"Profesional",permiso_total:!0,rol_tecnico:"diagnosticador"},{id:"u_alfredo_m",nombre:"Alfredo",area:"Mantenimiento",taller:"Chihuahua",nivel:"Aprendiz",permiso_total:!1,rol_tecnico:"reparador"},{id:"u_romina_n",nombre:"Romina",area:"Ventas",taller:"Chihuahua",nivel:"",permiso_total:!1,rol_tecnico:""},{id:"u_alfredo_ram",nombre:"Alfredo Ramírez",area:"Compras",taller:"Chihuahua",nivel:"",permiso_total:!1,rol_tecnico:""},{id:"u_luis_j",nombre:"Luis Solís",area:"Gerencia",taller:"Juarez",nivel:"",permiso_total:!0,rol_tecnico:""},{id:"u_abel",nombre:"Abel",area:"Mantenimiento",taller:"Juarez",nivel:"Profesional",permiso_total:!0,rol_tecnico:"ambos"},{id:"u_romina_j",nombre:"Romina",area:"Ventas",taller:"Juarez",nivel:"",permiso_total:!1,rol_tecnico:""},{id:"u_abel_c",nombre:"Abel",area:"Compras",taller:"Juarez",nivel:"",permiso_total:!0,rol_tecnico:""}];
     function getUsuariosEliminadosIds(){
       try{
@@ -8271,7 +8293,35 @@ try{actualizarPersonasLogin()}catch(e){}try{actualizarSelectsTallerUI()}catch(e)
     },1500);
   },100);
 }}catch(eBoot){}
-Promise.race([cargarConfigAdmin().catch(function(e){console.warn(e)}),new Promise(function(res){setTimeout(res,1e4)})]).then(function(){try{actualizarSelectsTallerUI()}catch(e){}try{asegurarUsuariosBase();rebuildPersonasDesdeUsuarios()}catch(e){}try{const s=getSesionGuardada();if(s&&s.area&&s.persona){sesion=s;try{continuarTrasLogin()}catch(e2){console.error(e2);try{cargarDatos()}catch(e3){}}}else{arrancarApp()}}catch(e){arrancarApp()}}).catch(function(e){console.error("Init error",e),arrancarApp()}),"serviceWorker"in navigator&&window.addEventListener("load",function(){registrarServiceWorkerNotif().then(function(){actualizarEstadoPushUI()})});</script>
+Promise.race([cargarConfigAdmin().catch(function(e){console.warn(e)}),new Promise(function(res){setTimeout(res,1e4)})]).then(function(){try{actualizarSelectsTallerUI()}catch(e){}try{asegurarUsuariosBase();rebuildPersonasDesdeUsuarios()}catch(e){}try{const s=getSesionGuardada();if(s&&s.area&&s.persona){sesion=s;try{continuarTrasLogin()}catch(e2){console.error(e2);try{cargarDatos()}catch(e3){}}}else{arrancarApp()}}catch(e){arrancarApp()}}).catch(function(e){console.error("Init error",e),arrancarApp()}),
+(function hookReanudarApp(){
+  if(window.__hookReanudar)return;
+  window.__hookReanudar=1;
+  function go(reason){
+    try{
+      if(document.visibilityState==="hidden")return;
+      const s=typeof getSesionGuardada==="function"?getSesionGuardada():null;
+      if(!s||!s.area||!s.persona)return;
+      // Si no hay unidades en pantalla, recargar
+      const vacio=!window.unidades||!unidades.length;
+      const st=document.getElementById("statusConexion");
+      const txt=st?(st.textContent||""):"";
+      const mal=vacio||txt.indexOf("Conectando")>=0||txt==="—"||txt.indexOf("Sin")>=0;
+      if(mal||reason==="pageshow"){
+        window.__cargandoDatos=false;
+        reanudarSesionSiHay();
+      }
+    }catch(e){console.warn("hookReanudar",e);}
+  }
+  window.addEventListener("pageshow",function(ev){go(ev.persisted?"pageshow":"pageshow");});
+  document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")setTimeout(function(){go("visible");},300);});
+  window.addEventListener("focus",function(){setTimeout(function(){go("focus");},400);});
+  // Primer arranque extra a los 2s
+  setTimeout(function(){go("timer");},2000);
+  setTimeout(function(){go("timer2");},5000);
+})();
+
+"serviceWorker"in navigator&&window.addEventListener("load",function(){registrarServiceWorkerNotif().then(function(){actualizarEstadoPushUI()})});</script>
 
 <!-- ===== GUÍA REFRIGERANTE / ACEITE (Ventas + Mantenimiento) ===== -->
 <div class="modal" id="modalGuiaRefrigerante" style="display:none;z-index:10070;">
