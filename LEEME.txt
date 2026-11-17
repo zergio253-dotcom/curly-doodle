@@ -1,0 +1,41 @@
+APP DEL TALLER (curly-doodle) — PAQUETE PARA SUBIR A GITHUB
+==========================================================
+
+Qué hay aquí (SON 3 ARCHIVOS — no falte ninguno)
+------------------------------------------------
+- index.html          → la app completa (vista de tabla, reportes PDF,
+                        personal, etc.). Es el archivo principal.
+- jspdf.umd.min.js    → librería de PDF. SIN ESTE ARCHIVO los PDF solo
+                        funcionan con internet (se baja de un CDN como
+                        respaldo). Con él, todo funciona sin conexión.
+- sw.js               → service worker (notificaciones push + funciona
+                        sin internet).
+
+Preparar el paquete (desde la raíz del proyecto)
+-------------------------------------------------
+    node taller_app/prepara_despliegue.js
+
+Copia los 3 archivos desde sus fuentes, verifica md5 y te imprime el
+checklist. (No copies a mano desde el proyecto: ahí index.html es OTRA
+cosa — es la app de MI GARAGE.)
+
+Cómo subirlo (GitHub Pages)
+---------------------------
+1. Entra a tu repo de la app del taller en GitHub.
+2. Sube los 3 archivos de ESTA carpeta en la rama `main` / `gh-pages`.
+   Ojo: deben quedar en la RAÍZ del repo (junto al index.html), porque
+   el sw sirve "./" y las notificaciones dependen de esa ruta.
+3. Espera 1-2 minutos y recarga con Ctrl+Shift+R.
+
+Verificación rápida
+-------------------
+- Sin internet (avión puesto): la app abre, y un PDF se genera sin problema.
+- Si alguien no ve el cambio: Ctrl+Shift+R una vez.
+
+Notas
+-----
+- El service worker usa network-first: siempre baja la versión nueva
+  cuando hay conexión; los estáticos (jspdf) se cachean solos al primer uso.
+- Esta app no necesita manifest.json propio: el que hay en la raíz del
+  proyecto pertenece a Mi Garage.
+- Respaldos de versiones anteriores: cache/opencode/taller/index_subir_previo_*.html
